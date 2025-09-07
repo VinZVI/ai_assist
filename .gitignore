@@ -350,6 +350,10 @@ temp/
 tmp/
 *.tmp
 *.temp
+
+# Markdown files (except Qoder rules)
+*.md
+.qoder/
 =======
 #  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
 #  and can be added to the global gitignore or merged into this file.  For a more nuclear
