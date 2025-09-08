@@ -12,6 +12,8 @@ dependencies = [
     "sqlalchemy[asyncio]>=2.0.25",
     "alembic>=1.13.1",
     "pydantic>=2.5.0",
+    "pydantic-settings>=2.0.0",
+    "email-validator>=2.0.0",
     "loguru>=0.7.2",
 ]
 
@@ -41,3 +43,8 @@ python_version = "3.11"
 strict = true
 warn_return_any = true
 warn_unused_configs = true
+
+[dependency-groups]
+dev = [
+    "pytest-cov>=6.3.0",
+]
