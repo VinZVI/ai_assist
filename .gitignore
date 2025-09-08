@@ -243,5 +243,7 @@ tmp/
 # Qoder IDE configuration
 .qoder/
 
-# Markdown files
+# Markdown files (exclude all except docs/)
 *.md
+!docs/*.md
+!README.md
