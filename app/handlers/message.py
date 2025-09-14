@@ -27,15 +27,19 @@ async def get_or_update_user(message: Message) -> User | None:
 
     async with get_session() as session:
         try:
-            # Получаем пользователя из базы
-            user = await session.get(User, message.from_user.id)
+            from sqlalchemy import select
+            
+            # Получаем пользователя по telegram_id
+            stmt = select(User).where(User.telegram_id == message.from_user.id)
+            result = await session.execute(stmt)
+            user = result.scalar_one_or_none()
 
             if not user:
                 logger.warning(f"👤 Пользователь {message.from_user.id} не найден, требуется /start")
                 return None
 
             # Обновляем время последней активности
-            user.last_seen = datetime.utcnow()
+            user.last_activity_at = datetime.utcnow()
             await session.commit()
 
             return user
@@ -54,13 +58,17 @@ async def get_recent_conversation_history(
     """Получение истории последних сообщений пользователя."""
     try:
         from sqlalchemy import desc, select
+        from app.models.conversation import MessageRole, ConversationStatus
 
-        # Получаем последние сообщения
+        # Получаем последние завершенные сообщения
         stmt = (
             select(Conversation)
-            .where(Conversation.user_id == user_id)
+            .where(
+                (Conversation.user_id == user_id) &
+                (Conversation.status == ConversationStatus.COMPLETED)
+            )
             .order_by(desc(Conversation.created_at))
-            .limit(limit * 2)  # Берем больше, так как у нас USER и ASSISTANT сообщения
+            .limit(limit)
         )
 
         result = await session.execute(stmt)
@@ -69,13 +77,25 @@ async def get_recent_conversation_history(
         # Преобразуем в ConversationMessage
         messages = []
         for conv in reversed(conversations):  # Обращаем порядок для хронологии
-            messages.append(
-                ConversationMessage(
-                    role=conv.role.lower(),
-                    content=conv.content,
-                    timestamp=conv.created_at,
-                ),
-            )
+            # Добавляем сообщение пользователя
+            if conv.message_text:
+                messages.append(
+                    ConversationMessage(
+                        role="user",
+                        content=conv.message_text,
+                        timestamp=conv.created_at,
+                    ),
+                )
+            
+            # Добавляем ответ ассистента
+            if conv.response_text:
+                messages.append(
+                    ConversationMessage(
+                        role="assistant",
+                        content=conv.response_text,
+                        timestamp=conv.processed_at or conv.created_at,
+                    ),
+                )
 
         return messages[-limit:] if len(messages) > limit else messages
 
@@ -95,29 +115,22 @@ async def save_conversation(
 ) -> bool:
     """Сохранение диалога в базу данных."""
     try:
+        from app.models.conversation import ConversationStatus, MessageRole
+        
         # Сохраняем сообщение пользователя
         user_conv = Conversation(
             user_id=user_id,
-            role="USER",
-            content=user_message,
-            model_used=None,
-            tokens_used=0,
-            response_time=0.0,
+            message_text=user_message,
+            response_text=ai_response,
+            role=MessageRole.USER,
+            status=ConversationStatus.COMPLETED,
+            ai_model=ai_model,
+            tokens_used=tokens_used,
+            response_time_ms=int(response_time * 1000),  # конвертируем в мс
             created_at=datetime.utcnow(),
+            processed_at=datetime.utcnow(),
         )
         session.add(user_conv)
-
-        # Сохраняем ответ ассистента
-        ai_conv = Conversation(
-            user_id=user_id,
-            role="ASSISTANT",
-            content=ai_response,
-            model_used=ai_model,
-            tokens_used=tokens_used,
-            response_time=response_time,
-            created_at=datetime.utcnow(),
-        )
-        session.add(ai_conv)
 
         await session.commit()
         logger.debug(f"💾 Диалог сохранен для пользователя {user_id}")
@@ -158,7 +171,7 @@ async def generate_ai_response(user: User, user_message: str) -> tuple[str, int,
         # Получаем историю диалога
         async with get_session() as session:
             conversation_history = await get_recent_conversation_history(
-                session, user.user_id, limit=6,  # Последние 3 обмена
+                session, user.id, limit=6,  # Последние 3 обмена
             )
 
         # Формируем сообщения для AI
@@ -287,15 +300,16 @@ async def handle_text_message(message: Message) -> None:
         # Обновляем счетчик сообщений пользователя и сохраняем диалог
         async with get_session() as session:
             # Получаем пользователя заново для обновления
-            user_db = await session.get(User, user_id)
+            user_db = await session.get(User, user.id)
             if user_db:
-                user_db.increment_message_count()
+                user_db.daily_message_count += 1
+                user_db.total_messages += 1
                 await session.commit()
 
                 # Сохраняем диалог
                 await save_conversation(
                     session=session,
-                    user_id=user_id,
+                    user_id=user.id,
                     user_message=user_text,
                     ai_response=ai_response,
                     ai_model=model_name,

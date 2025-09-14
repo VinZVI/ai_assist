@@ -16,6 +16,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.config import get_config
 from app.database import get_session
+from app.keyboards import create_main_menu_keyboard
 from app.models import User, UserCreate
 
 # Создаем роутер для обработчиков команды start
@@ -34,8 +35,12 @@ async def get_or_create_user(telegram_user: TgUser) -> User | None:
     """
     async with get_session() as session:
         try:
+            from sqlalchemy import select
+            
             # Попытка найти существующего пользователя
-            existing_user = await session.get(User, telegram_user.id)
+            stmt = select(User).where(User.telegram_id == telegram_user.id)
+            result = await session.execute(stmt)
+            existing_user = result.scalar_one_or_none()
 
             if existing_user:
                 # Обновляем информацию о пользователе если что-то изменилось
@@ -197,6 +202,7 @@ async def handle_start_command(message: Message) -> None:
         await message.answer(
             welcome_message,
             parse_mode="HTML",
+            reply_markup=create_main_menu_keyboard(),
             disable_web_page_preview=True,
         )
 
