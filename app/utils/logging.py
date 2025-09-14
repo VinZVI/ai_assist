@@ -5,16 +5,16 @@
 @created: 2025-09-07
 """
 
-import sys
 import json
+import sys
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Dict, Any, Optional
-from datetime import datetime
+from typing import Any
 
 from loguru import logger
 
 
-def json_formatter(record: Dict[str, Any]) -> str:
+def json_formatter(record: dict[str, Any]) -> str:
     """
     Форматирование логов в JSON формат.
     
@@ -36,23 +36,23 @@ def json_formatter(record: Dict[str, Any]) -> str:
         "process": record["process"].id,
         "thread": record["thread"].id,
     }
-    
+
     # Добавляем дополнительные данные если есть
     if record.get("extra"):
         log_entry["extra"] = record["extra"]
-    
+
     # Добавляем информацию об исключении если есть
     if record["exception"]:
         log_entry["exception"] = {
             "type": record["exception"].type.__name__,
             "value": str(record["exception"].value),
-            "traceback": record["exception"].traceback
+            "traceback": record["exception"].traceback,
         }
-    
+
     return json.dumps(log_entry, ensure_ascii=False)
 
 
-def console_formatter(record: Dict[str, Any]) -> str:
+def console_formatter(record: dict[str, Any]) -> str:
     """
     Форматирование логов для консоли с эмодзи и цветами.
     
@@ -70,11 +70,11 @@ def console_formatter(record: Dict[str, Any]) -> str:
         "SUCCESS": "✅",
         "WARNING": "⚠️",
         "ERROR": "❌",
-        "CRITICAL": "💥"
+        "CRITICAL": "💥",
     }
-    
+
     emoji = level_emoji.get(record["level"].name, "📝")
-    
+
     # Цветовое кодирование
     colors = {
         "TRACE": "<dim>",
@@ -83,16 +83,16 @@ def console_formatter(record: Dict[str, Any]) -> str:
         "SUCCESS": "<green>",
         "WARNING": "<yellow>",
         "ERROR": "<red>",
-        "CRITICAL": "<red><bold>"
+        "CRITICAL": "<red><bold>",
     }
-    
+
     color = colors.get(record["level"].name, "")
-    
+
     # Формат для консоли
     time_str = record["time"].strftime("%H:%M:%S")
     level_str = record["level"].name.ljust(8)
     module_str = f"{record['module']}:{record['line']}"
-    
+
     return (
         f"{color}{emoji} {time_str} | "
         f"{level_str} | "
@@ -105,9 +105,9 @@ def console_formatter(record: Dict[str, Any]) -> str:
 def setup_logging(
     log_level: str = "INFO",
     enable_json: bool = False,
-    log_file_path: Optional[Path] = None,
+    log_file_path: Path | None = None,
     enable_console: bool = True,
-    enable_request_logging: bool = False
+    enable_request_logging: bool = False,
 ) -> None:
     """
     Настройка системы логирования.
@@ -121,7 +121,7 @@ def setup_logging(
     """
     # Удаляем стандартный handler
     logger.remove()
-    
+
     # Настройка консольного вывода
     if enable_console:
         logger.add(
@@ -132,11 +132,11 @@ def setup_logging(
             backtrace=True,
             diagnose=True,
         )
-    
+
     # Настройка файлового вывода
     if log_file_path:
         log_file_path.parent.mkdir(parents=True, exist_ok=True)
-        
+
         if enable_json:
             # JSON формат для структурированных логов
             logger.add(
@@ -149,7 +149,7 @@ def setup_logging(
                 backtrace=True,
                 diagnose=True,
             )
-        
+
         # Обычный текстовый формат для удобочитаемости
         logger.add(
             log_file_path / "app.log",
@@ -166,7 +166,7 @@ def setup_logging(
             backtrace=True,
             diagnose=True,
         )
-        
+
         # Отдельный файл для ошибок
         logger.add(
             log_file_path / "errors.log",
@@ -184,7 +184,7 @@ def setup_logging(
             backtrace=True,
             diagnose=True,
         )
-    
+
     # Настройки для детального логирования запросов
     if enable_request_logging:
         # Отдельный логгер для HTTP запросов
@@ -200,7 +200,7 @@ def setup_logging(
             filter=lambda record: "request" in record.get("extra", {}),
             level="INFO",
         )
-    
+
     logger.info("🚀 Система логирования инициализирована")
     logger.debug(f"📊 Уровень логирования: {log_level}")
     logger.debug(f"📁 JSON формат: {'включен' if enable_json else 'отключен'}")
@@ -221,7 +221,7 @@ def get_logger(name: str) -> "logger":
     return logger.bind(component=name)
 
 
-def log_function_call(func_name: str, **kwargs) -> None:
+def log_function_call(func_name: str, **kwargs: Any) -> None:
     """
     Логирование вызова функции с параметрами.
     
@@ -231,18 +231,18 @@ def log_function_call(func_name: str, **kwargs) -> None:
     """
     # Маскируем чувствительные данные
     safe_kwargs = {}
-    sensitive_keys = {'password', 'token', 'key', 'secret', 'api_key'}
-    
+    sensitive_keys = {"password", "token", "key", "secret", "api_key"}
+
     for key, value in kwargs.items():
         if any(sensitive in key.lower() for sensitive in sensitive_keys):
             safe_kwargs[key] = "***MASKED***"
         else:
             safe_kwargs[key] = value
-    
+
     logger.debug(f"🔧 Вызов функции {func_name}", extra={"parameters": safe_kwargs})
 
 
-def log_performance(operation: str, duration_ms: float, **context) -> None:
+def log_performance(operation: str, duration_ms: float, **context: Any) -> None:
     """
     Логирование метрик производительности.
     
@@ -257,13 +257,13 @@ def log_performance(operation: str, duration_ms: float, **context) -> None:
             "performance": {
                 "operation": operation,
                 "duration_ms": duration_ms,
-                **context
-            }
-        }
+                **context,
+            },
+        },
     )
 
 
-def log_user_action(user_id: int, action: str, **details) -> None:
+def log_user_action(user_id: int, action: str, **details: Any) -> None:
     """
     Логирование действий пользователей.
     
@@ -278,14 +278,16 @@ def log_user_action(user_id: int, action: str, **details) -> None:
             "user_action": {
                 "user_id": user_id,
                 "action": action,
-                "timestamp": datetime.now().isoformat(),
-                **details
-            }
-        }
+                "timestamp": datetime.now(tz=UTC).isoformat(),
+                **details,
+            },
+        },
     )
 
 
-def log_api_request(method: str, url: str, status_code: int, response_time: float) -> None:
+def log_api_request(
+    method: str, url: str, status_code: int, response_time: float,
+) -> None:
     """
     Логирование API запросов.
     
@@ -302,19 +304,19 @@ def log_api_request(method: str, url: str, status_code: int, response_time: floa
             "method": method,
             "url": url,
             "status_code": status_code,
-            "response_time": response_time
-        }
+            "response_time": response_time,
+        },
     )
 
 
 # Экспорт для удобного использования
 __all__ = [
-    "setup_logging",
-    "get_logger", 
+    "console_formatter",
+    "get_logger",
+    "json_formatter",
+    "log_api_request",
     "log_function_call",
     "log_performance",
     "log_user_action",
-    "log_api_request",
-    "json_formatter",
-    "console_formatter"
+    "setup_logging",
 ]

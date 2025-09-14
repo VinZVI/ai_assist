@@ -96,7 +96,50 @@ ai_assist/
 └── README.md                 # Основное описание проекта
 ```
 
-## 3. Базы данных
+## 3. AI сервис и интеграция
+
+### 3.1 Архитектура AI сервиса
+
+**Основные компоненты:**
+- `AIService` - основной класс для работы с DeepSeek API
+- `ResponseCache` - система кеширования ответов
+- `ConversationMessage` - структура для сообщений диалога
+- `AIResponse` - структура ответа от AI
+
+**Особенности реализации:**
+- Асинхронная работа с httpx клиентом
+- Retry логика с экспоненциальной задержкой
+- Обработка различных типов ошибок (401, 429, 5xx)
+- Кеширование ответов на основе MD5 хешей
+- Мониторинг состояния через `health_check()`
+
+### 3.2 Конфигурация AI сервиса
+
+```python
+# Настройки DeepSeek API
+DEEPSEEK_API_KEY=your_api_key_here
+DEEPSEEK_BASE_URL=https://api.deepseek.com
+DEEPSEEK_MODEL=deepseek-chat
+DEEPSEEK_MAX_TOKENS=1000
+DEEPSEEK_TEMPERATURE=0.7
+DEEPSEEK_TIMEOUT=30
+
+# Настройки кеширования
+CACHE_TTL=3600
+```
+
+### 3.3 Обработка ошибок
+
+**Иерархия ошибок:**
+- `AIServiceError` - базовый класс ошибок
+- `APIConnectionError` - ошибки подключения
+- `APIRateLimitError` - превышение лимитов
+- `APIAuthenticationError` - ошибки аутентификации
+
+**Fallback стратегия:**
+При ошибках API система возвращает предзаданные эмпатичные ответы.
+
+## 4. Базы данных
 
 ### 3.1 Схема базы данных
 

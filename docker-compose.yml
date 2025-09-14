@@ -1,0 +1,105 @@
+version: '3.8'
+
+services:
+  # PostgreSQL база данных
+  postgres:
+    image: postgres:15-alpine
+    container_name: ai_assist_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DATABASE_NAME:-ai_assist}
+      POSTGRES_USER: ${DATABASE_USER:-postgres}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ai_assist"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - ai_assist_network
+
+  # Redis для кеширования (опционально)
+  redis:
+    image: redis:7-alpine
+    container_name: ai_assist_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis_secure_password}
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli --raw incr ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - ai_assist_network
+
+  # AI-Компаньон бот (для продакшена)
+  ai_assist_bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ai_assist_bot
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      # Переменные окружения из .env файла
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_NAME: ${DATABASE_NAME:-ai_assist}
+      DATABASE_USER: ${DATABASE_USER:-postgres}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_secure_password}
+      LOG_LEVEL: INFO
+      USE_POLLING: true
+    env_file:
+      - .env.docker
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - ai_assist_network
+    profiles:
+      - production
+
+  # Adminer для управления БД (опционально)
+  adminer:
+    image: adminer:latest
+    container_name: ai_assist_adminer
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+      ADMINER_DESIGN: "bootstrap"
+    depends_on:
+      - postgres
+    networks:
+      - ai_assist_network
+    profiles:
+      - development
+
+volumes:
+  postgres_data:
+    name: ai_assist_postgres_data
+  redis_data:
+    name: ai_assist_redis_data
+
+networks:
+  ai_assist_network:
+    name: ai_assist_network
+    driver: bridge
