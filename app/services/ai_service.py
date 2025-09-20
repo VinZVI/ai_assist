@@ -196,6 +196,12 @@ class AIService:
                 if response.status_code == 401:
                     raise APIAuthenticationError("Неверный API ключ DeepSeek")
 
+                if response.status_code == 402:
+                    raise APIAuthenticationError(
+                        "Недостаточно средств на счете DeepSeek API. "
+                        "Пополните баланс в личном кабинете DeepSeek."
+                    )
+
                 if response.status_code == 429:
                     if attempt < self._max_retries - 1:
                         delay = self._retry_delay * (2 ** attempt)  # Exponential backoff
