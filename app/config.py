@@ -82,7 +82,7 @@ class TelegramConfig(BaseSettings):
 class DeepSeekConfig(BaseSettings):
     """Конфигурация DeepSeek API."""
 
-    deepseek_api_key: str = Field(env="DEEPSEEK_API_KEY")
+    deepseek_api_key: str = Field(default="your_deepseek_api_key_here", env="DEEPSEEK_API_KEY")
     deepseek_base_url: str = Field(default="https://api.deepseek.com", env="DEEPSEEK_BASE_URL")
     deepseek_model: str = Field(default="deepseek-chat", env="DEEPSEEK_MODEL")
     deepseek_max_tokens: int = Field(default=1000, env="DEEPSEEK_MAX_TOKENS")
@@ -95,9 +95,14 @@ class DeepSeekConfig(BaseSettings):
     @classmethod
     def validate_api_key(cls, v: str) -> str:
         """Валидация API ключа DeepSeek."""
-        if not v or v == "your_deepseek_api_key_here":
-            raise ValueError("DEEPSEEK_API_KEY must be set to a valid API key")
-        return v
+        # Пока просто проверяем, что ключ не пустой
+        if v is None:
+            return "your_deepseek_api_key_here"
+        return v if v else "your_deepseek_api_key_here"
+
+    def is_configured(self) -> bool:
+        """Проверка, настроен ли DeepSeek."""
+        return self.deepseek_api_key not in ["your_deepseek_api_key_here", "", None]
 
     @field_validator("deepseek_temperature")
     @classmethod
@@ -113,6 +118,79 @@ class DeepSeekConfig(BaseSettings):
         """Валидация максимального количества токенов."""
         if v <= 0 or v > 4000:
             raise ValueError("DEEPSEEK_MAX_TOKENS must be between 1 and 4000")
+        return v
+
+
+class OpenRouterConfig(BaseSettings):
+    """Конфигурация OpenRouter API."""
+
+    openrouter_api_key: str = Field(default="your_openrouter_api_key_here", env="OPENROUTER_API_KEY")
+    openrouter_base_url: str = Field(default="https://openrouter.ai/api/v1", env="OPENROUTER_BASE_URL")
+    openrouter_model: str = Field(default="anthropic/claude-3-haiku", env="OPENROUTER_MODEL")
+    openrouter_max_tokens: int = Field(default=1000, env="OPENROUTER_MAX_TOKENS")
+    openrouter_temperature: float = Field(default=0.7, env="OPENROUTER_TEMPERATURE")
+    openrouter_timeout: int = Field(default=30, env="OPENROUTER_TIMEOUT")
+    openrouter_site_url: str = Field(default="https://ai-assist.example.com", env="OPENROUTER_SITE_URL")
+    openrouter_app_name: str = Field(default="AI-Assistant", env="OPENROUTER_APP_NAME")
+
+    model_config = {"extra": "ignore", "env_file": ".env"}
+
+    @field_validator("openrouter_api_key")
+    @classmethod
+    def validate_api_key(cls, v: str) -> str:
+        """Валидация API ключа OpenRouter."""
+        # Пока просто проверяем, что ключ не пустой
+        if not v:
+            raise ValueError("OPENROUTER_API_KEY cannot be empty")
+        return v
+
+    def is_configured(self) -> bool:
+        """Проверка, настроен ли OpenRouter."""
+        return self.openrouter_api_key != "your_openrouter_api_key_here"
+
+    @field_validator("openrouter_temperature")
+    @classmethod
+    def validate_temperature(cls, v: float) -> float:
+        """Валидация температуры генерации."""
+        if not 0.0 <= v <= 2.0:
+            raise ValueError("OPENROUTER_TEMPERATURE must be between 0.0 and 2.0")
+        return v
+
+    @field_validator("openrouter_max_tokens")
+    @classmethod
+    def validate_max_tokens(cls, v: int) -> int:
+        """Валидация максимального количества токенов."""
+        if v <= 0 or v > 8000:  # OpenRouter поддерживает больше токенов
+            raise ValueError("OPENROUTER_MAX_TOKENS must be between 1 and 8000")
+        return v
+
+
+class AIProviderConfig(BaseSettings):
+    """Конфигурация провайдеров AI."""
+
+    primary_provider: str = Field(default="deepseek", env="AI_PRIMARY_PROVIDER")
+    fallback_provider: str = Field(default="openrouter", env="AI_FALLBACK_PROVIDER")
+    enable_fallback: bool = Field(default=True, env="AI_ENABLE_FALLBACK")
+    max_retries_per_provider: int = Field(default=3, env="AI_MAX_RETRIES_PER_PROVIDER")
+    provider_timeout: int = Field(default=30, env="AI_PROVIDER_TIMEOUT")
+
+    model_config = {"extra": "ignore", "env_file": ".env"}
+
+    @field_validator("primary_provider", "fallback_provider")
+    @classmethod
+    def validate_provider(cls, v: str) -> str:
+        """Валидация названия провайдера."""
+        allowed_providers = ["deepseek", "openrouter"]
+        if v not in allowed_providers:
+            raise ValueError(f"Provider must be one of: {allowed_providers}")
+        return v
+
+    @field_validator("max_retries_per_provider")
+    @classmethod
+    def validate_retries(cls, v: int) -> int:
+        """Валидация количества попыток."""
+        if v < 1 or v > 10:
+            raise ValueError("AI_MAX_RETRIES_PER_PROVIDER must be between 1 and 10")
         return v
 
 
@@ -254,6 +332,8 @@ class AppConfig(BaseSettings):
     database: DatabaseConfig | None = None
     telegram: TelegramConfig | None = None
     deepseek: DeepSeekConfig | None = None
+    openrouter: OpenRouterConfig | None = None
+    ai_provider: AIProviderConfig | None = None
     user_limits: UserLimitsConfig | None = None
     admin: AdminConfig | None = None
     payment: PaymentConfig | None = None
@@ -267,6 +347,8 @@ class AppConfig(BaseSettings):
         self.database = DatabaseConfig()
         self.telegram = TelegramConfig()
         self.deepseek = DeepSeekConfig()
+        self.openrouter = OpenRouterConfig()
+        self.ai_provider = AIProviderConfig()
         self.user_limits = UserLimitsConfig()
         self.admin = AdminConfig()
         self.payment = PaymentConfig()
@@ -326,10 +408,12 @@ def get_config() -> AppConfig:
 # Экспорт для удобного использования
 __all__ = [
     "AdminConfig",
+    "AIProviderConfig",
     "AppConfig",
     "DatabaseConfig",
     "DeepSeekConfig",
     "MonitoringConfig",
+    "OpenRouterConfig",
     "PaymentConfig",
     "RateLimitConfig",
     "RedisConfig",

@@ -1,8 +1,9 @@
 """
 @file: message.py
-@description: Обработчик текстовых сообщений для AI диалогов
-@dependencies: aiogram, sqlalchemy, loguru
+@description: Обработчик текстовых сообщений для AI диалогов с поддержкой множественных провайдеров
+@dependencies: aiogram, sqlalchemy, loguru, app.services.ai_manager
 @created: 2025-09-12
+@updated: 2025-09-20
 """
 
 from datetime import datetime
@@ -14,7 +15,7 @@ from loguru import logger
 from app.config import get_config
 from app.database import get_session
 from app.models import Conversation, User
-from app.services import AIServiceError, ConversationMessage, get_ai_service
+from app.services.ai_manager import get_ai_manager, ConversationMessage, AIProviderError
 
 # Создаем роутер для обработчиков сообщений
 message_router = Router()
@@ -159,13 +160,13 @@ def create_system_message() -> ConversationMessage:
 
 async def generate_ai_response(user: User, user_message: str) -> tuple[str, int, str, float]:
     """
-    Генерация ответа от AI.
+    Генерация ответа от AI с поддержкой множественных провайдеров.
     
     Returns:
         tuple: (response_text, tokens_used, model_name, response_time)
     """
     try:
-        ai_service = get_ai_service()
+        ai_manager = get_ai_manager()
         start_time = datetime.utcnow()
 
         # Получаем историю диалога
@@ -188,8 +189,8 @@ async def generate_ai_response(user: User, user_message: str) -> tuple[str, int,
             ),
         )
 
-        # Генерируем ответ
-        response = await ai_service.generate_response(
+        # Генерируем ответ с автоматическим fallback
+        response = await ai_manager.generate_response(
             messages=messages,
             temperature=0.8,  # Немного больше креативности для эмпатии
             max_tokens=1000,
@@ -197,24 +198,44 @@ async def generate_ai_response(user: User, user_message: str) -> tuple[str, int,
 
         response_time = (datetime.utcnow() - start_time).total_seconds()
 
+        logger.info(
+            f"🤖 AI ответ получен от {response.provider}: "
+            f"{len(response.content)} символов, {response.tokens_used} токенов, "
+            f"{response.response_time:.2f}с"
+        )
+
         return response.content, response.tokens_used, response.model, response_time
 
-    except AIServiceError as e:
+    except AIProviderError as e:
         error_msg = str(e)
-        logger.error(f"❌ Ошибка AI сервиса: {error_msg}")
+        provider = getattr(e, 'provider', 'unknown')
+        logger.error(f"❌ Ошибка AI провайдера {provider}: {error_msg}")
         
-        # Проверяем на ошибки с балансом
-        if "недостаточно средств" in error_msg.lower() or "402" in error_msg:
+        # Проверяем на ошибки с балансом/квотой
+        if any(keyword in error_msg.lower() for keyword in [
+            "недостаточно средств", "quota", "billing", "payment", "402"
+        ]):
             return (
-                "💳 Извините, у нас временные трудности с API сервисом.\n"
+                "💳 Извините, у нас временные трудности с AI сервисом.\n"
                 "Мы уже работаем над решением этой проблемы.\n\n"
                 "🕰️ Попробуйте еще раз через несколько минут.",
                 0,
-                "api_error",
+                "quota_error",
                 0.0,
             )
         
-        # Возвращаем fallback ответ
+        # Проверяем критические ошибки (все провайдеры недоступны)
+        if "все ai провайдеры недоступны" in error_msg.lower():
+            return (
+                "😔 К сожалению, все наши AI сервисы временно недоступны.\n"
+                "Мы работаем над устранением проблемы.\n\n"
+                "🔄 Пожалуйста, попробуйте позже.",
+                0,
+                "all_providers_down",
+                0.0,
+            )
+        
+        # Возвращаем общий fallback ответ
         return (
             "Извините, у меня временные технические трудности. "
             "Я понимаю, что вам нужна поддержка. Попробуйте написать еще раз через несколько минут.",

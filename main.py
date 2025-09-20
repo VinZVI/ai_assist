@@ -22,7 +22,7 @@ from app.config import get_config
 from app.database import init_db, close_db
 from app.utils.logging import setup_logging
 from app.handlers import ROUTERS
-from app.services import close_ai_service
+from app.services.ai_manager import close_ai_manager
 
 
 class AIAssistantBot:
@@ -110,23 +110,37 @@ class AIAssistantBot:
         logger.info("🛑 Завершение работы бота...")
         
         try:
-            # Остановка диспетчера
+            # Остановка диспетчера с таймаутом
             if self.dp:
-                await self.dp.stop_polling()
-                logger.info("📡 Polling остановлен")
+                try:
+                    await asyncio.wait_for(self.dp.stop_polling(), timeout=10.0)
+                    logger.info("📡 Polling остановлен")
+                except asyncio.TimeoutError:
+                    logger.warning("⚠️ Таймаут при остановке polling")
             
-            # Закрытие сессии бота
+            # Закрытие сессии бота с таймаутом
             if self.bot:
-                await self.bot.session.close()
-                logger.info("🤖 Сессия бота закрыта")
+                try:
+                    await asyncio.wait_for(self.bot.session.close(), timeout=5.0)
+                    logger.info("🤖 Сессия бота закрыта")
+                except asyncio.TimeoutError:
+                    logger.warning("⚠️ Таймаут при закрытии сессии бота")
             
-            # Закрытие подключения к БД
-            await close_db()
+            # Закрытие подключения к БД с таймаутом
+            try:
+                await asyncio.wait_for(close_db(), timeout=5.0)
+                logger.info("🗄️ База данных закрыта")
+            except asyncio.TimeoutError:
+                logger.warning("⚠️ Таймаут при закрытии БД")
             
-            # Закрытие AI сервиса
-            await close_ai_service()
+            # Закрытие AI менеджера с таймаутом
+            try:
+                await asyncio.wait_for(close_ai_manager(), timeout=5.0)
+                logger.info("🤖 AI менеджер закрыт")
+            except asyncio.TimeoutError:
+                logger.warning("⚠️ Таймаут при закрытии AI менеджера")
             
-            logger.info("✅ Бот корректно завершил работу")
+            logger.success("✅ Бот корректно завершил работу")
             
         except Exception as e:
             logger.error(f"❌ Ошибка при завершении работы: {e}")
@@ -147,21 +161,49 @@ class AIAssistantBot:
         self._shutdown_event.set()
     
     async def run_polling(self) -> None:
-        """Запуск бота в режиме polling."""
+        """Запуск бота в режиме polling с поддержкой graceful shutdown."""
         if not self.dp or not self.bot:
             raise RuntimeError("Бот или диспетчер не инициализированы")
             
         logger.info("📡 Запуск в режиме polling...")
         
         try:
-            # Запуск polling с graceful shutdown
-            await self.dp.start_polling(
-                self.bot,
-                allowed_updates=self.dp.resolve_used_update_types(),
-                drop_pending_updates=True,
+            # Создаем задачу для polling
+            polling_task = asyncio.create_task(
+                self.dp.start_polling(
+                    self.bot,
+                    allowed_updates=self.dp.resolve_used_update_types(),
+                    drop_pending_updates=True,
+                )
             )
+            
+            # Создаем задачу ожидания сигнала завершения
+            shutdown_task = asyncio.create_task(self._shutdown_event.wait())
+            
+            # Ждем завершения любой из задач
+            done, pending = await asyncio.wait(
+                [polling_task, shutdown_task],
+                return_when=asyncio.FIRST_COMPLETED
+            )
+            
+            # Отменяем оставшиеся задачи
+            for task in pending:
+                task.cancel()
+                try:
+                    await task
+                except asyncio.CancelledError:
+                    pass
+                    
+            # Если polling завершился с ошибкой, проверим это
+            if polling_task in done:
+                try:
+                    await polling_task
+                except Exception as e:
+                    logger.error(f"💥 Ошибка в polling: {e}")
+                    raise
+                    
         except Exception as e:
-            logger.error(f"💥 Ошибка в polling: {e}")
+            logger.error(f"💥 Ошибка в run_polling: {e}")
             raise
     
     async def run_webhook(self) -> None:
@@ -200,6 +242,8 @@ class AIAssistantBot:
                 await self.run_webhook()
                 # В режиме webhook нужно поддерживать приложение активным
                 await self._shutdown_event.wait()
+                
+            logger.info("🛑 Начинаю корректное завершение работы...")
             
         except KeyboardInterrupt:
             logger.info("⌨️ Получено прерывание с клавиатуры")
@@ -231,6 +275,7 @@ async def main() -> None:
     logger.info("📅 Версия: 1.0.0 | Дата: 2025-09-12")
     logger.info("-" * 60)
     
+    bot_app = None
     try:
         # Создание и запуск бота
         bot_app = AIAssistantBot()
@@ -240,6 +285,11 @@ async def main() -> None:
         logger.info("👋 Работа бота прервана пользователем")
     except Exception as e:
         logger.error(f"💥 Критическая ошибка при запуске: {e}")
+        if bot_app:
+            try:
+                await bot_app.shutdown()
+            except Exception:
+                pass
         sys.exit(1)
     finally:
         logger.info("🏁 Программа завершена")
@@ -250,5 +300,11 @@ if __name__ == "__main__":
     if sys.platform == 'win32':
         asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
     
-    # Запуск приложения
-    asyncio.run(main())
+    try:
+        # Запуск приложения
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("\n👋 Завершение по Ctrl+C")
+    except Exception as e:
+        print(f"\n💥 Критическая ошибка: {e}")
+        sys.exit(1)
