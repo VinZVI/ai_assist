@@ -270,16 +270,16 @@ class TestGenerateAiResponse:
                 with patch('app.handlers.message.get_session') as mock_get_session:
                     mock_get_session.return_value.__aenter__.return_value = mock_session
                     
-                        # Act
-                        content, tokens, model, time = await generate_ai_response(
-                            mock_user, "Hello AI"
-                        )
-                        
-                        # Assert
-                        assert content == "This is AI response"
-                        assert tokens == 30
-                        assert model == "deepseek-chat"
-                        assert time > 0
+                    # Act
+                    content, tokens, model, time = await generate_ai_response(
+                        mock_user, "Hello AI"
+                    )
+                    
+                    # Assert
+                    assert content == "This is AI response"
+                    assert tokens == 30
+                    assert model == "deepseek-chat"
+                    assert time > 0
 
     @pytest.mark.asyncio
     async def test_generate_ai_response_api_error(self, mock_user, mock_session):
