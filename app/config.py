@@ -15,8 +15,7 @@ from pydantic_settings import BaseSettings
 class DatabaseConfig(BaseSettings):
     """Конфигурация базы данных."""
 
-    # Полный URL или отдельные параметры
-    database_url: str | None = Field(default=None, env="DATABASE_URL")
+    # Отдельные параметры (обязательные)
     database_host: str = Field(default="localhost", env="DATABASE_HOST")
     database_port: int = Field(default=5432, env="DATABASE_PORT")
     database_name: str = Field(default="ai_assist", env="DATABASE_NAME")
@@ -29,22 +28,10 @@ class DatabaseConfig(BaseSettings):
 
     model_config = {"extra": "ignore", "env_file": ".env"}
 
-    @field_validator("database_url", mode="before")
-    @classmethod
-    def build_database_url(cls, v: str | None, info: ValidationInfo) -> str:
-        """Построение URL БД из отдельных параметров если не задан полный URL."""
-        if v is not None:
-            return v
-
-        # Получаем значения из info.data если они доступны
-        values = info.data if hasattr(info, "data") else {}
-        user = values.get("database_user", "postgres")
-        password = values.get("database_password", "password")
-        host = values.get("database_host", "localhost")
-        port = values.get("database_port", 5432)
-        database = values.get("database_name", "ai_assist")
-
-        return f"postgresql+asyncpg://{user}:{password}@{host}:{port}/{database}"
+    @property
+    def database_url(self) -> str:
+        """Построение URL БД из отдельных параметров."""
+        return f"postgresql+asyncpg://{self.database_user}:{self.database_password}@{self.database_host}:{self.database_port}/{self.database_name}"
 
 
 class TelegramConfig(BaseSettings):
@@ -95,10 +82,10 @@ class DeepSeekConfig(BaseSettings):
     @classmethod
     def validate_api_key(cls, v: str) -> str:
         """Валидация API ключа DeepSeek."""
-        # Пока просто проверяем, что ключ не пустой
-        if v is None:
-            return "your_deepseek_api_key_here"
-        return v if v else "your_deepseek_api_key_here"
+        # Проверяем, что ключ не пустой и не placeholder
+        if v is None or v == "" or v == "your_deepseek_api_key_here":
+            raise ValueError("DEEPSEEK_API_KEY must be set to a valid API key")
+        return v
 
     def is_configured(self) -> bool:
         """Проверка, настроен ли DeepSeek."""

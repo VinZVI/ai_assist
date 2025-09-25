@@ -77,7 +77,7 @@ class TestConfigValidation:
         
         # Тест с валидным API ключом
         config = DeepSeekConfig(deepseek_api_key="sk-test123456789")
-        assert config.deepseek_api_key == "sk-test123456"
+        assert config.deepseek_api_key == "sk-test123456789"
         
         # Тест валидации температуры
         with pytest.raises(Exception):

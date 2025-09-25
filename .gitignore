@@ -251,3 +251,4 @@ tmp/
 *.md
 !docs/*.md
 !README.md
+.env.backup
