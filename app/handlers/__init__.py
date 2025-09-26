@@ -12,9 +12,9 @@ from .start import start_router
 
 # Список всех роутеров для регистрации
 ROUTERS = [
-    start_router,      # Обработчик команды /start
-    callback_router,   # Обработчик callback запросов
-    message_router,    # Обработчик текстовых сообщений
+    start_router,  # Обработчик команды /start
+    callback_router,  # Обработчик callback запросов
+    message_router,  # Обработчик текстовых сообщений
 ]
 
 __all__ = [

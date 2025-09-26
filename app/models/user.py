@@ -1,13 +1,13 @@
 """
 @file: models/user.py
-@description: Модель пользователя для Telegram бота
+@description: Модель пользователя Telegram бота
 @dependencies: sqlalchemy, pydantic
 @created: 2025-09-12
 """
 
 from datetime import date, datetime
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import (
     BigInteger,
     Boolean,
@@ -159,9 +159,11 @@ class User(Base):
         Index("idx_user_active", "is_active"),
         Index("idx_user_created", "created_at"),
         Index("idx_user_last_message", "last_message_date"),
-
         # Ограничения
-        CheckConstraint("daily_message_count >= 0", name="check_daily_message_count_positive"),
+        CheckConstraint(
+            "daily_message_count >= 0",
+            name="check_daily_message_count_positive",
+        ),
         CheckConstraint("total_messages >= 0", name="check_total_messages_positive"),
         CheckConstraint("telegram_id > 0", name="check_telegram_id_positive"),
     )
@@ -216,12 +218,22 @@ class User(Base):
 
 # Pydantic схемы для валидации и сериализации
 
+
 class UserBase(BaseModel):
     """Базовая схема пользователя."""
+
     telegram_id: int = Field(..., gt=0, description="ID пользователя в Telegram")
-    username: str | None = Field(None, max_length=255, description="Username в Telegram")
+    username: str | None = Field(
+        None,
+        max_length=255,
+        description="Username в Telegram",
+    )
     first_name: str | None = Field(None, max_length=255, description="Имя пользователя")
-    last_name: str | None = Field(None, max_length=255, description="Фамилия пользователя")
+    last_name: str | None = Field(
+        None,
+        max_length=255,
+        description="Фамилия пользователя",
+    )
     language_code: str | None = Field("ru", max_length=10, description="Код языка")
 
     @field_validator("username")
@@ -239,6 +251,7 @@ class UserCreate(UserBase):
 
 class UserUpdate(BaseModel):
     """Схема для обновления пользователя."""
+
     username: str | None = Field(None, max_length=255)
     first_name: str | None = Field(None, max_length=255)
     last_name: str | None = Field(None, max_length=255)
@@ -249,6 +262,7 @@ class UserUpdate(BaseModel):
 
 class UserResponse(UserBase):
     """Схема для возврата данных пользователя."""
+
     id: int
     is_premium: bool
     daily_message_count: int
@@ -258,20 +272,19 @@ class UserResponse(UserBase):
     created_at: datetime
     last_activity_at: datetime | None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UserStats(BaseModel):
     """Схема для статистики пользователя."""
+
     total_users: int
     active_users: int
     premium_users: int
     new_users_today: int
     messages_today: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # Экспорт для удобного использования

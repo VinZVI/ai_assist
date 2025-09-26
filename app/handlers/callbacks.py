@@ -5,10 +5,8 @@
 @created: 2025-09-14
 """
 
-from datetime import datetime
-
 from aiogram import F, Router
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import CallbackQuery
 from loguru import logger
 
 from app.config import get_config
@@ -35,8 +33,7 @@ async def show_main_menu(callback: CallbackQuery) -> None:
     """Показать главное меню."""
     try:
         await callback.message.edit_text(
-            "🏠 **Главное меню**\n\n"
-            "Выберите действие:",
+            "🏠 **Главное меню**\n\nВыберите действие:",
             reply_markup=create_main_menu_keyboard(),
             parse_mode="Markdown",
         )
@@ -74,19 +71,23 @@ async def show_my_stats(callback: CallbackQuery) -> None:
 
         async with get_session() as session:
             from sqlalchemy import select
-            
+
             # Получаем пользователя
             stmt = select(User).where(User.telegram_id == callback.from_user.id)
             result = await session.execute(stmt)
             user = result.scalar_one_or_none()
 
             if not user:
-                await callback.answer("Пользователь не найден. Используйте /start для регистрации.")
+                await callback.answer(
+                    "Пользователь не найден. Используйте /start для регистрации.",
+                )
                 return
 
             # Формируем статистику
-            premium_status = "💎 Активен" if user.is_premium_active() else "❌ Неактивен"
-            
+            premium_status = (
+                "💎 Активен" if user.is_premium_active() else "❌ Неактивен"
+            )
+
             stats_text = (
                 f"📊 **Ваша статистика**\n\n"
                 f"👤 **Пользователь:** {user.get_display_name()}\n"
@@ -116,7 +117,9 @@ async def show_premium_info(callback: CallbackQuery) -> None:
     try:
         config = get_config()
         premium_price = config.user_limits.premium_price if config.user_limits else 99
-        free_limit = config.user_limits.free_messages_limit if config.user_limits else 10
+        free_limit = (
+            config.user_limits.free_messages_limit if config.user_limits else 10
+        )
 
         premium_text = (
             f"💎 **Премиум доступ**\n\n"
@@ -150,7 +153,7 @@ async def buy_premium(callback: CallbackQuery) -> None:
     """Купить премиум доступ."""
     try:
         premium_price = int(callback.data.split(":")[1])
-        
+
         payment_text = (
             f"💳 **Оплата премиум доступа**\n\n"
             f"💰 **Стоимость:** {premium_price} Telegram Stars\n"
@@ -246,8 +249,7 @@ async def show_settings(callback: CallbackQuery) -> None:
     """Показать настройки."""
     try:
         settings_text = (
-            "⚙️ **Настройки**\n\n"
-            "Здесь вы можете настроить работу бота под себя:"
+            "⚙️ **Настройки**\n\nЗдесь вы можете настроить работу бота под себя:"
         )
 
         await callback.message.edit_text(
@@ -267,8 +269,7 @@ async def show_language_settings(callback: CallbackQuery) -> None:
     """Показать настройки языка."""
     try:
         language_text = (
-            "🌍 **Настройки языка**\n\n"
-            "Выберите предпочитаемый язык интерфейса:"
+            "🌍 **Настройки языка**\n\nВыберите предпочитаемый язык интерфейса:"
         )
 
         await callback.message.edit_text(
@@ -284,12 +285,24 @@ async def show_language_settings(callback: CallbackQuery) -> None:
 
 
 # Заглушки для остальных callback'ов
-@callback_router.callback_query(F.data.in_([
-    "detailed_stats", "achievements", "settings_notifications", 
-    "settings_delete_data", "lang_ru", "lang_en", "help_guide", 
-    "help_faq", "help_support", "help_bug_report", "premium_faq",
-    "other_payment_methods"
-]))
+@callback_router.callback_query(
+    F.data.in_(
+        [
+            "detailed_stats",
+            "achievements",
+            "settings_notifications",
+            "settings_delete_data",
+            "lang_ru",
+            "lang_en",
+            "help_guide",
+            "help_faq",
+            "help_support",
+            "help_bug_report",
+            "premium_faq",
+            "other_payment_methods",
+        ],
+    ),
+)
 async def placeholder_callback(callback: CallbackQuery) -> None:
     """Заглушка для еще не реализованных функций."""
     await callback.answer("🚧 Эта функция в разработке. Скоро будет доступна!")
@@ -300,14 +313,14 @@ async def pay_with_stars(callback: CallbackQuery) -> None:
     """Оплата через Telegram Stars (заглушка)."""
     try:
         premium_price = int(callback.data.split(":")[1])
-        
+
         # В реальной версии здесь будет интеграция с Telegram Payments API
         await callback.answer(
             f"🚧 Оплата через Telegram Stars ({premium_price} ⭐) в разработке. "
             "Скоро будет доступна!",
-            show_alert=True
+            show_alert=True,
         )
-        
+
     except Exception as e:
         logger.error(f"❌ Ошибка при оплате: {e}")
         await callback.answer("Произошла ошибка при оплате.")

@@ -1,0 +1,21 @@
+repos:
+  - repo: local
+    hooks:
+      - id: pytest-check
+        name: pytest checks
+        entry: uv run pytest tests/unit/test_config.py tests/integration/test_database.py -v
+        language: system
+        pass_filenames: false
+        always_run: true
+      - id: ruff-check
+        name: ruff check
+        entry: uv run ruff check .
+        language: system
+        pass_filenames: false
+        always_run: true
+      - id: ruff-format
+        name: ruff format
+        entry: uv run ruff format . --check
+        language: system
+        pass_filenames: false
+        always_run: true

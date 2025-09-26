@@ -16,17 +16,19 @@ class DatabaseConfig(BaseSettings):
     """Конфигурация базы данных."""
 
     # Отдельные параметры (обязательные)
-    database_host: str = Field(default="localhost", env="DATABASE_HOST")
-    database_port: int = Field(default=5432, env="DATABASE_PORT")
-    database_name: str = Field(default="ai_assist", env="DATABASE_NAME")
-    database_user: str = Field(default="postgres", env="DATABASE_USER")
-    database_password: str = Field(default="password", env="DATABASE_PASSWORD")
+    database_host: str = Field(default="localhost", validation_alias="DATABASE_HOST")
+    database_port: int = Field(default=5432, validation_alias="DATABASE_PORT")
+    database_name: str = Field(default="ai_assist", validation_alias="DATABASE_NAME")
+    database_user: str = Field(default="postgres", validation_alias="DATABASE_USER")
+    database_password: str = Field(
+        default="password", validation_alias="DATABASE_PASSWORD"
+    )
 
     # Настройки пула соединений
-    database_pool_size: int = Field(default=10, env="DATABASE_POOL_SIZE")
-    database_timeout: int = Field(default=30, env="DATABASE_TIMEOUT")
+    database_pool_size: int = Field(default=10, validation_alias="DATABASE_POOL_SIZE")
+    database_timeout: int = Field(default=30, validation_alias="DATABASE_TIMEOUT")
 
-    model_config = {"extra": "ignore", "env_file": ".env"}
+    model_config = {"extra": "ignore", "env_file": ".env", "env_file_encoding": "utf-8"}
 
     @property
     def database_url(self) -> str:
@@ -37,12 +39,12 @@ class DatabaseConfig(BaseSettings):
 class TelegramConfig(BaseSettings):
     """Конфигурация Telegram бота."""
 
-    bot_token: str = Field(env="BOT_TOKEN")
-    webhook_url: str | None = Field(default=None, env="WEBHOOK_URL")
-    webhook_secret: str | None = Field(default=None, env="WEBHOOK_SECRET")
-    use_polling: bool = Field(default=True, env="USE_POLLING")
+    bot_token: str = Field(validation_alias="BOT_TOKEN")
+    webhook_url: str | None = Field(default=None, validation_alias="WEBHOOK_URL")
+    webhook_secret: str | None = Field(default=None, validation_alias="WEBHOOK_SECRET")
+    use_polling: bool = Field(default=True, validation_alias="USE_POLLING")
 
-    model_config = {"extra": "ignore", "env_file": ".env"}
+    model_config = {"extra": "ignore", "env_file": ".env", "env_file_encoding": "utf-8"}
 
     @field_validator("webhook_url", mode="before")
     @classmethod
@@ -69,14 +71,24 @@ class TelegramConfig(BaseSettings):
 class DeepSeekConfig(BaseSettings):
     """Конфигурация DeepSeek API."""
 
-    deepseek_api_key: str = Field(default="your_deepseek_api_key_here", env="DEEPSEEK_API_KEY")
-    deepseek_base_url: str = Field(default="https://api.deepseek.com", env="DEEPSEEK_BASE_URL")
-    deepseek_model: str = Field(default="deepseek-chat", env="DEEPSEEK_MODEL")
-    deepseek_max_tokens: int = Field(default=1000, env="DEEPSEEK_MAX_TOKENS")
-    deepseek_temperature: float = Field(default=0.7, env="DEEPSEEK_TEMPERATURE")
-    deepseek_timeout: int = Field(default=30, env="DEEPSEEK_TIMEOUT")
+    deepseek_api_key: str = Field(
+        default="your_deepseek_api_key_here", validation_alias="DEEPSEEK_API_KEY"
+    )
+    deepseek_base_url: str = Field(
+        default="https://api.deepseek.com", validation_alias="DEEPSEEK_BASE_URL"
+    )
+    deepseek_model: str = Field(
+        default="deepseek-chat", validation_alias="DEEPSEEK_MODEL"
+    )
+    deepseek_max_tokens: int = Field(
+        default=1000, validation_alias="DEEPSEEK_MAX_TOKENS"
+    )
+    deepseek_temperature: float = Field(
+        default=0.7, validation_alias="DEEPSEEK_TEMPERATURE"
+    )
+    deepseek_timeout: int = Field(default=30, validation_alias="DEEPSEEK_TIMEOUT")
 
-    model_config = {"extra": "ignore", "env_file": ".env"}
+    model_config = {"extra": "ignore", "env_file": ".env", "env_file_encoding": "utf-8"}
 
     @field_validator("deepseek_api_key")
     @classmethod
@@ -111,16 +123,30 @@ class DeepSeekConfig(BaseSettings):
 class OpenRouterConfig(BaseSettings):
     """Конфигурация OpenRouter API."""
 
-    openrouter_api_key: str = Field(default="your_openrouter_api_key_here", env="OPENROUTER_API_KEY")
-    openrouter_base_url: str = Field(default="https://openrouter.ai/api/v1", env="OPENROUTER_BASE_URL")
-    openrouter_model: str = Field(default="anthropic/claude-3-haiku", env="OPENROUTER_MODEL")
-    openrouter_max_tokens: int = Field(default=1000, env="OPENROUTER_MAX_TOKENS")
-    openrouter_temperature: float = Field(default=0.7, env="OPENROUTER_TEMPERATURE")
-    openrouter_timeout: int = Field(default=30, env="OPENROUTER_TIMEOUT")
-    openrouter_site_url: str = Field(default="https://ai-assist.example.com", env="OPENROUTER_SITE_URL")
-    openrouter_app_name: str = Field(default="AI-Assistant", env="OPENROUTER_APP_NAME")
+    openrouter_api_key: str = Field(
+        default="your_openrouter_api_key_here", validation_alias="OPENROUTER_API_KEY"
+    )
+    openrouter_base_url: str = Field(
+        default="https://openrouter.ai/api/v1", validation_alias="OPENROUTER_BASE_URL"
+    )
+    openrouter_model: str = Field(
+        default="anthropic/claude-3-haiku", validation_alias="OPENROUTER_MODEL"
+    )
+    openrouter_max_tokens: int = Field(
+        default=1000, validation_alias="OPENROUTER_MAX_TOKENS"
+    )
+    openrouter_temperature: float = Field(
+        default=0.7, validation_alias="OPENROUTER_TEMPERATURE"
+    )
+    openrouter_timeout: int = Field(default=30, validation_alias="OPENROUTER_TIMEOUT")
+    openrouter_site_url: str = Field(
+        default="https://ai-assist.example.com", validation_alias="OPENROUTER_SITE_URL"
+    )
+    openrouter_app_name: str = Field(
+        default="AI-Assistant", validation_alias="OPENROUTER_APP_NAME"
+    )
 
-    model_config = {"extra": "ignore", "env_file": ".env"}
+    model_config = {"extra": "ignore", "env_file": ".env", "env_file_encoding": "utf-8"}
 
     @field_validator("openrouter_api_key")
     @classmethod
@@ -155,13 +181,19 @@ class OpenRouterConfig(BaseSettings):
 class AIProviderConfig(BaseSettings):
     """Конфигурация провайдеров AI."""
 
-    primary_provider: str = Field(default="deepseek", env="AI_PRIMARY_PROVIDER")
-    fallback_provider: str = Field(default="openrouter", env="AI_FALLBACK_PROVIDER")
-    enable_fallback: bool = Field(default=True, env="AI_ENABLE_FALLBACK")
-    max_retries_per_provider: int = Field(default=3, env="AI_MAX_RETRIES_PER_PROVIDER")
-    provider_timeout: int = Field(default=30, env="AI_PROVIDER_TIMEOUT")
+    primary_provider: str = Field(
+        default="deepseek", validation_alias="AI_PRIMARY_PROVIDER"
+    )
+    fallback_provider: str = Field(
+        default="openrouter", validation_alias="AI_FALLBACK_PROVIDER"
+    )
+    enable_fallback: bool = Field(default=True, validation_alias="AI_ENABLE_FALLBACK")
+    max_retries_per_provider: int = Field(
+        default=3, validation_alias="AI_MAX_RETRIES_PER_PROVIDER"
+    )
+    provider_timeout: int = Field(default=30, validation_alias="AI_PROVIDER_TIMEOUT")
 
-    model_config = {"extra": "ignore", "env_file": ".env"}
+    model_config = {"extra": "ignore", "env_file": ".env", "env_file_encoding": "utf-8"}
 
     @field_validator("primary_provider", "fallback_provider")
     @classmethod
@@ -184,11 +216,13 @@ class AIProviderConfig(BaseSettings):
 class UserLimitsConfig(BaseSettings):
     """Конфигурация лимитов пользователей."""
 
-    free_messages_limit: int = Field(default=10, env="FREE_MESSAGES_LIMIT")
-    premium_price: int = Field(default=99, env="PREMIUM_PRICE")
-    premium_duration_days: int = Field(default=30, env="PREMIUM_DURATION_DAYS")
+    free_messages_limit: int = Field(default=10, validation_alias="FREE_MESSAGES_LIMIT")
+    premium_price: int = Field(default=99, validation_alias="PREMIUM_PRICE")
+    premium_duration_days: int = Field(
+        default=30, validation_alias="PREMIUM_DURATION_DAYS"
+    )
 
-    model_config = {"extra": "ignore", "env_file": ".env"}
+    model_config = {"extra": "ignore", "env_file": ".env", "env_file_encoding": "utf-8"}
 
     @field_validator("free_messages_limit")
     @classmethod
@@ -210,10 +244,10 @@ class UserLimitsConfig(BaseSettings):
 class AdminConfig(BaseSettings):
     """Конфигурация администраторов."""
 
-    admin_user_id: int = Field(env="ADMIN_USER_ID")
-    admin_user_ids: str | None = Field(default=None, env="ADMIN_USER_IDS")
+    admin_user_id: int = Field(validation_alias="ADMIN_USER_ID")
+    admin_user_ids: str | None = Field(default=None, validation_alias="ADMIN_USER_IDS")
 
-    model_config = {"extra": "ignore", "env_file": ".env"}
+    model_config = {"extra": "ignore", "env_file": ".env", "env_file_encoding": "utf-8"}
 
     @field_validator("admin_user_id")
     @classmethod
@@ -245,10 +279,14 @@ class AdminConfig(BaseSettings):
 class PaymentConfig(BaseSettings):
     """Конфигурация платежей."""
 
-    payment_provider: str = Field(default="telegram_stars", env="PAYMENT_PROVIDER")
-    payment_provider_token: str | None = Field(default=None, env="PAYMENT_PROVIDER_TOKEN")
+    payment_provider: str = Field(
+        default="telegram_stars", validation_alias="PAYMENT_PROVIDER"
+    )
+    payment_provider_token: str | None = Field(
+        default=None, validation_alias="PAYMENT_PROVIDER_TOKEN"
+    )
 
-    model_config = {"extra": "ignore", "env_file": ".env"}
+    model_config = {"extra": "ignore", "env_file": ".env", "env_file_encoding": "utf-8"}
 
     @field_validator("payment_provider")
     @classmethod
@@ -263,10 +301,10 @@ class PaymentConfig(BaseSettings):
 class RedisConfig(BaseSettings):
     """Конфигурация Redis (опционально)."""
 
-    redis_url: str | None = Field(default=None, env="REDIS_URL")
-    cache_ttl: int = Field(default=3600, env="CACHE_TTL")
+    redis_url: str | None = Field(default=None, validation_alias="REDIS_URL")
+    cache_ttl: int = Field(default=3600, validation_alias="CACHE_TTL")
 
-    model_config = {"extra": "ignore", "env_file": ".env"}
+    model_config = {"extra": "ignore", "env_file": ".env", "env_file_encoding": "utf-8"}
 
     @field_validator("cache_ttl")
     @classmethod
@@ -280,20 +318,26 @@ class RedisConfig(BaseSettings):
 class MonitoringConfig(BaseSettings):
     """Конфигурация мониторинга."""
 
-    enable_request_logging: bool = Field(default=False, env="ENABLE_REQUEST_LOGGING")
-    enable_metrics: bool = Field(default=False, env="ENABLE_METRICS")
-    sentry_dsn: str | None = Field(default=None, env="SENTRY_DSN")
+    enable_request_logging: bool = Field(
+        default=False, validation_alias="ENABLE_REQUEST_LOGGING"
+    )
+    enable_metrics: bool = Field(default=False, validation_alias="ENABLE_METRICS")
+    sentry_dsn: str | None = Field(default=None, validation_alias="SENTRY_DSN")
 
-    model_config = {"extra": "ignore", "env_file": ".env"}
+    model_config = {"extra": "ignore", "env_file": ".env", "env_file_encoding": "utf-8"}
 
 
 class RateLimitConfig(BaseSettings):
     """Конфигурация ограничения скорости запросов."""
 
-    rate_limit_per_minute: int = Field(default=60, env="RATE_LIMIT_PER_MINUTE")
-    rate_limit_block_time: int = Field(default=300, env="RATE_LIMIT_BLOCK_TIME")
+    rate_limit_per_minute: int = Field(
+        default=60, validation_alias="RATE_LIMIT_PER_MINUTE"
+    )
+    rate_limit_block_time: int = Field(
+        default=300, validation_alias="RATE_LIMIT_BLOCK_TIME"
+    )
 
-    model_config = {"extra": "ignore", "env_file": ".env"}
+    model_config = {"extra": "ignore", "env_file": ".env", "env_file_encoding": "utf-8"}
 
     @field_validator("rate_limit_per_minute", "rate_limit_block_time")
     @classmethod
@@ -308,12 +352,12 @@ class AppConfig(BaseSettings):
     """Главная конфигурация приложения."""
 
     # Основные настройки
-    debug: bool = Field(default=False, env="DEBUG")
-    log_level: str = Field(default="INFO", env="LOG_LEVEL")
-    secret_key: str = Field(env="SECRET_KEY")
-    timezone: str = Field(default="Europe/Moscow", env="TIMEZONE")
-    auto_reload: bool = Field(default=True, env="AUTO_RELOAD")
-    show_debug_info: bool = Field(default=False, env="SHOW_DEBUG_INFO")
+    debug: bool = Field(default=False, validation_alias="DEBUG")
+    log_level: str = Field(default="INFO", validation_alias="LOG_LEVEL")
+    secret_key: str = Field(validation_alias="SECRET_KEY")
+    timezone: str = Field(default="Europe/Moscow", validation_alias="TIMEZONE")
+    auto_reload: bool = Field(default=True, validation_alias="AUTO_RELOAD")
+    show_debug_info: bool = Field(default=False, validation_alias="SHOW_DEBUG_INFO")
 
     # Вложенные конфигурации (создаются лениво)
     database: DatabaseConfig | None = None
@@ -331,17 +375,22 @@ class AppConfig(BaseSettings):
     def __init__(self, **data):
         super().__init__(**data)
         # Создаем экземпляры вложенных конфигураций
-        self.database = DatabaseConfig()
-        self.telegram = TelegramConfig()
-        self.deepseek = DeepSeekConfig()
-        self.openrouter = OpenRouterConfig()
-        self.ai_provider = AIProviderConfig()
-        self.user_limits = UserLimitsConfig()
-        self.admin = AdminConfig()
-        self.payment = PaymentConfig()
-        self.redis = RedisConfig()
-        self.monitoring = MonitoringConfig()
-        self.rate_limit = RateLimitConfig()
+        # Используем те же параметры, что и у родительской конфигурации
+        nested_config_params = {}
+        if "_env_file" in data:
+            nested_config_params["_env_file"] = data["_env_file"]
+
+        self.database = DatabaseConfig(**nested_config_params)
+        self.telegram = TelegramConfig(**nested_config_params)
+        self.deepseek = DeepSeekConfig(**nested_config_params)
+        self.openrouter = OpenRouterConfig(**nested_config_params)
+        self.ai_provider = AIProviderConfig(**nested_config_params)
+        self.user_limits = UserLimitsConfig(**nested_config_params)
+        self.admin = AdminConfig(**nested_config_params)
+        self.payment = PaymentConfig(**nested_config_params)
+        self.redis = RedisConfig(**nested_config_params)
+        self.monitoring = MonitoringConfig(**nested_config_params)
+        self.rate_limit = RateLimitConfig(**nested_config_params)
 
     @field_validator("log_level")
     @classmethod
@@ -364,16 +413,16 @@ class AppConfig(BaseSettings):
         return v
 
     model_config = {
-        "env_file": ".env",
+        "env_file": None,  # Don't load .env file by default
         "env_file_encoding": "utf-8",
         "case_sensitive": False,
         "extra": "ignore",  # Игнорируем дополнительные поля из .env
     }
 
 
-
 # Глобальный экземпляр конфигурации (создается лениво)
 _config_instance: AppConfig | None = None
+
 
 def get_config() -> AppConfig:
     """Получение экземпляра конфигурации приложения."""

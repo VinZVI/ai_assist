@@ -11,24 +11,28 @@ from pathlib import Path
 # Проверяем основные зависимости
 try:
     import pytest
+
     print(f"✅ pytest {pytest.__version__} - OK")
 except ImportError as e:
     print(f"❌ pytest не найден: {e}")
 
 try:
     import loguru
+
     print(f"✅ loguru {loguru.__version__} - OK")
 except ImportError as e:
     print(f"❌ loguru не найден: {e}")
 
 try:
     import pydantic
+
     print(f"✅ pydantic {pydantic.__version__} - OK")
 except ImportError as e:
     print(f"❌ pydantic не найден: {e}")
 
 try:
     import aiogram
+
     print(f"✅ aiogram {aiogram.__version__} - OK")
 except ImportError as e:
     print(f"❌ aiogram не найден: {e}")
@@ -39,7 +43,7 @@ print(f"📁 Рабочая директория: {Path.cwd()}")
 print(f"🐍 Версия Python: {sys.version}")
 
 # Проверяем пути Python
-print(f"\n📚 Python paths:")
+print("\n📚 Python paths:")
 for i, path in enumerate(sys.path[:5], 1):
     print(f"  {i}. {path}")
 

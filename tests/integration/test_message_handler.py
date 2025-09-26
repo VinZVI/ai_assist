@@ -11,22 +11,24 @@
 - Обработку ошибок
 """
 
-import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
 from datetime import datetime
-from aiogram.types import Message, User as TelegramUser, Chat
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 from aiogram import Bot
+from aiogram.types import Chat, Message
+from aiogram.types import User as TelegramUser
 
 from app.handlers.message import (
-    get_or_update_user,
-    get_recent_conversation_history,
-    save_conversation,
     create_system_message,
     generate_ai_response,
-    handle_text_message
+    get_or_update_user,
+    get_recent_conversation_history,
+    handle_text_message,
+    save_conversation,
 )
-from app.models import User, Conversation
-from app.services import AIResponse, ConversationMessage, AIServiceError
+from app.models import Conversation, User
+from app.services import AIResponse, AIServiceError, ConversationMessage
 
 
 class TestGetOrUpdateUser:
@@ -50,17 +52,17 @@ class TestGetOrUpdateUser:
             telegram_id=12345,
             username="test_user",
             first_name="Test",
-            daily_message_count=5
+            daily_message_count=5,
         )
-        
+
         mock_session.get.return_value = existing_user
-        
-        with patch('app.handlers.message.get_session') as mock_get_session:
+
+        with patch("app.handlers.message.get_session") as mock_get_session:
             mock_get_session.return_value.__aenter__.return_value = mock_session
-            
+
             # Act
             result = await get_or_update_user(mock_message)
-            
+
             # Assert
             assert result is not None
             assert result.telegram_id == 12345
@@ -73,13 +75,13 @@ class TestGetOrUpdateUser:
         """Тест случая когда пользователь не найден."""
         # Arrange
         mock_session.get.return_value = None
-        
-        with patch('app.handlers.message.get_session') as mock_get_session:
+
+        with patch("app.handlers.message.get_session") as mock_get_session:
             mock_get_session.return_value.__aenter__.return_value = mock_session
-            
+
             # Act
             result = await get_or_update_user(mock_message)
-            
+
             # Assert
             assert result is None
 
@@ -89,10 +91,10 @@ class TestGetOrUpdateUser:
         # Arrange
         message = MagicMock(spec=Message)
         message.from_user = None
-        
+
         # Act
         result = await get_or_update_user(message)
-        
+
         # Assert
         assert result is None
 
@@ -101,13 +103,13 @@ class TestGetOrUpdateUser:
         """Тест обработки ошибки базы данных."""
         # Arrange
         mock_session.get.side_effect = Exception("Database error")
-        
-        with patch('app.handlers.message.get_session') as mock_get_session:
+
+        with patch("app.handlers.message.get_session") as mock_get_session:
             mock_get_session.return_value.__aenter__.return_value = mock_session
-            
+
             # Act
             result = await get_or_update_user(mock_message)
-            
+
             # Assert
             assert result is None
             mock_session.rollback.assert_called_once()
@@ -126,24 +128,24 @@ class TestGetRecentConversationHistory:
                 telegram_user_id=user_id,
                 role="USER",
                 content="Hello",
-                created_at=datetime(2025, 9, 12, 10, 0)
+                created_at=datetime(2025, 9, 12, 10, 0),
             ),
             Conversation(
                 telegram_user_id=user_id,
-                role="ASSISTANT", 
+                role="ASSISTANT",
                 content="Hi there!",
-                created_at=datetime(2025, 9, 12, 10, 1)
-            )
+                created_at=datetime(2025, 9, 12, 10, 1),
+            ),
         ]
-        
+
         # Мокаем результат запроса
         mock_result = MagicMock()
         mock_result.scalars.return_value.all.return_value = conversations
         mock_session.execute.return_value = mock_result
-        
+
         # Act
         result = await get_recent_conversation_history(mock_session, user_id, limit=5)
-        
+
         # Assert
         assert len(result) == 2
         assert result[0].role == "user"
@@ -158,10 +160,10 @@ class TestGetRecentConversationHistory:
         mock_result = MagicMock()
         mock_result.scalars.return_value.all.return_value = []
         mock_session.execute.return_value = mock_result
-        
+
         # Act
         result = await get_recent_conversation_history(mock_session, 12345, limit=5)
-        
+
         # Assert
         assert result == []
 
@@ -170,10 +172,10 @@ class TestGetRecentConversationHistory:
         """Тест обработки ошибки при получении истории."""
         # Arrange
         mock_session.execute.side_effect = Exception("Database error")
-        
+
         # Act
         result = await get_recent_conversation_history(mock_session, 12345, limit=5)
-        
+
         # Assert
         assert result == []
 
@@ -191,13 +193,18 @@ class TestSaveConversation:
         ai_model = "deepseek-chat"
         tokens_used = 25
         response_time = 1.5
-        
+
         # Act
         result = await save_conversation(
-            mock_session, user_id, user_message, ai_response,
-            ai_model, tokens_used, response_time
+            mock_session,
+            user_id,
+            user_message,
+            ai_response,
+            ai_model,
+            tokens_used,
+            response_time,
         )
-        
+
         # Assert
         assert result is True
         assert mock_session.add.call_count == 2  # User + AI messages
@@ -208,12 +215,18 @@ class TestSaveConversation:
         """Тест обработки ошибки при сохранении диалога."""
         # Arrange
         mock_session.add.side_effect = Exception("Database error")
-        
+
         # Act
         result = await save_conversation(
-            mock_session, 12345, "test", "test", "model", 0, 0.0
+            mock_session,
+            12345,
+            "test",
+            "test",
+            "model",
+            0,
+            0.0,
         )
-        
+
         # Assert
         assert result is False
         mock_session.rollback.assert_called_once()
@@ -226,7 +239,7 @@ class TestCreateSystemMessage:
         """Тест создания системного сообщения."""
         # Act
         message = create_system_message()
-        
+
         # Assert
         assert isinstance(message, ConversationMessage)
         assert message.role == "system"
@@ -244,7 +257,7 @@ class TestGenerateAiResponse:
             telegram_id=12345,
             username="test_user",
             first_name="Test",
-            daily_message_count=1
+            daily_message_count=1,
         )
         return user
 
@@ -256,25 +269,28 @@ class TestGenerateAiResponse:
         mock_ai_response = AIResponse(
             content="This is AI response",
             tokens_used=30,
-            model="deepseek-chat"
+            model="deepseek-chat",
         )
         mock_ai_service.generate_response.return_value = mock_ai_response
-        
+
         # Мокаем историю диалогов
-        with patch('app.handlers.message.get_recent_conversation_history') as mock_get_history:
+        with patch(
+            "app.handlers.message.get_recent_conversation_history",
+        ) as mock_get_history:
             mock_get_history.return_value = []
-            
-            with patch('app.handlers.message.get_ai_service') as mock_get_ai:
+
+            with patch("app.handlers.message.get_ai_service") as mock_get_ai:
                 mock_get_ai.return_value = mock_ai_service
-                
-                with patch('app.handlers.message.get_session') as mock_get_session:
+
+                with patch("app.handlers.message.get_session") as mock_get_session:
                     mock_get_session.return_value.__aenter__.return_value = mock_session
-                    
+
                     # Act
                     content, tokens, model, time = await generate_ai_response(
-                        mock_user, "Hello AI"
+                        mock_user,
+                        "Hello AI",
                     )
-                    
+
                     # Assert
                     assert content == "This is AI response"
                     assert tokens == 30
@@ -287,21 +303,24 @@ class TestGenerateAiResponse:
         # Arrange
         mock_ai_service = MagicMock()
         mock_ai_service.generate_response.side_effect = AIServiceError("API Error")
-        
-        with patch('app.handlers.message.get_recent_conversation_history') as mock_get_history:
+
+        with patch(
+            "app.handlers.message.get_recent_conversation_history",
+        ) as mock_get_history:
             mock_get_history.return_value = []
-            
-            with patch('app.handlers.message.get_ai_service') as mock_get_ai:
+
+            with patch("app.handlers.message.get_ai_service") as mock_get_ai:
                 mock_get_ai.return_value = mock_ai_service
-                
-                with patch('app.handlers.message.get_session') as mock_get_session:
+
+                with patch("app.handlers.message.get_session") as mock_get_session:
                     mock_get_session.return_value.__aenter__.return_value = mock_session
-                    
+
                     # Act
                     content, tokens, model, time = await generate_ai_response(
-                        mock_user, "Hello AI"
+                        mock_user,
+                        "Hello AI",
                     )
-                    
+
                     # Assert
                     assert "временные технические трудности" in content
                     assert tokens == 0
@@ -312,17 +331,18 @@ class TestGenerateAiResponse:
     async def test_generate_ai_response_unexpected_error(self, mock_user, mock_session):
         """Тест обработки неожиданной ошибки."""
         # Arrange
-        with patch('app.handlers.message.get_ai_service') as mock_get_ai:
+        with patch("app.handlers.message.get_ai_service") as mock_get_ai:
             mock_get_ai.side_effect = Exception("Unexpected error")
-            
-            with patch('app.handlers.message.get_session') as mock_get_session:
+
+            with patch("app.handlers.message.get_session") as mock_get_session:
                 mock_get_session.return_value.__aenter__.return_value = mock_session
-                
+
                 # Act
                 content, tokens, model, time = await generate_ai_response(
-                    mock_user, "Hello AI"
+                    mock_user,
+                    "Hello AI",
                 )
-                
+
                 # Assert
                 assert "Произошла неожиданная ошибка" in content
                 assert tokens == 0
@@ -358,29 +378,34 @@ class TestHandleTextMessage:
         return user
 
     @pytest.mark.asyncio
-    async def test_handle_text_message_success(self, mock_message, mock_user, mock_session):
+    async def test_handle_text_message_success(
+        self,
+        mock_message,
+        mock_user,
+        mock_session,
+    ):
         """Тест успешной обработки текстового сообщения."""
         # Arrange
-        with patch('app.handlers.message.get_or_update_user') as mock_get_user:
+        with patch("app.handlers.message.get_or_update_user") as mock_get_user:
             mock_get_user.return_value = mock_user
-            
-            with patch('app.handlers.message.generate_ai_response') as mock_generate:
+
+            with patch("app.handlers.message.generate_ai_response") as mock_generate:
                 mock_generate.return_value = ("AI response", 25, "deepseek-chat", 1.2)
-                
-                with patch('app.handlers.message.get_session') as mock_get_session:
+
+                with patch("app.handlers.message.get_session") as mock_get_session:
                     mock_get_session.return_value.__aenter__.return_value = mock_session
                     mock_session.get.return_value = mock_user
-                    
-                    with patch('app.handlers.message.save_conversation') as mock_save:
+
+                    with patch("app.handlers.message.save_conversation") as mock_save:
                         mock_save.return_value = True
-                        
+
                         # Act
                         await handle_text_message(mock_message)
-                        
+
                         # Assert
                         mock_message.answer.assert_called_once_with(
-                            text="AI response", 
-                            parse_mode="Markdown"
+                            text="AI response",
+                            parse_mode="Markdown",
                         )
                         mock_user.increment_message_count.assert_called_once()
 
@@ -391,10 +416,10 @@ class TestHandleTextMessage:
         message = MagicMock(spec=Message)
         message.from_user = None
         message.text = "Hello"
-        
+
         # Act
         await handle_text_message(message)
-        
+
         # Assert - функция должна завершиться без ошибок
 
     @pytest.mark.asyncio
@@ -402,10 +427,10 @@ class TestHandleTextMessage:
         """Тест обработки сообщения без текста."""
         # Arrange
         mock_message.text = None
-        
+
         # Act
         await handle_text_message(mock_message)
-        
+
         # Assert - функция должна завершиться без ошибок
 
     @pytest.mark.asyncio
@@ -413,23 +438,25 @@ class TestHandleTextMessage:
         """Тест обработки слишком короткого сообщения."""
         # Arrange
         mock_message.text = "a"
-        
+
         # Act
         await handle_text_message(mock_message)
-        
+
         # Assert
         mock_message.answer.assert_called_once()
-        assert "более содержательное сообщение" in mock_message.answer.call_args[1]["text"]
+        assert (
+            "более содержательное сообщение" in mock_message.answer.call_args[1]["text"]
+        )
 
     @pytest.mark.asyncio
     async def test_handle_text_message_too_long(self, mock_message):
         """Тест обработки слишком длинного сообщения."""
         # Arrange
         mock_message.text = "a" * 2001  # Больше 2000 символов
-        
+
         # Act
         await handle_text_message(mock_message)
-        
+
         # Assert
         mock_message.answer.assert_called_once()
         assert "слишком длинное" in mock_message.answer.call_args[1]["text"]
@@ -438,12 +465,12 @@ class TestHandleTextMessage:
     async def test_handle_text_message_unregistered_user(self, mock_message):
         """Тест обработки сообщения от незарегистрированного пользователя."""
         # Arrange
-        with patch('app.handlers.message.get_or_update_user') as mock_get_user:
+        with patch("app.handlers.message.get_or_update_user") as mock_get_user:
             mock_get_user.return_value = None
-            
+
             # Act
             await handle_text_message(mock_message)
-            
+
             # Assert
             mock_message.answer.assert_called_once()
             assert "команды /start" in mock_message.answer.call_args[1]["text"]
@@ -456,36 +483,38 @@ class TestHandleTextMessage:
         mock_user.can_send_message.return_value = False
         mock_user.daily_message_count = 10
         mock_user.reset_daily_count_if_needed.return_value = None
-        
-        with patch('app.handlers.message.get_or_update_user') as mock_get_user:
+
+        with patch("app.handlers.message.get_or_update_user") as mock_get_user:
             mock_get_user.return_value = mock_user
-            
-            with patch('app.handlers.message.get_config') as mock_get_config:
+
+            with patch("app.handlers.message.get_config") as mock_get_config:
                 mock_config = MagicMock()
                 mock_config.user_limits.premium_price = 99
                 mock_config.user_limits.free_messages_limit = 10
                 mock_get_config.return_value = mock_config
-                
+
                 # Act
                 await handle_text_message(mock_message)
-                
+
                 # Assert
                 mock_message.answer.assert_called_once()
-                assert "Превышен дневной лимит" in mock_message.answer.call_args[1]["text"]
+                assert (
+                    "Превышен дневной лимит" in mock_message.answer.call_args[1]["text"]
+                )
 
     @pytest.mark.asyncio
     async def test_handle_text_message_critical_error(self, mock_message, mock_user):
         """Тест обработки критической ошибки."""
         # Arrange
-        with patch('app.handlers.message.get_or_update_user') as mock_get_user:
+        with patch("app.handlers.message.get_or_update_user") as mock_get_user:
             mock_get_user.return_value = mock_user
-            
-            with patch('app.handlers.message.generate_ai_response') as mock_generate:
+
+            with patch("app.handlers.message.generate_ai_response") as mock_generate:
                 mock_generate.side_effect = Exception("Critical error")
-                
+
                 # Act
                 await handle_text_message(mock_message)
-                
+
                 # Assert
                 mock_message.answer.assert_called_once()
                 assert "Произошла ошибка" in mock_message.answer.call_args[1]["text"]
@@ -499,33 +528,39 @@ class TestMessageHandlerIntegration:
     async def test_full_message_flow(self, mock_message, mock_user, mock_session):
         """Тест полного потока обработки сообщения."""
         # Arrange - мокаем все зависимости
-        with patch('app.handlers.message.get_or_update_user') as mock_get_user:
+        with patch("app.handlers.message.get_or_update_user") as mock_get_user:
             mock_get_user.return_value = mock_user
-            
-            with patch('app.handlers.message.get_recent_conversation_history') as mock_get_history:
+
+            with patch(
+                "app.handlers.message.get_recent_conversation_history",
+            ) as mock_get_history:
                 mock_get_history.return_value = []
-                
+
                 mock_ai_service = MagicMock()
                 mock_ai_response = AIResponse(
                     content="Понимаю ваши чувства. Как дела?",
                     tokens_used=15,
-                    model="deepseek-chat"
+                    model="deepseek-chat",
                 )
                 mock_ai_service.generate_response.return_value = mock_ai_response
-                
-                with patch('app.handlers.message.get_ai_service') as mock_get_ai:
+
+                with patch("app.handlers.message.get_ai_service") as mock_get_ai:
                     mock_get_ai.return_value = mock_ai_service
-                    
-                    with patch('app.handlers.message.get_session') as mock_get_session:
-                        mock_get_session.return_value.__aenter__.return_value = mock_session
+
+                    with patch("app.handlers.message.get_session") as mock_get_session:
+                        mock_get_session.return_value.__aenter__.return_value = (
+                            mock_session
+                        )
                         mock_session.get.return_value = mock_user
-                        
-                        with patch('app.handlers.message.save_conversation') as mock_save:
+
+                        with patch(
+                            "app.handlers.message.save_conversation",
+                        ) as mock_save:
                             mock_save.return_value = True
-                            
+
                             # Act
                             await handle_text_message(mock_message)
-                            
+
                             # Assert
                             # Проверяем что все этапы выполнены
                             mock_get_user.assert_called_once()
@@ -535,15 +570,21 @@ class TestMessageHandlerIntegration:
                             mock_user.increment_message_count.assert_called_once()
                             mock_save.assert_called_once()
                             mock_message.answer.assert_called_once()
-                            
+
                             # Проверяем содержимое ответа
-                            assert mock_message.answer.call_args[1]["text"] == "Понимаю ваши чувства. Как дела?"
-                            assert mock_message.answer.call_args[1]["parse_mode"] == "Markdown"
+                            assert (
+                                mock_message.answer.call_args[1]["text"]
+                                == "Понимаю ваши чувства. Как дела?"
+                            )
+                            assert (
+                                mock_message.answer.call_args[1]["parse_mode"]
+                                == "Markdown"
+                            )
 
 
 # Маркеры для pytest
 pytestmark = [
     pytest.mark.asyncio,
     pytest.mark.handlers,
-    pytest.mark.message_handler
+    pytest.mark.message_handler,
 ]

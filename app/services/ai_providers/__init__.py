@@ -1,4 +1,4 @@
-"""  
+"""
 @file: ai_providers/__init__.py
 @description: Модуль провайдеров AI с поддержкой множественных API
 @dependencies: .base, .deepseek, .openrouter
@@ -6,14 +6,14 @@
 """
 
 from .base import (
-    AIResponse,
-    ConversationMessage,
     AIProviderError,
-    APIConnectionError,
-    APIRateLimitError,
+    AIResponse,
     APIAuthenticationError,
+    APIConnectionError,
     APIQuotaExceededError,
+    APIRateLimitError,
     BaseAIProvider,
+    ConversationMessage,
 )
 from .deepseek import DeepSeekProvider
 from .openrouter import OpenRouterProvider

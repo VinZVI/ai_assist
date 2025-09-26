@@ -9,7 +9,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import (
     JSON,
     BigInteger,
@@ -29,6 +29,7 @@ from app.database import Base
 
 class MessageRole(str, Enum):
     """Роли сообщений в диалоге."""
+
     USER = "user"
     ASSISTANT = "assistant"
     SYSTEM = "system"
@@ -36,6 +37,7 @@ class MessageRole(str, Enum):
 
 class ConversationStatus(str, Enum):
     """Статусы обработки сообщения."""
+
     PENDING = "pending"
     PROCESSING = "processing"
     COMPLETED = "completed"
@@ -175,7 +177,6 @@ class Conversation(Base):
         Index("idx_conv_created", "created_at"),
         Index("idx_conv_user_status", "user_id", "status"),
         Index("idx_conv_telegram", "chat_id", "message_id"),
-
         # Ограничения
         CheckConstraint("tokens_used >= 0", name="check_tokens_positive"),
         CheckConstraint("response_time_ms >= 0", name="check_response_time_positive"),
@@ -229,9 +230,16 @@ class Conversation(Base):
 
 # Pydantic схемы для валидации и сериализации
 
+
 class ConversationBase(BaseModel):
     """Базовая схема диалога."""
-    message_text: str = Field(..., min_length=1, max_length=4000, description="Текст сообщения")
+
+    message_text: str = Field(
+        ...,
+        min_length=1,
+        max_length=4000,
+        description="Текст сообщения",
+    )
     role: MessageRole = Field(default=MessageRole.USER, description="Роль отправителя")
     message_id: int | None = Field(None, description="ID сообщения в Telegram")
     chat_id: int | None = Field(None, description="ID чата в Telegram")
@@ -248,11 +256,13 @@ class ConversationBase(BaseModel):
 
 class ConversationCreate(ConversationBase):
     """Схема для создания диалога."""
+
     user_id: int = Field(..., gt=0, description="ID пользователя")
 
 
 class ConversationUpdate(BaseModel):
     """Схема для обновления диалога."""
+
     response_text: str | None = Field(None, max_length=8000)
     status: ConversationStatus | None = None
     ai_model: str | None = Field(None, max_length=100)
@@ -265,6 +275,7 @@ class ConversationUpdate(BaseModel):
 
 class ConversationResponse(ConversationBase):
     """Схема для возврата данных диалога."""
+
     id: int
     user_id: int
     response_text: str | None
@@ -276,12 +287,12 @@ class ConversationResponse(ConversationBase):
     created_at: datetime
     processed_at: datetime | None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ConversationStats(BaseModel):
     """Схема для статистики диалогов."""
+
     total_conversations: int
     completed_conversations: int
     failed_conversations: int
@@ -289,20 +300,19 @@ class ConversationStats(BaseModel):
     total_tokens_used: int | None
     conversations_today: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ConversationHistory(BaseModel):
     """Схема для истории диалогов пользователя."""
+
     conversations: list[ConversationResponse]
     total_count: int
     page: int
     page_size: int
     has_next: bool
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # Экспорт для удобного использования

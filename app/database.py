@@ -7,9 +7,9 @@
 
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-import asyncpg
 from urllib.parse import urlparse
 
+import asyncpg
 from loguru import logger
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
@@ -47,11 +47,9 @@ def create_engine() -> AsyncEngine:
         pool_timeout=config.database.database_timeout,
         pool_recycle=3600,  # Пересоздание соединений каждый час
         pool_pre_ping=True,  # Проверка соединений перед использованием
-
         # Настройки для разработки
         echo=config.debug,  # Логирование SQL запросов в debug режиме
         echo_pool=config.debug,
-
         # Дополнительные настройки
         poolclass=NullPool if config.debug else None,  # Отключаем пул в debug режиме
         connect_args={
@@ -62,7 +60,9 @@ def create_engine() -> AsyncEngine:
         },
     )
 
-    logger.info(f"✅ Движок базы данных создан: {config.database.database_url.split('@')[1] if '@' in config.database.database_url else 'скрыт'}")
+    logger.info(
+        f"✅ Движок базы данных создан: {config.database.database_url.split('@')[1] if '@' in config.database.database_url else 'скрыт'}"
+    )
     return engine
 
 
@@ -80,19 +80,19 @@ def create_session_factory(engine: AsyncEngine) -> async_sessionmaker[AsyncSessi
 async def create_database_if_not_exists() -> None:
     """Создание базы данных если она не существует."""
     config = get_config()
-    
+
     # Парсим URL подключения
     parsed_url = urlparse(config.database.database_url)
-    
+
     # Извлекаем параметры подключения
-    host = parsed_url.hostname or 'localhost'
+    host = parsed_url.hostname or "localhost"
     port = parsed_url.port or 5432
-    username = parsed_url.username or 'postgres'
-    password = parsed_url.password or 'password'
-    database_name = parsed_url.path.lstrip('/') or 'ai_assist'
-    
+    username = parsed_url.username or "postgres"
+    password = parsed_url.password or "password"
+    database_name = parsed_url.path.lstrip("/") or "ai_assist"
+
     logger.info(f"🔍 Проверка существования базы данных '{database_name}'...")
-    
+
     try:
         # Подключаемся к postgres БД для создания нашей БД
         conn = await asyncpg.connect(
@@ -100,16 +100,15 @@ async def create_database_if_not_exists() -> None:
             port=port,
             user=username,
             password=password,
-            database='postgres'  # Подключаемся к системной БД
+            database="postgres",  # Подключаемся к системной БД
         )
-        
+
         try:
             # Проверяем существование базы данных
             result = await conn.fetchval(
-                "SELECT 1 FROM pg_database WHERE datname = $1",
-                database_name
+                "SELECT 1 FROM pg_database WHERE datname = $1", database_name
             )
-            
+
             if result:
                 logger.info(f"✅ База данных '{database_name}' уже существует")
             else:
@@ -117,10 +116,10 @@ async def create_database_if_not_exists() -> None:
                 # Создаем базу данных
                 await conn.execute(f'CREATE DATABASE "{database_name}"')
                 logger.info(f"✅ База данных '{database_name}' создана успешно")
-                
+
         finally:
             await conn.close()
-            
+
     except Exception as e:
         logger.error(f"❌ Ошибка при создании базы данных: {e}")
         # Не поднимаем исключение, возможно БД уже существует
@@ -130,22 +129,24 @@ async def create_database_if_not_exists() -> None:
 async def create_tables_if_not_exist() -> None:
     """Создание таблиц если они не существуют."""
     logger.info("🔍 Проверка существования таблиц...")
-    
+
     try:
         # Проверяем существование таблицы users
         async with get_session() as session:
             result = await session.execute(
-                text("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'users')")
+                text(
+                    "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'users')"
+                )
             )
             tables_exist = result.scalar()
-            
+
         if tables_exist:
             logger.info("✅ Таблицы уже существуют")
         else:
             logger.info("🏗️ Создание таблиц в базе данных...")
             await create_tables()
             logger.info("✅ Таблицы созданы успешно")
-            
+
     except Exception as e:
         logger.warning(f"⚠️ Не удалось проверить таблицы, создаем заново: {e}")
         await create_tables()
@@ -158,7 +159,7 @@ async def init_db() -> None:
     try:
         # Сначала создаем базу данных если её нет
         await create_database_if_not_exists()
-        
+
         # Создаем движок
         _engine = create_engine()
 
@@ -167,7 +168,7 @@ async def init_db() -> None:
 
         # Проверяем подключение
         await check_connection()
-        
+
         # Автоматически создаем таблицы если их нет
         await create_tables_if_not_exist()
 
@@ -206,14 +207,18 @@ async def check_connection() -> bool:
 def get_engine() -> AsyncEngine:
     """Получение экземпляра движка базы данных."""
     if _engine is None:
-        raise RuntimeError("База данных не инициализирована. Вызовите init_db() сначала.")
+        raise RuntimeError(
+            "База данных не инициализирована. Вызовите init_db() сначала."
+        )
     return _engine
 
 
 def get_session_factory() -> async_sessionmaker[AsyncSession]:
     """Получение фабрики сессий."""
     if _session_factory is None:
-        raise RuntimeError("База данных не инициализирована. Вызовите init_db() сначала.")
+        raise RuntimeError(
+            "База данных не инициализирована. Вызовите init_db() сначала."
+        )
     return _session_factory
 
 
@@ -221,7 +226,7 @@ def get_session_factory() -> async_sessionmaker[AsyncSession]:
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
     """
     Контекстный менеджер для получения сессии базы данных.
-    
+
     Использование:
         async with get_session() as session:
             user = await session.get(User, user_id)

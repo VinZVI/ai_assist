@@ -17,10 +17,10 @@ from loguru import logger
 def json_formatter(record: dict[str, Any]) -> str:
     """
     Форматирование логов в JSON формат.
-    
+
     Args:
         record: Запись лога от loguru
-        
+
     Returns:
         Строка в JSON формате
     """
@@ -55,10 +55,10 @@ def json_formatter(record: dict[str, Any]) -> str:
 def console_formatter(record: dict[str, Any]) -> str:
     """
     Форматирование логов для консоли с эмодзи и цветами.
-    
+
     Args:
         record: Запись лога от loguru
-        
+
     Returns:
         Отформатированная строка для консоли
     """
@@ -111,7 +111,7 @@ def setup_logging(
 ) -> None:
     """
     Настройка системы логирования.
-    
+
     Args:
         log_level: Уровень логирования (DEBUG, INFO, WARNING, ERROR, CRITICAL)
         enable_json: Включить JSON формат для файлов
@@ -205,16 +205,18 @@ def setup_logging(
     logger.debug(f"📊 Уровень логирования: {log_level}")
     logger.debug(f"📁 JSON формат: {'включен' if enable_json else 'отключен'}")
     logger.debug(f"📋 Консольный вывод: {'включен' if enable_console else 'отключен'}")
-    logger.debug(f"🌐 Логирование запросов: {'включено' if enable_request_logging else 'отключено'}")
+    logger.debug(
+        f"🌐 Логирование запросов: {'включено' if enable_request_logging else 'отключено'}",
+    )
 
 
 def get_logger(name: str) -> "logger":
     """
     Получение логгера для конкретного модуля.
-    
+
     Args:
         name: Имя модуля/компонента
-        
+
     Returns:
         Настроенный логгер
     """
@@ -224,7 +226,7 @@ def get_logger(name: str) -> "logger":
 def log_function_call(func_name: str, **kwargs: Any) -> None:
     """
     Логирование вызова функции с параметрами.
-    
+
     Args:
         func_name: Имя функции
         **kwargs: Параметры функции (будут замаскированы если содержат секреты)
@@ -245,7 +247,7 @@ def log_function_call(func_name: str, **kwargs: Any) -> None:
 def log_performance(operation: str, duration_ms: float, **context: Any) -> None:
     """
     Логирование метрик производительности.
-    
+
     Args:
         operation: Название операции
         duration_ms: Время выполнения в миллисекундах
@@ -266,7 +268,7 @@ def log_performance(operation: str, duration_ms: float, **context: Any) -> None:
 def log_user_action(user_id: int, action: str, **details: Any) -> None:
     """
     Логирование действий пользователей.
-    
+
     Args:
         user_id: ID пользователя
         action: Описание действия
@@ -286,11 +288,14 @@ def log_user_action(user_id: int, action: str, **details: Any) -> None:
 
 
 def log_api_request(
-    method: str, url: str, status_code: int, response_time: float,
+    method: str,
+    url: str,
+    status_code: int,
+    response_time: float,
 ) -> None:
     """
     Логирование API запросов.
-    
+
     Args:
         method: HTTP метод
         url: URL запроса

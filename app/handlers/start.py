@@ -26,17 +26,17 @@ start_router = Router(name="start")
 async def get_or_create_user(telegram_user: TgUser) -> User | None:
     """
     Получение существующего пользователя или создание нового.
-    
+
     Args:
         telegram_user: Объект пользователя Telegram
-        
+
     Returns:
         User: Объект пользователя из базы данных
     """
     async with get_session() as session:
         try:
             from sqlalchemy import select
-            
+
             # Попытка найти существующего пользователя
             stmt = select(User).where(User.telegram_id == telegram_user.id)
             result = await session.execute(stmt)
@@ -71,7 +71,9 @@ async def get_or_create_user(telegram_user: TgUser) -> User | None:
 
                 if user_updated:
                     await session.commit()
-                    logger.info(f"👤 Обновлена информация пользователя {telegram_user.id}")
+                    logger.info(
+                        f"👤 Обновлена информация пользователя {telegram_user.id}",
+                    )
 
                 return existing_user
 
@@ -97,28 +99,34 @@ async def get_or_create_user(telegram_user: TgUser) -> User | None:
             await session.commit()
             await session.refresh(new_user)
 
-            logger.info(f"🆕 Создан новый пользователь: {telegram_user.id} (@{telegram_user.username})")
+            logger.info(
+                f"🆕 Создан новый пользователь: {telegram_user.id} (@{telegram_user.username})",
+            )
             return new_user
 
         except IntegrityError as e:
             await session.rollback()
-            logger.error(f"❌ Ошибка целостности при создании пользователя {telegram_user.id}: {e}")
+            logger.error(
+                f"❌ Ошибка целостности при создании пользователя {telegram_user.id}: {e}",
+            )
             return None
 
         except Exception as e:
             await session.rollback()
-            logger.error(f"💥 Неожиданная ошибка при работе с пользователем {telegram_user.id}: {e}")
+            logger.error(
+                f"💥 Неожиданная ошибка при работе с пользователем {telegram_user.id}: {e}",
+            )
             return None
 
 
 def format_welcome_message(user: User, config) -> str:
     """
     Формирование приветственного сообщения для пользователя.
-    
+
     Args:
         user: Объект пользователя
         config: Конфигурация приложения
-        
+
     Returns:
         str: Отформатированное приветственное сообщение
     """
@@ -168,10 +176,10 @@ def format_welcome_message(user: User, config) -> str:
 async def handle_start_command(message: Message) -> None:
     """
     Обработчик команды /start.
-    
+
     Регистрирует нового пользователя или обновляет информацию существующего,
     отправляет приветственное сообщение с информацией о боте.
-    
+
     Args:
         message: Объект сообщения от пользователя
     """
@@ -180,7 +188,11 @@ async def handle_start_command(message: Message) -> None:
         config = get_config()
 
         # Логируем попытку старта
-        user_info = f"@{message.from_user.username}" if message.from_user.username else f"ID:{message.from_user.id}"
+        user_info = (
+            f"@{message.from_user.username}"
+            if message.from_user.username
+            else f"ID:{message.from_user.id}"
+        )
         logger.info(f"🚀 Команда /start от пользователя {user_info}")
 
         # Получаем или создаем пользователя в БД
@@ -215,10 +227,14 @@ async def handle_start_command(message: Message) -> None:
                 parse_mode="HTML",
             )
 
-        logger.info(f"✅ Успешно обработана команда /start для пользователя {message.from_user.id}")
+        logger.info(
+            f"✅ Успешно обработана команда /start для пользователя {message.from_user.id}",
+        )
 
     except Exception as e:
-        logger.error(f"💥 Ошибка в обработчике /start для пользователя {message.from_user.id}: {e}")
+        logger.error(
+            f"💥 Ошибка в обработчике /start для пользователя {message.from_user.id}: {e}",
+        )
 
         # Отправляем пользователю сообщение об ошибке
         try:

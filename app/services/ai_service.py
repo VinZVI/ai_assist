@@ -21,6 +21,7 @@ from app.config import get_config
 @dataclass
 class AIResponse:
     """Структура ответа от AI сервиса."""
+
     content: str
     model: str
     tokens_used: int
@@ -31,6 +32,7 @@ class AIResponse:
 @dataclass
 class ConversationMessage:
     """Структура сообщения в диалоге."""
+
     role: str  # "user", "assistant", "system"
     content: str
     timestamp: datetime | None = None
@@ -61,10 +63,10 @@ class ResponseCache:
 
     def _generate_key(self, messages: list[ConversationMessage], model: str) -> str:
         """Генерация ключа кеша из сообщений."""
-        content = json.dumps([
-            {"role": msg.role, "content": msg.content}
-            for msg in messages
-        ]) + model
+        content = (
+            json.dumps([{"role": msg.role, "content": msg.content} for msg in messages])
+            + model
+        )
         return hashlib.md5(content.encode()).hexdigest()
 
     def get(self, messages: list[ConversationMessage], model: str) -> AIResponse | None:
@@ -83,7 +85,12 @@ class ResponseCache:
 
         return None
 
-    def set(self, messages: list[ConversationMessage], model: str, response: AIResponse) -> None:
+    def set(
+        self,
+        messages: list[ConversationMessage],
+        model: str,
+        response: AIResponse,
+    ) -> None:
         """Сохранение ответа в кеш."""
         key = self._generate_key(messages, model)
         self._cache[key] = {
@@ -149,15 +156,20 @@ class AIService:
             self._client = None
             logger.info("🔌 HTTP клиент для DeepSeek API закрыт")
 
-    def _prepare_messages(self, messages: list[ConversationMessage]) -> list[dict[str, str]]:
+    def _prepare_messages(
+        self,
+        messages: list[ConversationMessage],
+    ) -> list[dict[str, str]]:
         """Подготовка сообщений для API."""
         prepared = []
 
         for msg in messages:
-            prepared.append({
-                "role": msg.role,
-                "content": msg.content,
-            })
+            prepared.append(
+                {
+                    "role": msg.role,
+                    "content": msg.content,
+                },
+            )
 
         return prepared
 
@@ -180,7 +192,9 @@ class AIService:
 
         for attempt in range(self._max_retries):
             try:
-                logger.debug(f"🚀 Отправка запроса к DeepSeek API (попытка {attempt + 1})")
+                logger.debug(
+                    f"🚀 Отправка запроса к DeepSeek API (попытка {attempt + 1})",
+                )
                 start_time = asyncio.get_event_loop().time()
 
                 response = await client.post("/v1/chat/completions", json=payload)
@@ -189,7 +203,9 @@ class AIService:
 
                 # Обработка различных статусов ответа
                 if response.status_code == 200:
-                    logger.info(f"✅ Успешный ответ от DeepSeek API за {response_time:.2f}с")
+                    logger.info(
+                        f"✅ Успешный ответ от DeepSeek API за {response_time:.2f}с",
+                    )
                     data = response.json()
                     return data
 
@@ -199,12 +215,12 @@ class AIService:
                 if response.status_code == 402:
                     raise APIAuthenticationError(
                         "Недостаточно средств на счете DeepSeek API. "
-                        "Пополните баланс в личном кабинете DeepSeek."
+                        "Пополните баланс в личном кабинете DeepSeek.",
                     )
 
                 if response.status_code == 429:
                     if attempt < self._max_retries - 1:
-                        delay = self._retry_delay * (2 ** attempt)  # Exponential backoff
+                        delay = self._retry_delay * (2**attempt)  # Exponential backoff
                         logger.warning(f"⏳ Rate limit достигнут. Ожидание {delay}с...")
                         await asyncio.sleep(delay)
                         continue
@@ -213,12 +229,18 @@ class AIService:
                 if response.status_code >= 500:
                     if attempt < self._max_retries - 1:
                         delay = self._retry_delay * (attempt + 1)
-                        logger.warning(f"🔄 Ошибка сервера {response.status_code}. Повтор через {delay}с...")
+                        logger.warning(
+                            f"🔄 Ошибка сервера {response.status_code}. Повтор через {delay}с...",
+                        )
                         await asyncio.sleep(delay)
                         continue
-                    raise APIConnectionError(f"Ошибка сервера DeepSeek: {response.status_code}")
+                    raise APIConnectionError(
+                        f"Ошибка сервера DeepSeek: {response.status_code}",
+                    )
 
-                raise APIConnectionError(f"Неожиданный статус ответа: {response.status_code}")
+                raise APIConnectionError(
+                    f"Неожиданный статус ответа: {response.status_code}",
+                )
 
             except httpx.TimeoutException:
                 if attempt < self._max_retries - 1:
@@ -247,13 +269,13 @@ class AIService:
     ) -> AIResponse:
         """
         Генерация ответа от AI.
-        
+
         Args:
             messages: Список сообщений диалога
             temperature: Температура генерации (0.0-2.0)
             max_tokens: Максимальное количество токенов
             use_cache: Использовать кеширование
-        
+
         Returns:
             AIResponse: Ответ от AI сервиса
         """
@@ -273,7 +295,10 @@ class AIService:
 
         # Проверяем кеш
         if use_cache:
-            cached_response = self._cache.get(messages, self.config.deepseek.deepseek_model)
+            cached_response = self._cache.get(
+                messages,
+                self.config.deepseek.deepseek_model,
+            )
             if cached_response:
                 return cached_response
 
@@ -283,7 +308,11 @@ class AIService:
 
             # Выполняем запрос
             start_time = asyncio.get_event_loop().time()
-            data = await self._make_api_request(prepared_messages, temperature, max_tokens)
+            data = await self._make_api_request(
+                prepared_messages,
+                temperature,
+                max_tokens,
+            )
             response_time = asyncio.get_event_loop().time() - start_time
 
             # Извлекаем ответ
@@ -297,7 +326,10 @@ class AIService:
                 raise APIConnectionError("Пустой ответ от DeepSeek API")
 
             # Подсчитываем токены (приблизительно)
-            tokens_used = data.get("usage", {}).get("total_tokens", len(content.split()) * 1.3)
+            tokens_used = data.get("usage", {}).get(
+                "total_tokens",
+                len(content.split()) * 1.3,
+            )
 
             # Создаем объект ответа
             ai_response = AIResponse(
@@ -310,9 +342,15 @@ class AIService:
 
             # Сохраняем в кеш
             if use_cache:
-                self._cache.set(messages, self.config.deepseek.deepseek_model, ai_response)
+                self._cache.set(
+                    messages,
+                    self.config.deepseek.deepseek_model,
+                    ai_response,
+                )
 
-            logger.info(f"🤖 Сгенерирован ответ: {len(content)} символов, {tokens_used} токенов")
+            logger.info(
+                f"🤖 Сгенерирован ответ: {len(content)} символов, {tokens_used} токенов",
+            )
             return ai_response
 
         except AIServiceError:
@@ -326,10 +364,10 @@ class AIService:
     async def generate_simple_response(self, user_message: str) -> AIResponse:
         """
         Упрощенный метод для генерации ответа на одно сообщение.
-        
+
         Args:
             user_message: Сообщение пользователя
-        
+
         Returns:
             AIResponse: Ответ от AI сервиса
         """

@@ -247,6 +247,9 @@ tmp/
 # Qoder IDE configuration
 .qoder/
 
+# Pre-commit
+.pre-commit-config.yaml
+
 # Markdown files (exclude all except docs/)
 *.md
 !docs/*.md

@@ -1,10 +1,13 @@
 from pydantic import Field, ValidationInfo, field_validator
 from pydantic_settings import BaseSettings
 
+
 class TestConfig(BaseSettings):
-    field1: str = Field(default='default', env='FIELD1')
-    field2: str = Field(default='default2', env='FIELD2')
-    computed_field: str | None = Field(default=None, env='COMPUTED_FIELD')
+    field1: str = Field(default="default")
+    field2: str = Field(default="default2")
+    computed_field: str | None = Field(default=None)
+
+    model_config = {"extra": "allow"}
 
     @field_validator("computed_field", mode="before")
     @classmethod
@@ -20,7 +23,8 @@ class TestConfig(BaseSettings):
 
         return f"{field1}_{field2}"
 
-config = TestConfig(field1='test', field2='test2')
-print('field1:', config.field1)
-print('field2:', config.field2)
-print('computed_field:', config.computed_field)
+
+config = TestConfig(field1="test", field2="test2")
+print("field1:", config.field1)
+print("field2:", config.field2)
+print("computed_field:", config.computed_field)

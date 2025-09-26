@@ -15,7 +15,7 @@ from loguru import logger
 from app.config import get_config
 from app.database import get_session
 from app.models import Conversation, User
-from app.services.ai_manager import get_ai_manager, ConversationMessage, AIProviderError
+from app.services.ai_manager import AIProviderError, ConversationMessage, get_ai_manager
 
 # Создаем роутер для обработчиков сообщений
 message_router = Router()
@@ -29,14 +29,16 @@ async def get_or_update_user(message: Message) -> User | None:
     async with get_session() as session:
         try:
             from sqlalchemy import select
-            
+
             # Получаем пользователя по telegram_id
             stmt = select(User).where(User.telegram_id == message.from_user.id)
             result = await session.execute(stmt)
             user = result.scalar_one_or_none()
 
             if not user:
-                logger.warning(f"👤 Пользователь {message.from_user.id} не найден, требуется /start")
+                logger.warning(
+                    f"👤 Пользователь {message.from_user.id} не найден, требуется /start",
+                )
                 return None
 
             # Обновляем время последней активности
@@ -46,7 +48,9 @@ async def get_or_update_user(message: Message) -> User | None:
             return user
 
         except Exception as e:
-            logger.error(f"❌ Ошибка при получении пользователя {message.from_user.id}: {e}")
+            logger.error(
+                f"❌ Ошибка при получении пользователя {message.from_user.id}: {e}",
+            )
             await session.rollback()
             return None
 
@@ -59,14 +63,15 @@ async def get_recent_conversation_history(
     """Получение истории последних сообщений пользователя."""
     try:
         from sqlalchemy import desc, select
-        from app.models.conversation import MessageRole, ConversationStatus
+
+        from app.models.conversation import ConversationStatus
 
         # Получаем последние завершенные сообщения
         stmt = (
             select(Conversation)
             .where(
-                (Conversation.user_id == user_id) &
-                (Conversation.status == ConversationStatus.COMPLETED)
+                (Conversation.user_id == user_id)
+                & (Conversation.status == ConversationStatus.COMPLETED),
             )
             .order_by(desc(Conversation.created_at))
             .limit(limit)
@@ -87,7 +92,7 @@ async def get_recent_conversation_history(
                         timestamp=conv.created_at,
                     ),
                 )
-            
+
             # Добавляем ответ ассистента
             if conv.response_text:
                 messages.append(
@@ -117,7 +122,7 @@ async def save_conversation(
     """Сохранение диалога в базу данных."""
     try:
         from app.models.conversation import ConversationStatus, MessageRole
-        
+
         # Сохраняем сообщение пользователя
         user_conv = Conversation(
             user_id=user_id,
@@ -158,10 +163,13 @@ def create_system_message() -> ConversationMessage:
     )
 
 
-async def generate_ai_response(user: User, user_message: str) -> tuple[str, int, str, float]:
+async def generate_ai_response(
+    user: User,
+    user_message: str,
+) -> tuple[str, int, str, float]:
     """
     Генерация ответа от AI с поддержкой множественных провайдеров.
-    
+
     Returns:
         tuple: (response_text, tokens_used, model_name, response_time)
     """
@@ -172,7 +180,9 @@ async def generate_ai_response(user: User, user_message: str) -> tuple[str, int,
         # Получаем историю диалога
         async with get_session() as session:
             conversation_history = await get_recent_conversation_history(
-                session, user.id, limit=6,  # Последние 3 обмена
+                session,
+                user.id,
+                limit=6,  # Последние 3 обмена
             )
 
         # Формируем сообщения для AI
@@ -201,20 +211,27 @@ async def generate_ai_response(user: User, user_message: str) -> tuple[str, int,
         logger.info(
             f"🤖 AI ответ получен от {response.provider}: "
             f"{len(response.content)} символов, {response.tokens_used} токенов, "
-            f"{response.response_time:.2f}с"
+            f"{response.response_time:.2f}с",
         )
 
         return response.content, response.tokens_used, response.model, response_time
 
     except AIProviderError as e:
         error_msg = str(e)
-        provider = getattr(e, 'provider', 'unknown')
+        provider = getattr(e, "provider", "unknown")
         logger.error(f"❌ Ошибка AI провайдера {provider}: {error_msg}")
-        
+
         # Проверяем на ошибки с балансом/квотой
-        if any(keyword in error_msg.lower() for keyword in [
-            "недостаточно средств", "quota", "billing", "payment", "402"
-        ]):
+        if any(
+            keyword in error_msg.lower()
+            for keyword in [
+                "недостаточно средств",
+                "quota",
+                "billing",
+                "payment",
+                "402",
+            ]
+        ):
             return (
                 "💳 Извините, у нас временные трудности с AI сервисом.\n"
                 "Мы уже работаем над решением этой проблемы.\n\n"
@@ -223,7 +240,7 @@ async def generate_ai_response(user: User, user_message: str) -> tuple[str, int,
                 "quota_error",
                 0.0,
             )
-        
+
         # Проверяем критические ошибки (все провайдеры недоступны)
         if "все ai провайдеры недоступны" in error_msg.lower():
             return (
@@ -234,7 +251,7 @@ async def generate_ai_response(user: User, user_message: str) -> tuple[str, int,
                 "all_providers_down",
                 0.0,
             )
-        
+
         # Возвращаем общий fallback ответ
         return (
             "Извините, у меня временные технические трудности. "
@@ -258,7 +275,7 @@ async def generate_ai_response(user: User, user_message: str) -> tuple[str, int,
 async def handle_text_message(message: Message) -> None:
     """
     Обработчик текстовых сообщений.
-    
+
     Логика:
     1. Проверяем, что пользователь зарегистрирован
     2. Проверяем лимиты сообщений
@@ -274,7 +291,9 @@ async def handle_text_message(message: Message) -> None:
     user_id = message.from_user.id
     user_text = message.text
 
-    logger.info(f"💬 Получено сообщение от пользователя {user_id}: {len(user_text)} символов")
+    logger.info(
+        f"💬 Получено сообщение от пользователя {user_id}: {len(user_text)} символов",
+    )
 
     # Проверяем длину сообщения
     if len(user_text.strip()) < 2:
@@ -329,7 +348,12 @@ async def handle_text_message(message: Message) -> None:
 
     try:
         # Генерируем ответ AI
-        ai_response, tokens_used, model_name, response_time = await generate_ai_response(user, user_text)
+        (
+            ai_response,
+            tokens_used,
+            model_name,
+            response_time,
+        ) = await generate_ai_response(user, user_text)
 
         # Обновляем счетчик сообщений пользователя и сохраняем диалог
         async with get_session() as session:
