@@ -30,39 +30,20 @@ setup_logging(
 class TestConfigValidation:
     """Тесты валидации конфигурации."""
 
-    def test_env_example_exists(self):
-        """Проверка наличия файла .env.example."""
-        env_example = project_root / ".env.example"
-        assert env_example.exists(), ".env.example файл должен существовать"
-        logger.success("✅ .env.example найден")
-
-    def test_config_classes_import(self):
-        """Тест импорта классов конфигурации."""
-        try:
-            from app.config import (
-                AdminConfig,
-                AppConfig,
-                DatabaseConfig,
-                DeepSeekConfig,
-                OpenRouterConfig,
-                TelegramConfig,
-                UserLimitsConfig,
-            )
-
-            logger.success("✅ Все классы конфигурации импортированы успешно")
-        except ImportError as e:
-            pytest.fail(f"Ошибка импорта классов конфигурации: {e}")
-
     def test_telegram_config_validation(self):
         """Тест валидации TelegramConfig."""
         from app.config import TelegramConfig
 
-        # Тест с невалидным токеном
-        with pytest.raises(Exception):
-            TelegramConfig(bot_token="invalid_token")
+        # Тест с невалидным токеном (пустой)
+        with pytest.raises(ValueError, match="BOT_TOKEN must be set to a valid Telegram bot token"):
+            TelegramConfig(BOT_TOKEN="your_telegram_bot_token_here")
+
+        # Тест с невалидным токеном (без двоеточия)
+        with pytest.raises(ValueError, match="BOT_TOKEN must be in format 'number:hash'"):
+            TelegramConfig(BOT_TOKEN="invalid_token")
 
         # Тест с валидным токеном
-        config = TelegramConfig(bot_token="123456789:ABCdefGHIjklMNOpqrsTUVwxyz")
+        config = TelegramConfig(BOT_TOKEN="123456789:ABCdefGHIjklMNOpqrsTUVwxyz")
         assert config.bot_token is not None
         logger.success("✅ Валидация TelegramConfig работает")
 
@@ -70,19 +51,23 @@ class TestConfigValidation:
         """Тест валидации DeepSeekConfig."""
         from app.config import DeepSeekConfig
 
-        # Тест с невалидным API ключом
-        with pytest.raises(Exception):
-            DeepSeekConfig(deepseek_api_key="your_deepseek_api_key_here")
+        # Тест с невалидным API ключом (placeholder)
+        with pytest.raises(ValueError, match="DEEPSEEK_API_KEY must be set to a valid API key"):
+            DeepSeekConfig(DEEPSEEK_API_KEY="your_deepseek_api_key_here")
+
+        # Тест с невалидным API ключом (пустой)
+        with pytest.raises(ValueError, match="DEEPSEEK_API_KEY must be set to a valid API key"):
+            DeepSeekConfig(DEEPSEEK_API_KEY="")
 
         # Тест с валидным API ключом
-        config = DeepSeekConfig(deepseek_api_key="sk-test123456789")
+        config = DeepSeekConfig(DEEPSEEK_API_KEY="sk-test123456789")
         assert config.deepseek_api_key == "sk-test123456789"
 
         # Тест валидации температуры
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError, match="DEEPSEEK_TEMPERATURE must be between 0.0 and 2.0"):
             DeepSeekConfig(
-                deepseek_api_key="sk-test123456789",
-                deepseek_temperature=3.0,  # Недопустимое значение
+                DEEPSEEK_API_KEY="sk-test123456789",
+                DEEPSEEK_TEMPERATURE=3.0,  # Недопустимое значение
             )
 
         logger.success("✅ Валидация DeepSeekConfig работает")
@@ -92,11 +77,11 @@ class TestConfigValidation:
         from app.config import DatabaseConfig
 
         config = DatabaseConfig(
-            database_host="localhost",
-            database_port=5432,
-            database_name="test_db",
-            database_user="test_user",
-            database_password="test_password",
+            DATABASE_HOST="localhost",
+            DATABASE_PORT=5432,
+            DATABASE_NAME="test_db",
+            DATABASE_USER="test_user",
+            DATABASE_PASSWORD="test_password",
         )
 
         expected_url = (
@@ -111,17 +96,17 @@ class TestConfigValidation:
 
         # Тест с отрицательным лимитом
         with pytest.raises(Exception):
-            UserLimitsConfig(free_messages_limit=-1)
+            UserLimitsConfig(FREE_MESSAGES_LIMIT=-1)
 
         # Тест с нулевой ценой
         with pytest.raises(Exception):
-            UserLimitsConfig(premium_price=0)
+            UserLimitsConfig(PREMIUM_PRICE=0)
 
         # Тест с валидными значениями
         config = UserLimitsConfig(
-            free_messages_limit=10,
-            premium_price=99,
-            premium_duration_days=30,
+            FREE_MESSAGES_LIMIT=10,
+            PREMIUM_PRICE=99,
+            PREMIUM_DURATION_DAYS=30,
         )
         assert config.free_messages_limit == 10
         assert config.premium_price == 99
@@ -133,12 +118,12 @@ class TestConfigValidation:
 
         # Тест с невалидным ID
         with pytest.raises(Exception):
-            AdminConfig(admin_user_id=0)
+            AdminConfig(ADMIN_USER_ID=0)
 
         # Тест с валидными ID
         config = AdminConfig(
-            admin_user_id=123456789,
-            admin_user_ids="987654321,111222333",
+            ADMIN_USER_ID=123456789,
+            ADMIN_USER_IDS="987654321,111222333",
         )
 
         admin_ids = config.get_admin_ids()

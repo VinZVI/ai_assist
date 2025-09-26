@@ -83,6 +83,7 @@ ai_assist/
 - **pytest** - Тестирование
 - **black** - Форматирование кода
 - **isort** - Сортировка импортов
+- **Pydantic v2.11.7** - Валидация данных и настройки
 
 ### Запуск тестов
 
@@ -104,7 +105,7 @@ uv run ruff check --fix .
 
 ### Проверка типов
 
-```bash
+``bash
 uv run mypy app/
 ```
 
@@ -157,7 +158,7 @@ uv run mypy app/
 
 ### Docker безопасность
 
-```bash
+```
 # Создайте .env.docker с безопасными паролями
 cp .env.docker.example .env.docker
 # Замените ВСЕ значения на безопасные!
@@ -169,7 +170,7 @@ cp .env.docker.example .env.docker
 
 Основные переменные окружения:
 
-```env
+```
 # Telegram Bot
 BOT_TOKEN=your_bot_token_here
 WEBHOOK_URL=https://your-domain.com/webhook

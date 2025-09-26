@@ -25,7 +25,7 @@ ORM: SQLAlchemy 2.0+ с async поддержкой
 Migration Tool: Alembic
 HTTP Client: httpx (для DeepSeek API)
 Environment: python-dotenv
-Validation: Pydantic
+Validation: Pydantic v2.11.7
 Logging: Loguru
 Dependency Management: uv
 ```
@@ -126,7 +126,7 @@ ai_assist/
 
 ### 3.2 Конфигурация AI сервиса
 
-```python
+```
 # Настройки DeepSeek API
 DEEPSEEK_API_KEY=your_api_key_here
 DEEPSEEK_BASE_URL=https://api.deepseek.com
@@ -183,7 +183,7 @@ CACHE_TTL=3600
 ### 3.1 Схема базы данных
 
 **Таблица users:**
-```sql
+```
 CREATE TABLE users (
     id BIGSERIAL PRIMARY KEY,
     telegram_id BIGINT UNIQUE NOT NULL,
@@ -198,7 +198,7 @@ CREATE TABLE users (
 ```
 
 **Таблица conversations:**
-```sql
+```
 CREATE TABLE conversations (
     id BIGSERIAL PRIMARY KEY,
     user_id BIGINT REFERENCES users(id),
@@ -318,7 +318,7 @@ uv run pytest -m "not slow"  # Исключить медленные тесты
 
 Основные переменные окружения, необходимые для работы приложения:
 
-```env
+```
 # Telegram Bot
 BOT_TOKEN=your_bot_token_here
 WEBHOOK_URL=https://your-domain.com/webhook
