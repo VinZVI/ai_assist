@@ -22,6 +22,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
+from app.models.conversation import Conversation
 
 
 class User(Base):
@@ -145,8 +146,8 @@ class User(Base):
     )
 
     # Отношения
-    conversations: Mapped[list["Conversation"]] = relationship(
-        "Conversation",
+    conversations: Mapped[list[Conversation]] = relationship(
+        Conversation,
         back_populates="user",
         cascade="all, delete-orphan",
         lazy="select",

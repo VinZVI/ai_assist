@@ -8,7 +8,7 @@
 from pathlib import Path
 
 from loguru import logger
-from pydantic import Field, ValidationInfo, field_validator
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -443,8 +443,8 @@ def get_config() -> AppConfig:
 
 # Экспорт для удобного использования
 __all__ = [
-    "AdminConfig",
     "AIProviderConfig",
+    "AdminConfig",
     "AppConfig",
     "DatabaseConfig",
     "DeepSeekConfig",
