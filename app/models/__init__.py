@@ -34,23 +34,23 @@ from app.models.user import (
 __all__ = [
     # База данных
     "Base",
-    # Модели SQLAlchemy
-    "User",
     "Conversation",
-    # Enums
-    "MessageRole",
-    "ConversationStatus",
-    # Pydantic схемы для User
-    "UserBase",
-    "UserCreate",
-    "UserUpdate",
-    "UserResponse",
-    "UserStats",
     # Pydantic схемы для Conversation
     "ConversationBase",
     "ConversationCreate",
-    "ConversationUpdate",
+    "ConversationHistory",
     "ConversationResponse",
     "ConversationStats",
-    "ConversationHistory",
+    "ConversationStatus",
+    "ConversationUpdate",
+    # Enums
+    "MessageRole",
+    # Модели SQLAlchemy
+    "User",
+    # Pydantic схемы для User
+    "UserBase",
+    "UserCreate",
+    "UserResponse",
+    "UserStats",
+    "UserUpdate",
 ]

@@ -16,7 +16,7 @@ sys.path.insert(0, str(project_root))
 from loguru import logger
 
 
-def test_env_file():
+def test_env_file() -> bool:
     """Тестирование наличия и содержимого .env файла."""
     env_path = Path(".env")
 
@@ -53,7 +53,7 @@ def test_env_file():
     return True
 
 
-def test_basic_config():
+def test_basic_config() -> bool | None:
     """Тестирование базовой загрузки конфигурации."""
     try:
         from app.config import DatabaseConfig, TelegramConfig
@@ -75,12 +75,16 @@ def test_basic_config():
         return False
 
 
-def main():
+def main() -> None:
     """Главная функция тестирования."""
     logger.remove()
     logger.add(
         sys.stdout,
-        format="<green>{time:HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{message}</cyan>",
+        format=(
+            "<green>{time:HH:mm:ss}</green> | "
+            "<level>{level: <8}</level> | "
+            "<cyan>{message}</cyan>"
+        ),
         level="INFO",
     )
 

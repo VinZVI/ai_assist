@@ -21,7 +21,7 @@ from loguru import logger
 from app.config import get_config
 
 
-def kill_python_processes():
+def kill_python_processes() -> None:
     """Принудительное завершение всех процессов Python."""
     logger.info("🔪 Принудительное завершение всех процессов Python...")
 
@@ -47,7 +47,7 @@ def kill_python_processes():
         logger.error(f"❌ Ошибка при завершении процессов: {e}")
 
 
-async def clear_webhook_completely():
+async def clear_webhook_completely() -> bool:
     """Полная очистка webhook с несколькими попытками."""
     logger.info("🧹 Полная очистка webhook...")
 
@@ -121,7 +121,7 @@ async def clear_webhook_completely():
     return False
 
 
-def wait_for_system_stabilization():
+def wait_for_system_stabilization() -> None:
     """Ожидание стабилизации системы."""
     logger.info("⏳ Ожидание стабилизации системы (60 секунд)...")
 
@@ -132,7 +132,7 @@ def wait_for_system_stabilization():
     logger.info("✅ Ожидание завершено")
 
 
-async def test_bot_readiness():
+async def test_bot_readiness() -> bool:
     """Тест готовности бота к запуску."""
     logger.info("🧪 Тестирование готовности бота...")
 
@@ -167,7 +167,7 @@ async def test_bot_readiness():
     return False
 
 
-async def main():
+async def main() -> None:
     """Основная функция принудительной остановки."""
     logger.add("force_stop.log", rotation="1 MB", retention="1 week")
 

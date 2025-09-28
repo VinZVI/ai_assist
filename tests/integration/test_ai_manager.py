@@ -9,14 +9,19 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from app.config import AppConfig
 from app.services.ai_manager import (
     AIManager,
     AIProviderError,
+    get_ai_manager,
+)
+from app.services.ai_providers.base import (
     AIResponse,
     APIAuthenticationError,
     APIConnectionError,
+    APIQuotaExceededError,
     APIRateLimitError,
-    get_ai_manager,
+    ConversationMessage,
 )
 
 
@@ -26,7 +31,7 @@ class TestAIManagerInitialization:
     """Тесты инициализации AIManager."""
 
     @pytest.mark.asyncio
-    async def test_ai_manager_initialization(self, mock_config):
+    async def test_ai_manager_initialization(self, mock_config: AppConfig) -> None:
         """Тест инициализации AI менеджера."""
         with patch("app.services.ai_manager.get_config", return_value=mock_config):
             manager = AIManager()
@@ -35,7 +40,7 @@ class TestAIManagerInitialization:
             assert hasattr(manager, "_providers")
             assert hasattr(manager, "_config")
 
-    def test_ai_manager_singleton(self):
+    def test_ai_manager_singleton(self) -> None:
         """Тест singleton паттерна для AIManager."""
         with patch("app.services.ai_manager.get_config"):
             manager1 = get_ai_manager()
@@ -44,7 +49,7 @@ class TestAIManagerInitialization:
             assert manager1 is manager2
 
     @pytest.mark.asyncio
-    async def test_provider_registration(self, mock_config):
+    async def test_provider_registration(self, mock_config: AppConfig) -> None:
         """Тест регистрации провайдеров."""
         with patch("app.services.ai_manager.get_config", return_value=mock_config):
             manager = AIManager()
@@ -56,13 +61,24 @@ class TestAIManagerInitialization:
             assert openrouter is not None
             assert deepseek is not None
 
-    def test_invalid_provider_request(self, mock_config):
+    def test_invalid_provider_request(self, mock_config: AppConfig) -> None:
         """Тест запроса несуществующего провайдера."""
         with patch("app.services.ai_manager.get_config", return_value=mock_config):
             manager = AIManager()
 
             invalid_provider = manager.get_provider("nonexistent")
             assert invalid_provider is None
+
+    @pytest.mark.asyncio
+    async def test_provider_selection(self, mock_config: AppConfig) -> None:
+        """Тест выбора провайдера по имени."""
+        with patch("app.services.ai_manager.get_config", return_value=mock_config):
+            manager = AIManager()
+
+            provider = manager.get_provider("openrouter")
+
+            assert provider is not None
+            assert provider.name == "openrouter"
 
 
 @pytest.mark.ai_manager
@@ -71,7 +87,9 @@ class TestAIManagerFallbackLogic:
     """Тесты fallback логики между провайдерами."""
 
     @pytest.fixture
-    def manager_with_mocked_providers(self, mock_config):
+    def manager_with_mocked_providers(
+        self, mock_config: AppConfig
+    ) -> tuple[AIManager, AsyncMock, AsyncMock]:
         """Менеджер с мокированными провайдерами."""
         with patch("app.services.ai_manager.get_config", return_value=mock_config):
             manager = AIManager()
@@ -101,10 +119,10 @@ class TestAIManagerFallbackLogic:
     @pytest.mark.asyncio
     async def test_successful_primary_provider(
         self,
-        manager_with_mocked_providers,
-        mock_conversation_messages,
-        mock_ai_response,
-    ):
+        manager_with_mocked_providers: AIManager,
+        mock_conversation_messages: list[ConversationMessage],
+        mock_ai_response: AIResponse,
+    ) -> None:
         """Тест успешного ответа от основного провайдера."""
         manager, mock_openrouter, mock_deepseek = manager_with_mocked_providers
 
@@ -121,10 +139,10 @@ class TestAIManagerFallbackLogic:
     @pytest.mark.asyncio
     async def test_fallback_on_primary_failure(
         self,
-        manager_with_mocked_providers,
-        mock_conversation_messages,
-        mock_ai_response,
-    ):
+        manager_with_mocked_providers: AIManager,
+        mock_conversation_messages: list[ConversationMessage],
+        mock_ai_response: AIResponse,
+    ) -> None:
         """Тест fallback при сбое основного провайдера."""
         manager, mock_openrouter, mock_deepseek = manager_with_mocked_providers
 
@@ -144,9 +162,9 @@ class TestAIManagerFallbackLogic:
     @pytest.mark.asyncio
     async def test_both_providers_fail(
         self,
-        manager_with_mocked_providers,
-        mock_conversation_messages,
-    ):
+        manager_with_mocked_providers: AIManager,
+        mock_conversation_messages: list[ConversationMessage],
+    ) -> None:
         """Тест когда оба провайдера недоступны."""
         manager, mock_openrouter, mock_deepseek = manager_with_mocked_providers
 
@@ -166,10 +184,10 @@ class TestAIManagerFallbackLogic:
     @pytest.mark.asyncio
     async def test_rate_limit_fallback(
         self,
-        manager_with_mocked_providers,
-        mock_conversation_messages,
-        mock_ai_response,
-    ):
+        manager_with_mocked_providers: AIManager,
+        mock_conversation_messages: list[ConversationMessage],
+        mock_ai_response: AIResponse,
+    ) -> None:
         """Тест fallback при превышении лимита запросов."""
         manager, mock_openrouter, mock_deepseek = manager_with_mocked_providers
 
@@ -194,7 +212,7 @@ class TestAIManagerHealthCheck:
     """Тесты health check функциональности."""
 
     @pytest.mark.asyncio
-    async def test_health_check_all_healthy(self, mock_ai_manager):
+    async def test_health_check_all_healthy(self, mock_ai_manager: AsyncMock) -> None:
         """Тест health check когда все провайдеры здоровы."""
         health = await mock_ai_manager.health_check()
 
@@ -204,7 +222,9 @@ class TestAIManagerHealthCheck:
         assert health["providers"]["deepseek"]["status"] == "healthy"
 
     @pytest.mark.asyncio
-    async def test_health_check_with_failures(self, manager_with_mocked_providers):
+    async def test_health_check_with_failures(
+        self, manager_with_mocked_providers: AIManager
+    ) -> None:
         """Тест health check с недоступными провайдерами."""
         manager, mock_openrouter, mock_deepseek = manager_with_mocked_providers
 
@@ -233,7 +253,7 @@ class TestAIManagerHealthCheck:
 class TestAIManagerStatistics:
     """Тесты системы статистики AIManager."""
 
-    def test_initial_statistics(self, mock_ai_manager):
+    def test_initial_statistics(self, mock_ai_manager: AsyncMock) -> None:
         """Тест начальной статистики."""
         # Мок возвращает синхронно
         mock_ai_manager.get_stats.return_value = {
@@ -252,7 +272,7 @@ class TestAIManagerStatistics:
         assert "fallback_used" in stats
         assert "provider_stats" in stats
 
-    def test_statistics_after_requests(self, mock_ai_manager):
+    def test_statistics_after_requests(self, mock_ai_manager: AsyncMock) -> None:
         """Тест статистики после запросов."""
         # Имитируем статистику с запросами
         mock_ai_manager.get_stats.return_value = {
@@ -282,9 +302,9 @@ class TestAIManagerCaching:
     @pytest.mark.asyncio
     async def test_cache_hit(
         self,
-        manager_with_mocked_providers,
-        mock_conversation_messages,
-    ):
+        manager_with_mocked_providers: tuple[AIManager, AsyncMock, AsyncMock],
+        mock_conversation_messages: list[ConversationMessage],
+    ) -> None:
         """Тест попадания в кеш."""
         manager, mock_openrouter, mock_deepseek = manager_with_mocked_providers
 
@@ -329,10 +349,10 @@ class TestAIManagerCaching:
     @pytest.mark.asyncio
     async def test_cache_disabled(
         self,
-        manager_with_mocked_providers,
-        mock_conversation_messages,
-        mock_ai_response,
-    ):
+        manager_with_mocked_providers: tuple[AIManager, AsyncMock, AsyncMock],
+        mock_conversation_messages: list[ConversationMessage],
+        mock_ai_response: AIResponse,
+    ) -> None:
         """Тест отключения кеша."""
         manager, mock_openrouter, mock_deepseek = manager_with_mocked_providers
 
@@ -354,7 +374,7 @@ class TestAIManagerSimpleResponse:
     """Тесты упрощенного API для быстрых ответов."""
 
     @pytest.mark.asyncio
-    async def test_generate_simple_response(self, mock_ai_manager):
+    async def test_generate_simple_response(self, mock_ai_manager: AsyncMock) -> None:
         """Тест генерации простого ответа."""
         response = await mock_ai_manager.generate_simple_response("Привет!")
 
@@ -362,7 +382,9 @@ class TestAIManagerSimpleResponse:
         mock_ai_manager.generate_simple_response.assert_called_once_with("Привет!")
 
     @pytest.mark.asyncio
-    async def test_simple_response_with_parameters(self, mock_ai_manager):
+    async def test_simple_response_with_parameters(
+        self, mock_ai_manager: AsyncMock
+    ) -> None:
         """Тест простого ответа с параметрами."""
         custom_response = AIResponse(
             content="Кастомный ответ",
@@ -389,7 +411,9 @@ class TestAIManagerLifecycle:
     """Тесты жизненного цикла AIManager."""
 
     @pytest.mark.asyncio
-    async def test_manager_close(self, manager_with_mocked_providers):
+    async def test_manager_close(
+        self, manager_with_mocked_providers: tuple[AIManager, AsyncMock, AsyncMock]
+    ) -> None:
         """Тест корректного закрытия менеджера."""
         manager, mock_openrouter, mock_deepseek = manager_with_mocked_providers
 
@@ -416,7 +440,7 @@ class TestAIManagerErrorHandling:
     """Тесты обработки ошибок в AIManager."""
 
     @pytest.mark.asyncio
-    async def test_invalid_messages_format(self, mock_ai_manager):
+    async def test_invalid_messages_format(self, mock_ai_manager: AsyncMock) -> None:
         """Тест обработки некорректного формата сообщений."""
         # Мок должен выбрасывать ошибку
         mock_ai_manager.generate_response.side_effect = ValueError(
@@ -427,7 +451,7 @@ class TestAIManagerErrorHandling:
             await mock_ai_manager.generate_response("не список")
 
     @pytest.mark.asyncio
-    async def test_empty_messages_list(self, mock_ai_manager):
+    async def test_empty_messages_list(self, mock_ai_manager: AsyncMock) -> None:
         """Тест обработки пустого списка сообщений."""
         # Мок должен выбрасывать ошибку
         mock_ai_manager.generate_response.side_effect = ValueError(
@@ -440,9 +464,9 @@ class TestAIManagerErrorHandling:
     @pytest.mark.asyncio
     async def test_authentication_error_handling(
         self,
-        manager_with_mocked_providers,
-        mock_conversation_messages,
-    ):
+        manager_with_mocked_providers: tuple[AIManager, AsyncMock, AsyncMock],
+        mock_conversation_messages: list[ConversationMessage],
+    ) -> None:
         """Тест обработки ошибок аутентификации."""
         manager, mock_openrouter, mock_deepseek = manager_with_mocked_providers
 
@@ -465,10 +489,10 @@ class TestAIManagerErrorHandling:
     @pytest.mark.asyncio
     async def test_mixed_error_handling(
         self,
-        manager_with_mocked_providers,
-        mock_conversation_messages,
-        mock_ai_response,
-    ):
+        manager_with_mocked_providers: tuple[AIManager, AsyncMock, AsyncMock],
+        mock_conversation_messages: list[ConversationMessage],
+        mock_ai_response: AIResponse,
+    ) -> None:
         """Тест обработки смешанных ошибок."""
         manager, mock_openrouter, mock_deepseek = manager_with_mocked_providers
 

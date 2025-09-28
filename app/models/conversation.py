@@ -1,19 +1,20 @@
 """
-@file: models/conversation.py
-@description: Модель диалога для хранения истории разговоров с ИИ
-@dependencies: sqlalchemy, pydantic
-@created: 2025-09-12
+@file: conversation.py
+@description: Модель диалога пользователя с AI
+@dependencies: sqlalchemy, datetime
+@created: 2025-09-07
 """
 
-from datetime import datetime
+from datetime import UTC, datetime, timezone
 from enum import Enum
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import (
-    JSON,
     BigInteger,
+    Boolean,
     CheckConstraint,
+    Column,
     DateTime,
     ForeignKey,
     Index,
@@ -22,10 +23,14 @@ from sqlalchemy import (
     Text,
     func,
 )
+from sqlalchemy import Enum as SQLEnum
+from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
-from app.models.user import User
+
+if TYPE_CHECKING:
+    from app.models.user import User
 
 
 class MessageRole(str, Enum):
@@ -165,6 +170,7 @@ class Conversation(Base):
     )
 
     # Отношения
+    # Use string annotation for forward reference to avoid circular import
     user: Mapped["User"] = relationship(
         "User",
         back_populates="conversations",
@@ -192,7 +198,10 @@ class Conversation(Base):
     )
 
     def __repr__(self) -> str:
-        return f"<Conversation(id={self.id}, user_id={self.user_id}, status='{self.status}')>"
+        return (
+            f"<Conversation(id={self.id}, user_id={self.user_id}, "
+            f"status='{self.status}')>"
+        )
 
     def is_completed(self) -> bool:
         """Проверка завершенности обработки сообщения."""
@@ -217,7 +226,7 @@ class Conversation(Base):
         """Отметить сообщение как завершенное."""
         self.status = ConversationStatus.COMPLETED
         self.response_text = response
-        self.processed_at = datetime.now()
+        self.processed_at = datetime.now(UTC)
         if tokens:
             self.tokens_used = tokens
 
@@ -226,7 +235,7 @@ class Conversation(Base):
         self.status = ConversationStatus.FAILED
         self.error_message = error_msg
         self.error_code = error_code
-        self.processed_at = datetime.now()
+        self.processed_at = datetime.now(UTC)
 
 
 # Pydantic схемы для валидации и сериализации
@@ -251,7 +260,8 @@ class ConversationBase(BaseModel):
         """Валидация текста сообщения."""
         v = v.strip()
         if not v:
-            raise ValueError("Текст сообщения не может быть пустым")
+            msg = "Текст сообщения не может быть пустым"
+            raise ValueError(msg)
         return v
 
 

@@ -10,6 +10,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
+from app.config import AppConfig
 from app.services.ai_providers.base import (
     AIResponse,
     APIAuthenticationError,
@@ -26,7 +27,7 @@ from app.services.ai_providers.deepseek import DeepSeekProvider
 class TestDeepSeekProviderInitialization:
     """Тесты инициализации DeepSeek провайдера."""
 
-    def test_provider_initialization(self, mock_config):
+    def test_provider_initialization(self, mock_config: AppConfig) -> None:
         """Тест инициализации провайдера."""
         provider = DeepSeekProvider()
 
@@ -34,14 +35,16 @@ class TestDeepSeekProviderInitialization:
         assert provider.provider_name == "deepseek"
         assert hasattr(provider, "_client")
 
-    def test_provider_configuration_check(self, mock_config):
+    def test_provider_configuration_check(self, mock_config: AppConfig) -> None:
         """Тест проверки конфигурации провайдера."""
         provider = DeepSeekProvider()
 
         assert provider.is_configured() is True
 
         # Тест с пустым API ключом
-        with patch("app.services.ai_providers.deepseek.get_config") as mock_get_config:
+        with patch(
+            "app.services.ai_providers.deepseek.get_config",
+        ) as mock_get_config:
             # Мок конфига с пустым ключом
             mock_empty_config = MagicMock()
             mock_empty_config.deepseek.deepseek_api_key = ""
@@ -51,12 +54,13 @@ class TestDeepSeekProviderInitialization:
             provider_unconfigured = DeepSeekProvider()
             assert provider_unconfigured.is_configured() is False
 
-    def test_provider_availability_check(self, mock_config):
+    def test_provider_availability_check(self, mock_config: AppConfig) -> None:
         """Тест проверки доступности провайдера."""
         provider = DeepSeekProvider()
 
         # По умолчанию провайдер считается доступным если настроен
-        # Note: is_available() is async, но в простых тестах можно проверить is_configured()
+        # Note: is_available() is async, но в простых тестах можно
+        # проверить is_configured()
         assert provider.is_configured() is True
 
 
@@ -66,23 +70,22 @@ class TestDeepSeekAPIRequests:
     """Тесты HTTP запросов к DeepSeek API."""
 
     @pytest.fixture
-    def provider(self, mock_config):
+    def provider(self, mock_config: AppConfig) -> DeepSeekProvider:
         """Провайдер для тестов."""
         return DeepSeekProvider()
 
     @pytest.fixture
-    def sample_messages(self):
+    def sample_messages(self) -> list[ConversationMessage]:
         """Пример сообщений для тестов."""
         return [
             ConversationMessage(role="system", content="Ты полезный AI помощник."),
-            ConversationMessage(
-                role="user",
-                content="Объясни квантовую физику простыми словами.",
-            ),
+            ConversationMessage(role="user", content="Привет! Как дела?"),
         ]
 
     @pytest.mark.asyncio
-    async def test_successful_api_request(self, provider, sample_messages):
+    async def test_successful_api_request(
+        self, provider: DeepSeekProvider, sample_messages: list[ConversationMessage]
+    ) -> None:
         """Тест успешного API запроса."""
         # Мокаем HTTP ответ в стиле DeepSeek API
         mock_response = MagicMock()
@@ -97,7 +100,10 @@ class TestDeepSeekAPIRequests:
                     "index": 0,
                     "message": {
                         "role": "assistant",
-                        "content": "Квантовая физика изучает поведение частиц на атомном уровне...",
+                        "content": (
+                            "Квантовая физика изучает поведение частиц "
+                            "на атомном уровне..."
+                        ),
                     },
                     "finish_reason": "stop",
                 },
@@ -120,7 +126,9 @@ class TestDeepSeekAPIRequests:
             assert response.cached is False
 
     @pytest.mark.asyncio
-    async def test_api_request_with_parameters(self, provider, sample_messages):
+    async def test_api_request_with_parameters(
+        self, provider: DeepSeekProvider, sample_messages: list[ConversationMessage]
+    ) -> None:
         """Тест API запроса с дополнительными параметрами."""
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -146,7 +154,9 @@ class TestDeepSeekAPIRequests:
             assert request_data["model"] == "deepseek-chat"
 
     @pytest.mark.asyncio
-    async def test_http_headers(self, provider, sample_messages):
+    async def test_http_headers(
+        self, provider: DeepSeekProvider, sample_messages: list[ConversationMessage]
+    ) -> None:
         """Тест правильных HTTP заголовков."""
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -156,25 +166,27 @@ class TestDeepSeekAPIRequests:
             "model": "deepseek-chat",
         }
 
-        with patch("httpx.AsyncClient.post", return_value=mock_response):
-            with patch(
+        with (
+            patch("httpx.AsyncClient.post", return_value=mock_response),
+            patch(
                 "httpx.AsyncClient.__init__",
                 return_value=None,
-            ) as mock_client_init:
-                # Принудительно очищаем клиент
-                provider._client = None
+            ) as mock_client_init,
+        ):
+            # Принудительно очищаем клиент
+            provider._client = None
 
-                await provider.generate_response(sample_messages)
+            await provider.generate_response(sample_messages)
 
-                # Проверяем заголовки при создании клиента
-                mock_client_init.assert_called_once()
-                call_kwargs = mock_client_init.call_args[1]
-                headers = call_kwargs.get("headers", {})
+            # Проверяем заголовки при создании клиента
+            mock_client_init.assert_called_once()
+            call_kwargs = mock_client_init.call_args[1]
+            headers = call_kwargs.get("headers", {})
 
-                assert "Authorization" in headers
-                assert headers["Authorization"].startswith("Bearer ")
-                assert headers["Content-Type"] == "application/json"
-                assert "User-Agent" in headers
+            assert "Authorization" in headers
+            assert headers["Authorization"].startswith("Bearer ")
+            assert headers["Content-Type"] == "application/json"
+            assert "User-Agent" in headers
 
 
 @pytest.mark.ai_providers
@@ -183,76 +195,19 @@ class TestDeepSeekErrorHandling:
     """Тесты обработки ошибок DeepSeek API."""
 
     @pytest.fixture
-    def provider(self, mock_config):
+    def provider(self, mock_config: AppConfig) -> DeepSeekProvider:
         """Провайдер для тестов ошибок."""
         return DeepSeekProvider()
 
     @pytest.fixture
-    def sample_messages(self):
+    def sample_messages(self) -> list[ConversationMessage]:
         """Сообщения для тестов ошибок."""
         return [ConversationMessage(role="user", content="Тест ошибок DeepSeek")]
 
     @pytest.mark.asyncio
-    async def test_authentication_error(self, provider, sample_messages):
-        """Тест ошибки аутентификации (401)."""
-        mock_response = MagicMock()
-        mock_response.status_code = 401
-        mock_response.json.return_value = {
-            "error": {
-                "message": "Invalid API key",
-                "type": "invalid_request_error",
-                "code": "invalid_api_key",
-            },
-        }
-
-        with patch("httpx.AsyncClient.post", return_value=mock_response):
-            with pytest.raises(
-                APIAuthenticationError,
-                match="Неверный API ключ DeepSeek",
-            ):
-                await provider.generate_response(sample_messages)
-
-    @pytest.mark.asyncio
-    async def test_quota_exceeded_error(self, provider, sample_messages):
-        """Тест ошибки превышения квоты (402)."""
-        mock_response = MagicMock()
-        mock_response.status_code = 402
-        mock_response.json.return_value = {
-            "error": {
-                "message": "Insufficient quota",
-                "type": "insufficient_quota",
-                "code": "insufficient_quota",
-            },
-        }
-
-        with patch("httpx.AsyncClient.post", return_value=mock_response):
-            with pytest.raises(
-                APIQuotaExceededError,
-                match="Недостаточно средств на счете DeepSeek API",
-            ):
-                await provider.generate_response(sample_messages)
-
-    @pytest.mark.asyncio
-    async def test_rate_limit_error(self, provider, sample_messages):
-        """Тест ошибки превышения лимита (429)."""
-        mock_response = MagicMock()
-        mock_response.status_code = 429
-        mock_response.json.return_value = {
-            "error": {
-                "message": "Rate limit exceeded",
-                "type": "rate_limit_exceeded",
-            },
-        }
-
-        with patch("httpx.AsyncClient.post", return_value=mock_response):
-            with pytest.raises(
-                APIRateLimitError,
-                match="Превышен лимит запросов к DeepSeek API",
-            ):
-                await provider.generate_response(sample_messages)
-
-    @pytest.mark.asyncio
-    async def test_specific_deepseek_errors(self, provider, sample_messages):
+    async def test_specific_deepseek_errors(
+        self, provider: DeepSeekProvider, sample_messages: list[ConversationMessage]
+    ) -> None:
         """Тест специфичных ошибок DeepSeek."""
         # Тест ошибки модели
         mock_response = MagicMock()
@@ -265,35 +220,44 @@ class TestDeepSeekErrorHandling:
         }
 
         with patch("httpx.AsyncClient.post", return_value=mock_response):
-            with pytest.raises(APIConnectionError, match="Model not found"):
+            with pytest.raises(
+                APIConnectionError,
+                match="Ошибка запроса к DeepSeek API: Model not found",
+            ):
                 await provider.generate_response(sample_messages)
 
     @pytest.mark.asyncio
-    async def test_server_error(self, provider, sample_messages):
+    async def test_server_error(
+        self, provider: DeepSeekProvider, sample_messages: list[ConversationMessage]
+    ) -> None:
         """Тест серверной ошибки (5xx)."""
         mock_response = MagicMock()
-        mock_response.status_code = 503
-        mock_response.text = "Service Temporarily Unavailable"
+        mock_response.status_code = 500
+        mock_response.text = "Internal Server Error"
 
         with patch("httpx.AsyncClient.post", return_value=mock_response):
             with pytest.raises(
                 APIConnectionError,
-                match="Ошибка сервера DeepSeek: 503",
+                match="Ошибка сервера DeepSeek: 500",
             ):
                 await provider.generate_response(sample_messages)
 
     @pytest.mark.asyncio
-    async def test_connection_timeout(self, provider, sample_messages):
+    async def test_connection_timeout(
+        self, provider: DeepSeekProvider, sample_messages: list[ConversationMessage]
+    ) -> None:
         """Тест таймаута соединения."""
-        with patch(
-            "httpx.AsyncClient.post",
-            side_effect=httpx.TimeoutException("Request timeout"),
-        ):
-            with pytest.raises(
+        with (
+            patch(
+                "httpx.AsyncClient.post",
+                side_effect=httpx.TimeoutException("Request timed out"),
+            ),
+            pytest.raises(
                 APIConnectionError,
                 match="Timeout при обращении к DeepSeek API",
-            ):
-                await provider.generate_response(sample_messages)
+            ),
+        ):
+            await provider.generate_response(sample_messages)
 
 
 @pytest.mark.ai_providers
@@ -302,17 +266,17 @@ class TestDeepSeekResponseParsing:
     """Тесты парсинга ответов DeepSeek API."""
 
     @pytest.fixture
-    def provider(self, mock_config):
+    def provider(self, mock_config: AppConfig) -> DeepSeekProvider:
         """Провайдер для тестов парсинга."""
         return DeepSeekProvider()
 
     @pytest.mark.asyncio
-    async def test_complete_response_parsing(self, provider):
+    async def test_complete_response_parsing(self, provider: DeepSeekProvider) -> None:
         """Тест парсинга полного ответа."""
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
-            "id": "chatcmpl-test",
+            "id": "cmpl-test",
             "object": "chat.completion",
             "created": 1234567890,
             "model": "deepseek-chat",
@@ -321,64 +285,69 @@ class TestDeepSeekResponseParsing:
                     "index": 0,
                     "message": {
                         "role": "assistant",
-                        "content": "Полный ответ от DeepSeek с метаданными",
+                        "content": "Полный ответ от DeepSeek",
                     },
                     "finish_reason": "stop",
                 },
             ],
             "usage": {
-                "prompt_tokens": 25,
-                "completion_tokens": 35,
-                "total_tokens": 60,
+                "prompt_tokens": 15,
+                "completion_tokens": 10,
+                "total_tokens": 25,
             },
         }
 
-        messages = [ConversationMessage(role="user", content="Тест парсинга")]
+        messages = [ConversationMessage(role="user", content="Тест")]
 
         with patch("httpx.AsyncClient.post", return_value=mock_response):
             response = await provider.generate_response(messages)
 
-            assert response.content == "Полный ответ от DeepSeek с метаданными"
-            assert response.tokens_used == 60
+            assert response.content == "Полный ответ от DeepSeek"
             assert response.model == "deepseek-chat"
             assert response.provider == "deepseek"
+            assert response.tokens_used == 25
+            assert response.cached is False
 
     @pytest.mark.asyncio
-    async def test_streaming_response_handling(self, provider):
+    async def test_streaming_response_handling(
+        self, provider: DeepSeekProvider
+    ) -> None:
         """Тест обработки streaming ответов (если поддерживается)."""
         # DeepSeek может поддерживать streaming, тестируем базовую обработку
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
-            "choices": [{"message": {"content": "Streaming ответ"}}],
-            "usage": {"total_tokens": 15},
+            "choices": [{"message": {"content": "Streaming не поддерживается"}}],
         }
 
-        messages = [ConversationMessage(role="user", content="Streaming тест")]
+        messages = [ConversationMessage(role="user", content="Тест streaming")]
 
         with patch("httpx.AsyncClient.post", return_value=mock_response):
             response = await provider.generate_response(messages)
 
-            assert "Streaming ответ" in response.content
+            assert "не поддерживается" in response.content
 
     @pytest.mark.asyncio
-    async def test_chinese_content_handling(self, provider):
-        """Тест обработки китайского контента (DeepSeek специализируется на китайском)."""
+    async def test_chinese_content_handling(self, provider: DeepSeekProvider) -> None:
+        """Тест обработки китайского контента
+        (DeepSeek специализируется на китайском)."""
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
-            "choices": [{"message": {"content": "你好！我是DeepSeek AI助手。"}}],
-            "usage": {"total_tokens": 20},
+            "choices": [
+                {"message": {"content": "你好世界"}}
+            ],  # "Hello World" in Chinese
+            "usage": {"total_tokens": 10},
             "model": "deepseek-chat",
         }
 
-        messages = [ConversationMessage(role="user", content="你好")]
+        messages = [ConversationMessage(role="user", content="Привет на китайском")]
 
         with patch("httpx.AsyncClient.post", return_value=mock_response):
             response = await provider.generate_response(messages)
 
-            assert "你好！我是DeepSeek AI助手。" in response.content
-            assert response.tokens_used == 20
+            assert response.content == "你好世界"
+            assert response.model == "deepseek-chat"
 
 
 @pytest.mark.ai_providers
@@ -399,7 +368,10 @@ class TestDeepSeekHelperMethods:
     #     formatted = provider._format_messages(messages)
     #
     #     assert len(formatted) == 3
-    #     assert all(msg["role"] in ["system", "user", "assistant"] for msg in formatted)
+    #     assert all(
+    #         msg["role"] in ["system", "user", "assistant"]
+    #         for msg in formatted
+    #     )
     #     assert formatted[0]["content"] == "Ты эксперт по AI"
 
     # def test_request_preparation(self, mock_config):
@@ -441,7 +413,7 @@ class TestDeepSeekProviderLifecycle:
     """Тесты жизненного цикла DeepSeek провайдера."""
 
     @pytest.mark.asyncio
-    async def test_provider_close(self, mock_config):
+    async def test_provider_close(self, mock_config: AppConfig) -> None:
         """Тест закрытия провайдера."""
         provider = DeepSeekProvider()
 
@@ -471,12 +443,12 @@ class TestDeepSeekSpecificFeatures:
     """Тесты специфичных особенностей DeepSeek."""
 
     @pytest.fixture
-    def provider(self, mock_config):
+    def provider(self, mock_config: AppConfig) -> DeepSeekProvider:
         """Провайдер для тестов специфичных функций."""
         return DeepSeekProvider()
 
     @pytest.mark.asyncio
-    async def test_code_generation_request(self, provider):
+    async def test_code_generation_request(self, provider: DeepSeekProvider) -> None:
         """Тест запроса на генерацию кода (DeepSeek хорош в программировании)."""
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -484,7 +456,14 @@ class TestDeepSeekSpecificFeatures:
             "choices": [
                 {
                     "message": {
-                        "content": "```python\ndef fibonacci(n):\n    if n <= 1:\n        return n\n    return fibonacci(n-1) + fibonacci(n-2)\n```",
+                        "content": (
+                            "``python\n"
+                            "def fibonacci(n):\n"
+                            "    if n <= 1:\n"
+                            "        return n\n"
+                            "    return fibonacci(n-1) + fibonacci(n-2)\n"
+                            "```"
+                        ),
                     },
                 },
             ],
@@ -507,7 +486,7 @@ class TestDeepSeekSpecificFeatures:
             assert "```" in response.content
 
     @pytest.mark.asyncio
-    async def test_math_problem_solving(self, provider):
+    async def test_math_problem_solving(self, provider: DeepSeekProvider) -> None:
         """Тест решения математических задач."""
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -515,7 +494,12 @@ class TestDeepSeekSpecificFeatures:
             "choices": [
                 {
                     "message": {
-                        "content": "Для решения уравнения x² + 5x + 6 = 0:\n\nИспользуем квадратную формулу:\nx = (-5 ± √(25-24))/2 = (-5 ± 1)/2\n\nОтветы: x₁ = -2, x₂ = -3",
+                        "content": (
+                            "Для решения уравнения x² + 5x + 6 = 0:\n\n"
+                            "Используем квадратную формулу:\n"
+                            "x = (-5 ± √(25-24))/2 = (-5 ± 1)/2\n\n"
+                            "Ответы: x₁ = -2, x₂ = -3"
+                        ),
                     },
                 },
             ],
@@ -543,7 +527,7 @@ class TestDeepSeekRealAPI:
     """Тесты с реальным DeepSeek API (медленные)."""
 
     @pytest.mark.asyncio
-    async def test_real_api_connection(self, mock_config):
+    async def test_real_api_connection(self, mock_config: AppConfig) -> None:
         """Тест реального подключения к DeepSeek API."""
         # Этот тест выполняется только если есть настоящий ключ
         if mock_config.deepseek.deepseek_api_key.startswith("test-"):

@@ -1,3 +1,5 @@
+import contextlib
+
 from pydantic import Field, ValidationInfo, field_validator
 from pydantic_settings import BaseSettings
 
@@ -13,7 +15,6 @@ class TestConfig(BaseSettings):
     @classmethod
     def build_computed_field(cls, v: str | None, info: ValidationInfo) -> str:
         """Build computed field from other fields."""
-        print(f"Validator called with v={v}, info.data={info.data}")
 
         if v is not None:
             return v
@@ -27,36 +28,19 @@ class TestConfig(BaseSettings):
 
 
 # Test 1: With constructor parameters
-print("=== Test 1: Constructor parameters ===")
-try:
+with contextlib.suppress(Exception):
     config1 = TestConfig(field1="test", field2="test2")
-    print(f"field1: {config1.field1}")
-    print(f"field2: {config1.field2}")
-    print(f"computed_field: {config1.computed_field}")
-except Exception as e:
-    print(f"Error: {e}")
 
 # Test 2: With environment variables
-print("\n=== Test 2: Environment variables ===")
+import contextlib
 import os
 
 os.environ["FIELD1"] = "env_test"
 os.environ["FIELD2"] = "env_test2"
 
-try:
+with contextlib.suppress(Exception):
     config2 = TestConfig()
-    print(f"field1: {config2.field1}")
-    print(f"field2: {config2.field2}")
-    print(f"computed_field: {config2.computed_field}")
-except Exception as e:
-    print(f"Error: {e}")
 
 # Test 3: Mixed (constructor overrides env)
-print("\n=== Test 3: Mixed (constructor overrides env) ===")
-try:
+with contextlib.suppress(Exception):
     config3 = TestConfig(field1="constructor_override")
-    print(f"field1: {config3.field1}")
-    print(f"field2: {config3.field2}")
-    print(f"computed_field: {config3.computed_field}")
-except Exception as e:
-    print(f"Error: {e}")

@@ -1,24 +1,25 @@
 """
 @file: test_openrouter_provider.py
-@description: Тесты для OpenRouter AI провайдера
+@description: Тесты провайдера OpenRouter API
 @dependencies: pytest, pytest-asyncio, unittest.mock, httpx
-@created: 2025-09-20
+@created: 2025-09-12
 """
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import httpx
 import pytest
 
-from app.services.ai_providers.base import (
+from app.config import AppConfig
+from app.services.ai_providers.openrouter import (
     AIResponse,
     APIAuthenticationError,
     APIConnectionError,
     APIQuotaExceededError,
     APIRateLimitError,
     ConversationMessage,
+    OpenRouterProvider,
 )
-from app.services.ai_providers.openrouter import OpenRouterProvider
 
 
 @pytest.mark.ai_providers
@@ -26,7 +27,7 @@ from app.services.ai_providers.openrouter import OpenRouterProvider
 class TestOpenRouterProviderInitialization:
     """Тесты инициализации OpenRouter провайдера."""
 
-    def test_provider_initialization(self, mock_config):
+    def test_provider_initialization(self, mock_config: AppConfig) -> None:
         """Тест инициализации провайдера."""
         provider = OpenRouterProvider()
 
@@ -34,7 +35,7 @@ class TestOpenRouterProviderInitialization:
         assert provider.provider_name == "openrouter"
         assert hasattr(provider, "_client")
 
-    def test_provider_configuration_check(self, mock_config):
+    def test_provider_configuration_check(self, mock_config: AppConfig) -> None:
         """Тест проверки конфигурации провайдера."""
         provider = OpenRouterProvider()
 
@@ -53,12 +54,13 @@ class TestOpenRouterProviderInitialization:
             provider_unconfigured = OpenRouterProvider()
             assert provider_unconfigured.is_configured() is False
 
-    def test_provider_availability_check(self, mock_config):
+    def test_provider_availability_check(self, mock_config: AppConfig) -> None:
         """Тест проверки доступности провайдера."""
         provider = OpenRouterProvider()
 
         # По умолчанию провайдер считается доступным если настроен
-        # Note: is_available() is async, но в простых тестах можно проверить is_configured()
+        # Note: is_available() is async, но в простых тестах можно
+        # проверить is_configured()
         assert provider.is_configured() is True
 
 
@@ -68,12 +70,12 @@ class TestOpenRouterAPIRequests:
     """Тесты HTTP запросов к OpenRouter API."""
 
     @pytest.fixture
-    def provider(self, mock_config):
+    def provider(self, mock_config: AppConfig) -> OpenRouterProvider:
         """Провайдер для тестов."""
         return OpenRouterProvider()
 
     @pytest.fixture
-    def sample_messages(self):
+    def sample_messages(self) -> list[ConversationMessage]:
         """Пример сообщений для тестов."""
         return [
             ConversationMessage(role="system", content="Ты полезный AI помощник."),
@@ -81,7 +83,9 @@ class TestOpenRouterAPIRequests:
         ]
 
     @pytest.mark.asyncio
-    async def test_successful_api_request(self, provider, sample_messages):
+    async def test_successful_api_request(
+        self, provider: OpenRouterProvider, sample_messages: list[ConversationMessage]
+    ) -> None:
         """Тест успешного API запроса."""
         # Мокаем HTTP ответ
         mock_response = MagicMock()
@@ -119,7 +123,9 @@ class TestOpenRouterAPIRequests:
             assert response.cached is False
 
     @pytest.mark.asyncio
-    async def test_api_request_with_parameters(self, provider, sample_messages):
+    async def test_api_request_with_parameters(
+        self, provider: OpenRouterProvider, sample_messages: list[ConversationMessage]
+    ) -> None:
         """Тест API запроса с дополнительными параметрами."""
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -144,7 +150,9 @@ class TestOpenRouterAPIRequests:
             assert request_data["max_tokens"] == 500
 
     @pytest.mark.asyncio
-    async def test_http_headers(self, provider, sample_messages):
+    async def test_http_headers(
+        self, provider: OpenRouterProvider, sample_messages: list[ConversationMessage]
+    ) -> None:
         """Тест правильных HTTP заголовков."""
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -154,26 +162,28 @@ class TestOpenRouterAPIRequests:
             "model": "test-model",
         }
 
-        with patch("httpx.AsyncClient.post", return_value=mock_response):
-            with patch(
+        with (
+            patch("httpx.AsyncClient.post", return_value=mock_response),
+            patch(
                 "httpx.AsyncClient.__init__",
                 return_value=None,
-            ) as mock_client_init:
-                # Принудительно очищаем клиент
-                provider._client = None
+            ) as mock_client_init,
+        ):
+            # Принудительно очищаем клиент
+            provider._client = None
 
-                await provider.generate_response(sample_messages)
+            await provider.generate_response(sample_messages)
 
-                # Проверяем заголовки при создании клиента
-                mock_client_init.assert_called_once()
-                call_kwargs = mock_client_init.call_args[1]
-                headers = call_kwargs.get("headers", {})
+            # Проверяем заголовки при создании клиента
+            mock_client_init.assert_called_once()
+            call_kwargs = mock_client_init.call_args[1]
+            headers = call_kwargs.get("headers", {})
 
-                assert "Authorization" in headers
-                assert headers["Authorization"].startswith("Bearer ")
-                assert headers["Content-Type"] == "application/json"
-                assert "HTTP-Referer" in headers
-                assert "X-Title" in headers
+            assert "Authorization" in headers
+            assert headers["Authorization"].startswith("Bearer ")
+            assert headers["Content-Type"] == "application/json"
+            assert "HTTP-Referer" in headers
+            assert "X-Title" in headers
 
 
 @pytest.mark.ai_providers
@@ -182,17 +192,19 @@ class TestOpenRouterErrorHandling:
     """Тесты обработки ошибок OpenRouter API."""
 
     @pytest.fixture
-    def provider(self, mock_config):
+    def provider(self, mock_config: AppConfig) -> OpenRouterProvider:
         """Провайдер для тестов ошибок."""
         return OpenRouterProvider()
 
     @pytest.fixture
-    def sample_messages(self):
+    def sample_messages(self) -> list[ConversationMessage]:
         """Сообщения для тестов ошибок."""
         return [ConversationMessage(role="user", content="Тест ошибок")]
 
     @pytest.mark.asyncio
-    async def test_authentication_error(self, provider, sample_messages):
+    async def test_authentication_error(
+        self, provider: OpenRouterProvider, sample_messages: list[ConversationMessage]
+    ) -> None:
         """Тест ошибки аутентификации (401)."""
         mock_response = MagicMock()
         mock_response.status_code = 401
@@ -211,7 +223,9 @@ class TestOpenRouterErrorHandling:
                 await provider.generate_response(sample_messages)
 
     @pytest.mark.asyncio
-    async def test_quota_exceeded_error(self, provider, sample_messages):
+    async def test_quota_exceeded_error(
+        self, provider: OpenRouterProvider, sample_messages: list[ConversationMessage]
+    ) -> None:
         """Тест ошибки превышения квоты (402)."""
         mock_response = MagicMock()
         mock_response.status_code = 402
@@ -230,7 +244,9 @@ class TestOpenRouterErrorHandling:
                 await provider.generate_response(sample_messages)
 
     @pytest.mark.asyncio
-    async def test_rate_limit_error(self, provider, sample_messages):
+    async def test_rate_limit_error(
+        self, provider: OpenRouterProvider, sample_messages: list[ConversationMessage]
+    ) -> None:
         """Тест ошибки превышения лимита (429)."""
         mock_response = MagicMock()
         mock_response.status_code = 429
@@ -249,7 +265,9 @@ class TestOpenRouterErrorHandling:
                 await provider.generate_response(sample_messages)
 
     @pytest.mark.asyncio
-    async def test_server_error(self, provider, sample_messages):
+    async def test_server_error(
+        self, provider: OpenRouterProvider, sample_messages: list[ConversationMessage]
+    ) -> None:
         """Тест серверной ошибки (5xx)."""
         mock_response = MagicMock()
         mock_response.status_code = 500
@@ -263,33 +281,43 @@ class TestOpenRouterErrorHandling:
                 await provider.generate_response(sample_messages)
 
     @pytest.mark.asyncio
-    async def test_connection_error(self, provider, sample_messages):
+    async def test_connection_error(
+        self, provider: OpenRouterProvider, sample_messages: list[ConversationMessage]
+    ) -> None:
         """Тест ошибки подключения."""
-        with patch(
-            "httpx.AsyncClient.post",
-            side_effect=httpx.ConnectError("Connection failed"),
-        ):
-            with pytest.raises(
+        with (
+            patch(
+                "httpx.AsyncClient.post",
+                side_effect=httpx.ConnectError("Connection failed"),
+            ),
+            pytest.raises(
                 APIConnectionError,
                 match="Не удалось подключиться к OpenRouter API",
-            ):
-                await provider.generate_response(sample_messages)
+            ),
+        ):
+            await provider.generate_response(sample_messages)
 
     @pytest.mark.asyncio
-    async def test_timeout_error(self, provider, sample_messages):
+    async def test_timeout_error(
+        self, provider: OpenRouterProvider, sample_messages: list[ConversationMessage]
+    ) -> None:
         """Тест ошибки таймаута."""
-        with patch(
-            "httpx.AsyncClient.post",
-            side_effect=httpx.TimeoutException("Request timed out"),
-        ):
-            with pytest.raises(
+        with (
+            patch(
+                "httpx.AsyncClient.post",
+                side_effect=httpx.TimeoutException("Request timed out"),
+            ),
+            pytest.raises(
                 APIConnectionError,
                 match="Timeout при обращении к OpenRouter API",
-            ):
-                await provider.generate_response(sample_messages)
+            ),
+        ):
+            await provider.generate_response(sample_messages)
 
     @pytest.mark.asyncio
-    async def test_invalid_json_response(self, provider, sample_messages):
+    async def test_invalid_json_response(
+        self, provider: OpenRouterProvider, sample_messages: list[ConversationMessage]
+    ) -> None:
         """Тест некорректного JSON ответа."""
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -307,12 +335,14 @@ class TestOpenRouterResponseParsing:
     """Тесты парсинга ответов OpenRouter API."""
 
     @pytest.fixture
-    def provider(self, mock_config):
+    def provider(self, mock_config: AppConfig) -> OpenRouterProvider:
         """Провайдер для тестов парсинга."""
         return OpenRouterProvider()
 
     @pytest.mark.asyncio
-    async def test_minimal_response_parsing(self, provider):
+    async def test_basic_response_parsing(
+        self, provider: OpenRouterProvider, sample_messages: list[ConversationMessage]
+    ) -> None:
         """Тест парсинга минимального ответа."""
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -320,10 +350,8 @@ class TestOpenRouterResponseParsing:
             "choices": [{"message": {"content": "Минимальный ответ"}}],
         }
 
-        messages = [ConversationMessage(role="user", content="Тест")]
-
         with patch("httpx.AsyncClient.post", return_value=mock_response):
-            response = await provider.generate_response(messages)
+            response = await provider.generate_response(sample_messages)
 
             assert response.content == "Минимальный ответ"
             assert (
@@ -332,7 +360,7 @@ class TestOpenRouterResponseParsing:
             assert response.model == "anthropic/claude-3-haiku"  # From config
 
     @pytest.mark.asyncio
-    async def test_empty_content_handling(self, provider):
+    async def test_empty_content_handling(self, provider: OpenRouterProvider) -> None:
         """Тест обработки пустого контента."""
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -350,7 +378,7 @@ class TestOpenRouterResponseParsing:
                 await provider.generate_response(messages)
 
     @pytest.mark.asyncio
-    async def test_missing_choices_handling(self, provider):
+    async def test_missing_choices_handling(self, provider: OpenRouterProvider) -> None:
         """Тест обработки отсутствующих choices."""
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -414,7 +442,7 @@ class TestOpenRouterProviderLifecycle:
     """Тесты жизненного цикла OpenRouter провайдера."""
 
     @pytest.mark.asyncio
-    async def test_provider_close(self, mock_config):
+    async def test_provider_close(self, mock_config: AppConfig) -> None:
         """Тест закрытия провайдера."""
         provider = OpenRouterProvider()
 
@@ -445,7 +473,7 @@ class TestOpenRouterRealAPI:
     """Тесты с реальным OpenRouter API (медленные)."""
 
     @pytest.mark.asyncio
-    async def test_real_api_call(self, mock_config):
+    async def test_real_api_call(self, mock_config: AppConfig) -> None:
         """Тест реального вызова API (только если есть настоящий ключ)."""
         # Этот тест выполняется только если установлен реальный API ключ
         if mock_config.openrouter.openrouter_api_key.startswith("test-"):

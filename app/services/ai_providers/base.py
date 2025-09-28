@@ -37,7 +37,9 @@ class ConversationMessage:
 class AIProviderError(Exception):
     """Базовый класс для ошибок AI провайдеров."""
 
-    def __init__(self, message: str, provider: str, error_code: str | None = None):
+    def __init__(
+        self, message: str, provider: str, error_code: str | None = None
+    ) -> None:
         self.provider = provider
         self.error_code = error_code
         super().__init__(message)
@@ -62,7 +64,7 @@ class APIQuotaExceededError(AIProviderError):
 class BaseAIProvider(ABC):
     """Базовый абстрактный класс для всех AI провайдеров."""
 
-    def __init__(self, name: str):
+    def __init__(self, name: str) -> None:
         self.name = name
         self._client = None
         self._is_available = None
@@ -79,7 +81,7 @@ class BaseAIProvider(ABC):
         messages: list[ConversationMessage],
         temperature: float | None = None,
         max_tokens: int | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> AIResponse:
         """
         Генерация ответа от AI провайдера.

@@ -27,7 +27,7 @@ from .base import (
 class OpenRouterProvider(BaseAIProvider):
     """Провайдер AI для OpenRouter API."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__("openrouter")
         self.config = get_config().openrouter
         self._client: httpx.AsyncClient | None = None
@@ -114,16 +114,20 @@ class OpenRouterProvider(BaseAIProvider):
                     return response.json()
 
                 if response.status_code == 401:
+                    msg = "Неверный API ключ OpenRouter"
                     raise APIAuthenticationError(
-                        "Неверный API ключ OpenRouter",
+                        msg,
                         self.provider_name,
                         "401",
                     )
 
                 if response.status_code == 402:
-                    raise APIQuotaExceededError(
+                    msg = (
                         "Недостаточно средств на счете OpenRouter API. "
-                        "Пополните баланс в личном кабинете OpenRouter.",
+                        "Пополните баланс в личном кабинете OpenRouter."
+                    )
+                    raise APIQuotaExceededError(
+                        msg,
                         self.provider_name,
                         "402",
                     )
@@ -132,12 +136,14 @@ class OpenRouterProvider(BaseAIProvider):
                     if attempt < self._max_retries - 1:
                         delay = self._retry_delay * (2**attempt)
                         logger.warning(
-                            f"⏳ Rate limit достигнут в OpenRouter. Ожидание {delay}с...",
+                            f"⏳ Rate limit достигнут в OpenRouter. "
+                            f"Ожидание {delay}с...",
                         )
                         await asyncio.sleep(delay)
                         continue
+                    msg = "Превышен лимит запросов к OpenRouter API"
                     raise APIRateLimitError(
-                        "Превышен лимит запросов к OpenRouter API",
+                        msg,
                         self.provider_name,
                         "429",
                     )
@@ -146,12 +152,14 @@ class OpenRouterProvider(BaseAIProvider):
                     if attempt < self._max_retries - 1:
                         delay = self._retry_delay * (attempt + 1)
                         logger.warning(
-                            f"🔄 Ошибка сервера OpenRouter {response.status_code}. Повтор через {delay}с...",
+                            f"🔄 Ошибка сервера OpenRouter {response.status_code}. "
+                            f"Повтор через {delay}с...",
                         )
                         await asyncio.sleep(delay)
                         continue
+                    msg = f"Ошибка сервера OpenRouter: {response.status_code}"
                     raise APIConnectionError(
-                        f"Ошибка сервера OpenRouter: {response.status_code}",
+                        msg,
                         self.provider_name,
                         str(response.status_code),
                     )
@@ -164,8 +172,12 @@ class OpenRouterProvider(BaseAIProvider):
                 except:
                     error_text = response.text
 
+                msg = (
+                    f"Неожиданный статус ответа OpenRouter: {response.status_code}. "
+                    f"{error_text}"
+                )
                 raise APIConnectionError(
-                    f"Неожиданный статус ответа OpenRouter: {response.status_code}. {error_text}",
+                    msg,
                     self.provider_name,
                     str(response.status_code),
                 )
@@ -178,8 +190,9 @@ class OpenRouterProvider(BaseAIProvider):
                     )
                     await asyncio.sleep(delay)
                     continue
+                msg = "Timeout при обращении к OpenRouter API"
                 raise APIConnectionError(
-                    "Timeout при обращении к OpenRouter API",
+                    msg,
                     self.provider_name,
                     "timeout",
                 )
@@ -192,14 +205,16 @@ class OpenRouterProvider(BaseAIProvider):
                     )
                     await asyncio.sleep(delay)
                     continue
+                msg = "Не удалось подключиться к OpenRouter API"
                 raise APIConnectionError(
-                    "Не удалось подключиться к OpenRouter API",
+                    msg,
                     self.provider_name,
                     "connection_error",
                 )
 
+        msg = "Исчерпаны все попытки подключения к OpenRouter API"
         raise APIConnectionError(
-            "Исчерпаны все попытки подключения к OpenRouter API",
+            msg,
             self.provider_name,
             "max_retries_exceeded",
         )
@@ -209,15 +224,17 @@ class OpenRouterProvider(BaseAIProvider):
         messages: list[ConversationMessage],
         temperature: float | None = None,
         max_tokens: int | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> AIResponse:
         """Генерация ответа от OpenRouter AI."""
         if not messages:
-            raise ValueError("Список сообщений не может быть пустым")
+            msg = "Список сообщений не может быть пустым"
+            raise ValueError(msg)
 
         if not self.is_configured():
+            msg = "OpenRouter API не настроен. Проверьте OPENROUTER_API_KEY в .env"
             raise APIAuthenticationError(
-                "OpenRouter API не настроен. Проверьте OPENROUTER_API_KEY в .env",
+                msg,
                 self.provider_name,
                 "not_configured",
             )
@@ -228,10 +245,12 @@ class OpenRouterProvider(BaseAIProvider):
 
         # Валидация параметров
         if not 0.0 <= temperature <= 2.0:
-            raise ValueError("Temperature должна быть от 0.0 до 2.0")
+            msg = "Temperature должна быть от 0.0 до 2.0"
+            raise ValueError(msg)
 
         if not 1 <= max_tokens <= 8000:
-            raise ValueError("max_tokens должно быть от 1 до 8000")
+            msg = "max_tokens должно быть от 1 до 8000"
+            raise ValueError(msg)
 
         try:
             # Подготавливаем сообщения
@@ -248,8 +267,9 @@ class OpenRouterProvider(BaseAIProvider):
 
             # Извлекаем ответ
             if "choices" not in data or not data["choices"]:
+                msg = "Некорректный формат ответа от OpenRouter API"
                 raise APIConnectionError(
-                    "Некорректный формат ответа от OpenRouter API",
+                    msg,
                     self.provider_name,
                     "invalid_response",
                 )
@@ -258,8 +278,9 @@ class OpenRouterProvider(BaseAIProvider):
             content = choice.get("message", {}).get("content", "")
 
             if not content:
+                msg = "Пустой ответ от OpenRouter API"
                 raise APIConnectionError(
-                    "Пустой ответ от OpenRouter API",
+                    msg,
                     self.provider_name,
                     "empty_response",
                 )
@@ -297,18 +318,17 @@ class OpenRouterProvider(BaseAIProvider):
         except Exception as e:
             if isinstance(
                 e,
-                (
-                    APIConnectionError,
-                    APIRateLimitError,
-                    APIAuthenticationError,
-                    APIQuotaExceededError,
-                ),
+                APIConnectionError
+                | APIRateLimitError
+                | APIAuthenticationError
+                | APIQuotaExceededError,
             ):
                 raise
 
             logger.exception("💥 Неожиданная ошибка при генерации ответа OpenRouter")
+            msg = f"Неожиданная ошибка OpenRouter: {e!s}"
             raise APIConnectionError(
-                f"Неожиданная ошибка OpenRouter: {e!s}",
+                msg,
                 self.provider_name,
                 "unexpected_error",
             )

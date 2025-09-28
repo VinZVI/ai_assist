@@ -1,11 +1,12 @@
 """
-@file: models/user.py
-@description: Модель пользователя Telegram бота
-@dependencies: sqlalchemy, pydantic
-@created: 2025-09-12
+@file: user.py
+@description: Модель пользователя для базы данных
+@dependencies: sqlalchemy, datetime
+@created: 2025-09-07
 """
 
-from datetime import date, datetime
+from datetime import UTC, date, datetime, timezone
+from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import (
@@ -22,7 +23,9 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
-from app.models.conversation import Conversation
+
+if TYPE_CHECKING:
+    from app.models.conversation import Conversation
 
 
 class User(Base):
@@ -146,8 +149,9 @@ class User(Base):
     )
 
     # Отношения
-    conversations: Mapped[list[Conversation]] = relationship(
-        Conversation,
+    # Use string annotation for forward reference to avoid circular import
+    conversations: Mapped[list["Conversation"]] = relationship(
+        "Conversation",
         back_populates="user",
         cascade="all, delete-orphan",
         lazy="select",
@@ -170,7 +174,10 @@ class User(Base):
     )
 
     def __repr__(self) -> str:
-        return f"<User(id={self.id}, telegram_id={self.telegram_id}, username='{self.username}')>"
+        return (
+            f"<User(id={self.id}, telegram_id={self.telegram_id}, "
+            f"username='{self.username}')>"
+        )
 
     def get_display_name(self) -> str:
         """Получение отображаемого имени пользователя."""
@@ -183,14 +190,11 @@ class User(Base):
         return f"User {self.telegram_id}"
 
     def is_premium_active(self) -> bool:
-        """Проверка активности премиум подписки."""
-        if not self.is_premium:
+        """Проверка активности премиум статуса."""
+        if not self.premium_expires_at:
             return False
 
-        if self.premium_expires_at is None:
-            return True  # Бессрочная подписка
-
-        return datetime.now() <= self.premium_expires_at
+        return datetime.now(UTC) <= self.premium_expires_at
 
     def can_send_message(self, free_limit: int = 10) -> bool:
         """Проверка возможности отправки сообщения."""
@@ -209,10 +213,9 @@ class User(Base):
 
     def reset_daily_count_if_needed(self) -> bool:
         """Сброс дневного счетчика если прошел день."""
-        today = date.today()
+        # Сброс счетчика если прошел день
+        today = datetime.now(UTC).date()
         if self.last_message_date < today:
-            self.daily_message_count = 0
-            self.last_message_date = today
             return True
         return False
 
@@ -297,3 +300,5 @@ __all__ = [
     "UserStats",
     "UserUpdate",
 ]
+
+# Add this at the end of the file to resolve the forward reference

@@ -5,7 +5,7 @@
 @created: 2025-09-12
 """
 
-from datetime import datetime
+from datetime import UTC, datetime, timezone
 
 from aiogram import Router
 from aiogram.filters import CommandStart
@@ -14,7 +14,7 @@ from aiogram.types import User as TgUser
 from loguru import logger
 from sqlalchemy.exc import IntegrityError
 
-from app.config import get_config
+from app.config import AppConfig, get_config
 from app.database import get_session
 from app.keyboards import create_main_menu_keyboard
 from app.models import User, UserCreate
@@ -63,8 +63,8 @@ async def get_or_create_user(telegram_user: TgUser) -> User | None:
                     user_updated = True
 
                 # Обновляем время последней активности
-                existing_user.last_activity_at = datetime.now()
-                existing_user.updated_at = datetime.now()
+                existing_user.last_activity_at = datetime.now(UTC)
+                existing_user.updated_at = datetime.now(UTC)
 
                 # Сбрасываем дневной счетчик если прошел день
                 existing_user.reset_daily_count_if_needed()
@@ -92,7 +92,7 @@ async def get_or_create_user(telegram_user: TgUser) -> User | None:
                 first_name=new_user_data.first_name,
                 last_name=new_user_data.last_name,
                 language_code=new_user_data.language_code,
-                last_activity_at=datetime.now(),
+                last_activity_at=datetime.now(UTC),
             )
 
             session.add(new_user)
@@ -100,26 +100,29 @@ async def get_or_create_user(telegram_user: TgUser) -> User | None:
             await session.refresh(new_user)
 
             logger.info(
-                f"🆕 Создан новый пользователь: {telegram_user.id} (@{telegram_user.username})",
+                f"🆕 Создан новый пользователь: {telegram_user.id} "
+                f"(@{telegram_user.username})",
             )
             return new_user
 
         except IntegrityError as e:
             await session.rollback()
             logger.error(
-                f"❌ Ошибка целостности при создании пользователя {telegram_user.id}: {e}",
+                f"❌ Ошибка целостности при создании пользователя "
+                f"{telegram_user.id}: {e}",
             )
             return None
 
         except Exception as e:
             await session.rollback()
             logger.error(
-                f"💥 Неожиданная ошибка при работе с пользователем {telegram_user.id}: {e}",
+                f"💥 Неожиданная ошибка при работе с пользователем "
+                f"{telegram_user.id}: {e}",
             )
             return None
 
 
-def format_welcome_message(user: User, config) -> str:
+def format_welcome_message(user: User, config: AppConfig) -> str:
     """
     Формирование приветственного сообщения для пользователя.
 
@@ -136,7 +139,7 @@ def format_welcome_message(user: User, config) -> str:
     welcome_text = f"""
 🤖 <b>Добро пожаловать в AI-Компаньон, {display_name}!</b>
 
-Я ваш персональный помощник для эмоциональной поддержки и дружеского общения. 
+Я ваш персональный помощник для эмоциональной поддержки и дружеского общения.
 Готов выслушать, поддержать и помочь советом в любое время! 💙
 
 <b>🎯 Что я умею:</b>
@@ -147,12 +150,16 @@ def format_welcome_message(user: User, config) -> str:
 
 <b>📊 Ваши лимиты:</b>
 • Бесплатно: <b>{config.user_limits.free_messages_limit} сообщений в день</b>
-• Сегодня использовано: <b>{user.daily_message_count}/{config.user_limits.free_messages_limit}</b>
+• Сегодня использовано: <b>{user.daily_message_count}/"
+                f"{config.user_limits.free_messages_limit}</b>
 """
 
     # Дополнительная информация для премиум пользователей
     if user.is_premium_active():
-        welcome_text += "\n⭐ <b>У вас активна премиум подписка!</b>\n• Безлимитное общение без ограничений"
+        welcome_text += (
+            "\n⭐ <b>У вас активна премиум подписка!</b>\n• Безлимитное "
+            "общение без ограничений"
+        )
     else:
         welcome_text += f"""
 💎 <b>Хотите больше?</b>
@@ -161,13 +168,8 @@ def format_welcome_message(user: User, config) -> str:
 • Приоритетная поддержка
 """
 
-    welcome_text += """
-
-<b>🚀 Как начать:</b>
-Просто напишите мне любое сообщение, и мы начнем общение!
-
-<i>Команды: /help - справка, /profile - ваш профиль, /limits - лимиты, /premium - премиум</i>
-"""
+    welcome_text += """\n\n<i>Команды: /help - справка, /profile - ваш профиль, """
+    welcome_text += """/limits - лимиты, /premium - премиум</i>"""
 
     return welcome_text
 
@@ -228,12 +230,14 @@ async def handle_start_command(message: Message) -> None:
             )
 
         logger.info(
-            f"✅ Успешно обработана команда /start для пользователя {message.from_user.id}",
+            f"✅ Успешно обработана команда /start для пользователя "
+            f"{message.from_user.id}",
         )
 
     except Exception as e:
         logger.error(
-            f"💥 Ошибка в обработчике /start для пользователя {message.from_user.id}: {e}",
+            f"💥 Ошибка в обработчике /start для пользователя "
+            f"{message.from_user.id}: {e}",
         )
 
         # Отправляем пользователю сообщение об ошибке

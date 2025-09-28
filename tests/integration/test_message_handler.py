@@ -11,6 +11,7 @@
 - Обработку ошибок
 """
 
+from collections.abc import AsyncGenerator
 from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -18,6 +19,7 @@ import pytest
 from aiogram import Bot
 from aiogram.types import Chat, Message
 from aiogram.types import User as TelegramUser
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.handlers.message import (
     create_system_message,
@@ -35,17 +37,36 @@ class TestGetOrUpdateUser:
     """Тесты функции get_or_update_user."""
 
     @pytest.fixture
-    def mock_message(self):
+    def mock_message(self) -> MagicMock:
         """Создает мок объект сообщения."""
         message = MagicMock(spec=Message)
         message.from_user = MagicMock(spec=TelegramUser)
-        message.from_user.id = 12345
-        message.from_user.username = "test_user"
+        message.from_user.id = 123456
+        message.from_user.username = "testuser"
         message.from_user.first_name = "Test"
+        message.from_user.last_name = "User"
+        message.chat = MagicMock(spec=Chat)
+        message.chat.id = 789012
+        message.text = "Hello, AI!"
+        message.answer = AsyncMock()
         return message
 
+    @pytest.fixture
+    def mock_user(self) -> User:
+        """Создает мок пользователя."""
+        return User(
+            telegram_id=123456,
+            username="testuser",
+            first_name="Test",
+            last_name="User",
+            daily_message_count=5,
+            is_premium=False,
+        )
+
     @pytest.mark.asyncio
-    async def test_get_existing_user(self, mock_message, mock_session):
+    async def test_get_existing_user(
+        self, mock_message: MagicMock, mock_session: AsyncSession
+    ) -> None:
         """Тест получения существующего пользователя."""
         # Arrange
         existing_user = User(
@@ -71,7 +92,9 @@ class TestGetOrUpdateUser:
             mock_session.commit.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_user_not_found(self, mock_message, mock_session):
+    async def test_user_not_found(
+        self, mock_message: Message, mock_session: AsyncSession
+    ) -> None:
         """Тест случая когда пользователь не найден."""
         # Arrange
         mock_session.get.return_value = None
@@ -86,7 +109,7 @@ class TestGetOrUpdateUser:
             assert result is None
 
     @pytest.mark.asyncio
-    async def test_message_without_user(self, mock_session):
+    async def test_message_without_user(self, mock_session: AsyncSession) -> None:
         """Тест обработки сообщения без данных пользователя."""
         # Arrange
         message = MagicMock(spec=Message)
@@ -99,7 +122,9 @@ class TestGetOrUpdateUser:
         assert result is None
 
     @pytest.mark.asyncio
-    async def test_database_error(self, mock_message, mock_session):
+    async def test_database_error(
+        self, mock_message: Message, mock_session: AsyncSession
+    ) -> None:
         """Тест обработки ошибки базы данных."""
         # Arrange
         mock_session.get.side_effect = Exception("Database error")
@@ -119,7 +144,7 @@ class TestGetRecentConversationHistory:
     """Тесты функции get_recent_conversation_history."""
 
     @pytest.mark.asyncio
-    async def test_get_conversation_history(self, mock_session):
+    async def test_get_conversation_history(self, mock_session: AsyncSession) -> None:
         """Тест получения истории диалогов."""
         # Arrange
         user_id = 12345
@@ -154,7 +179,7 @@ class TestGetRecentConversationHistory:
         assert result[1].content == "Hi there!"
 
     @pytest.mark.asyncio
-    async def test_empty_conversation_history(self, mock_session):
+    async def test_empty_conversation_history(self, mock_session: AsyncSession) -> None:
         """Тест получения пустой истории диалогов."""
         # Arrange
         mock_result = MagicMock()
@@ -168,7 +193,9 @@ class TestGetRecentConversationHistory:
         assert result == []
 
     @pytest.mark.asyncio
-    async def test_conversation_history_database_error(self, mock_session):
+    async def test_conversation_history_database_error(
+        self, mock_session: AsyncSession
+    ) -> None:
         """Тест обработки ошибки при получении истории."""
         # Arrange
         mock_session.execute.side_effect = Exception("Database error")
@@ -184,7 +211,7 @@ class TestSaveConversation:
     """Тесты функции save_conversation."""
 
     @pytest.mark.asyncio
-    async def test_save_conversation_success(self, mock_session):
+    async def test_save_conversation_success(self, mock_session: AsyncSession) -> None:
         """Тест успешного сохранения диалога."""
         # Arrange
         user_id = 12345
@@ -211,7 +238,9 @@ class TestSaveConversation:
         mock_session.commit.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_save_conversation_database_error(self, mock_session):
+    async def test_save_conversation_database_error(
+        self, mock_session: AsyncSession
+    ) -> None:
         """Тест обработки ошибки при сохранении диалога."""
         # Arrange
         mock_session.add.side_effect = Exception("Database error")
@@ -235,7 +264,7 @@ class TestSaveConversation:
 class TestCreateSystemMessage:
     """Тесты функции create_system_message."""
 
-    def test_create_system_message(self):
+    def test_create_system_message(self) -> None:
         """Тест создания системного сообщения."""
         # Act
         message = create_system_message()
@@ -251,18 +280,19 @@ class TestGenerateAiResponse:
     """Тесты функции generate_ai_response."""
 
     @pytest.fixture
-    def mock_user(self):
+    def mock_user(self) -> User:
         """Создает мок пользователя."""
-        user = User(
+        return User(
             telegram_id=12345,
             username="test_user",
             first_name="Test",
             daily_message_count=1,
         )
-        return user
 
     @pytest.mark.asyncio
-    async def test_generate_ai_response_success(self, mock_user, mock_session):
+    async def test_generate_ai_response_success(
+        self, mock_user: User, mock_session: AsyncSession
+    ) -> None:
         """Тест успешной генерации AI ответа."""
         # Arrange
         mock_ai_service = MagicMock()
@@ -298,7 +328,9 @@ class TestGenerateAiResponse:
                     assert time > 0
 
     @pytest.mark.asyncio
-    async def test_generate_ai_response_api_error(self, mock_user, mock_session):
+    async def test_generate_ai_response_api_error(
+        self, mock_user: User, mock_session: AsyncSession
+    ) -> None:
         """Тест обработки ошибки AI API."""
         # Arrange
         mock_ai_service = MagicMock()
@@ -328,7 +360,9 @@ class TestGenerateAiResponse:
                     assert time == 0.0
 
     @pytest.mark.asyncio
-    async def test_generate_ai_response_unexpected_error(self, mock_user, mock_session):
+    async def test_generate_ai_response_unexpected_error(
+        self, mock_user: User, mock_session: AsyncSession
+    ) -> None:
         """Тест обработки неожиданной ошибки."""
         # Arrange
         with patch("app.handlers.message.get_ai_service") as mock_get_ai:
@@ -354,7 +388,7 @@ class TestHandleTextMessage:
     """Тесты главной функции handle_text_message."""
 
     @pytest.fixture
-    def mock_message(self):
+    def mock_message(self) -> MagicMock:
         """Создает полный мок сообщения."""
         message = MagicMock(spec=Message)
         message.from_user = MagicMock(spec=TelegramUser)
@@ -364,10 +398,11 @@ class TestHandleTextMessage:
         message.chat.id = 67890
         message.bot = MagicMock(spec=Bot)
         message.answer = AsyncMock()
+        message.reply = AsyncMock()
         return message
 
     @pytest.fixture
-    def mock_user(self):
+    def mock_user(self) -> MagicMock:
         """Создает мок пользователя с активными лимитами."""
         user = MagicMock(spec=User)
         user.user_id = 12345
@@ -380,10 +415,10 @@ class TestHandleTextMessage:
     @pytest.mark.asyncio
     async def test_handle_text_message_success(
         self,
-        mock_message,
-        mock_user,
-        mock_session,
-    ):
+        mock_message: Message,
+        mock_user: User,
+        mock_session: AsyncSession,
+    ) -> None:
         """Тест успешной обработки текстового сообщения."""
         # Arrange
         with patch("app.handlers.message.get_or_update_user") as mock_get_user:
@@ -410,7 +445,7 @@ class TestHandleTextMessage:
                         mock_user.increment_message_count.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_handle_text_message_no_user_data(self):
+    async def test_handle_text_message_no_user_data(self) -> None:
         """Тест обработки сообщения без данных пользователя."""
         # Arrange
         message = MagicMock(spec=Message)
@@ -423,7 +458,7 @@ class TestHandleTextMessage:
         # Assert - функция должна завершиться без ошибок
 
     @pytest.mark.asyncio
-    async def test_handle_text_message_no_text(self, mock_message):
+    async def test_handle_text_message_no_text(self, mock_message: Message) -> None:
         """Тест обработки сообщения без текста."""
         # Arrange
         mock_message.text = None
@@ -434,7 +469,7 @@ class TestHandleTextMessage:
         # Assert - функция должна завершиться без ошибок
 
     @pytest.mark.asyncio
-    async def test_handle_text_message_too_short(self, mock_message):
+    async def test_handle_text_message_too_short(self, mock_message: Message) -> None:
         """Тест обработки слишком короткого сообщения."""
         # Arrange
         mock_message.text = "a"
@@ -449,7 +484,7 @@ class TestHandleTextMessage:
         )
 
     @pytest.mark.asyncio
-    async def test_handle_text_message_too_long(self, mock_message):
+    async def test_handle_text_message_too_long(self, mock_message: Message) -> None:
         """Тест обработки слишком длинного сообщения."""
         # Arrange
         mock_message.text = "a" * 2001  # Больше 2000 символов
@@ -462,7 +497,9 @@ class TestHandleTextMessage:
         assert "слишком длинное" in mock_message.answer.call_args[1]["text"]
 
     @pytest.mark.asyncio
-    async def test_handle_text_message_unregistered_user(self, mock_message):
+    async def test_handle_text_message_unregistered_user(
+        self, mock_message: Message
+    ) -> None:
         """Тест обработки сообщения от незарегистрированного пользователя."""
         # Arrange
         with patch("app.handlers.message.get_or_update_user") as mock_get_user:
@@ -476,7 +513,9 @@ class TestHandleTextMessage:
             assert "команды /start" in mock_message.answer.call_args[1]["text"]
 
     @pytest.mark.asyncio
-    async def test_handle_text_message_limit_exceeded(self, mock_message, mock_session):
+    async def test_handle_text_message_limit_exceeded(
+        self, mock_message: Message, mock_session: AsyncSession
+    ) -> None:
         """Тест обработки сообщения при превышении лимита."""
         # Arrange
         mock_user = MagicMock(spec=User)
@@ -503,7 +542,9 @@ class TestHandleTextMessage:
                 )
 
     @pytest.mark.asyncio
-    async def test_handle_text_message_critical_error(self, mock_message, mock_user):
+    async def test_handle_text_message_critical_error(
+        self, mock_message: Message, mock_user: User
+    ) -> None:
         """Тест обработки критической ошибки."""
         # Arrange
         with patch("app.handlers.message.get_or_update_user") as mock_get_user:
@@ -525,7 +566,9 @@ class TestMessageHandlerIntegration:
 
     @pytest.mark.asyncio
     @pytest.mark.integration
-    async def test_full_message_flow(self, mock_message, mock_user, mock_session):
+    async def test_full_message_flow(
+        self, mock_message: Message, mock_user: User, mock_session: AsyncSession
+    ) -> None:
         """Тест полного потока обработки сообщения."""
         # Arrange - мокаем все зависимости
         with patch("app.handlers.message.get_or_update_user") as mock_get_user:

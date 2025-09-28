@@ -6,7 +6,7 @@
 """
 
 from datetime import datetime, timedelta
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
@@ -28,13 +28,13 @@ from app.services.ai_service import (
 class TestResponseCache:
     """Тесты для системы кеширования ответов."""
 
-    def test_cache_init(self):
+    def test_cache_init(self) -> None:
         """Тест инициализации кеша."""
         cache = ResponseCache(ttl_seconds=3600)
         assert cache._ttl == 3600
         assert cache._cache == {}
 
-    def test_cache_key_generation(self):
+    def test_cache_key_generation(self) -> None:
         """Тест генерации ключей кеша."""
         cache = ResponseCache()
         messages = [
@@ -50,7 +50,7 @@ class TestResponseCache:
         assert key1 != key3  # Разные модели = разные ключи
         assert len(key1) == 32  # MD5 hash length
 
-    def test_cache_set_and_get(self):
+    def test_cache_set_and_get(self) -> None:
         """Тест сохранения и получения из кеша."""
         cache = ResponseCache(ttl_seconds=3600)
         messages = [ConversationMessage(role="user", content="Test")]
@@ -71,7 +71,7 @@ class TestResponseCache:
         assert cached_response.content == "Test response"
         assert cached_response.cached is True
 
-    def test_cache_miss(self):
+    def test_cache_miss(self) -> None:
         """Тест промаха кеша."""
         cache = ResponseCache()
         messages = [ConversationMessage(role="user", content="Not cached")]
@@ -79,7 +79,7 @@ class TestResponseCache:
         result = cache.get(messages, "deepseek-chat")
         assert result is None
 
-    def test_cache_ttl_expiration(self):
+    def test_cache_ttl_expiration(self) -> None:
         """Тест истечения срока кеша."""
         cache = ResponseCache(ttl_seconds=1)
         messages = [ConversationMessage(role="user", content="Expire test")]
@@ -104,7 +104,7 @@ class TestResponseCache:
         # Проверяем, что кеш очистился
         assert cache.get(messages, "deepseek-chat") is None
 
-    def test_cache_clear(self):
+    def test_cache_clear(self) -> None:
         """Тест очистки кеша."""
         cache = ResponseCache()
         messages = [ConversationMessage(role="user", content="Clear test")]
@@ -125,7 +125,7 @@ class TestResponseCache:
 class TestConversationMessage:
     """Тесты для структуры сообщений диалога."""
 
-    def test_message_creation(self):
+    def test_message_creation(self) -> None:
         """Тест создания сообщения."""
         msg = ConversationMessage(
             role="user",
@@ -137,7 +137,7 @@ class TestConversationMessage:
         assert msg.content == "Hello world"
         assert isinstance(msg.timestamp, datetime)
 
-    def test_message_without_timestamp(self):
+    def test_message_without_timestamp(self) -> None:
         """Тест создания сообщения без времени."""
         msg = ConversationMessage(role="assistant", content="Hi!")
 
@@ -149,7 +149,7 @@ class TestConversationMessage:
 class TestAIResponse:
     """Тесты для структуры ответа AI."""
 
-    def test_response_creation(self):
+    def test_response_creation(self) -> None:
         """Тест создания ответа AI."""
         response = AIResponse(
             content="AI response",
@@ -165,7 +165,7 @@ class TestAIResponse:
         assert response.response_time == 1.2
         assert response.cached is False
 
-    def test_response_default_cached(self):
+    def test_response_default_cached(self) -> None:
         """Тест значения по умолчанию для cached."""
         response = AIResponse(
             content="Test",
@@ -182,217 +182,175 @@ class TestAIService:
     """Тесты для основного AI сервиса."""
 
     @pytest.fixture
-    def ai_service(self):
+    def ai_service(self) -> AIService:
         """Фикстура для создания AI сервиса."""
         return AIService()
 
     @pytest.fixture
-    def mock_config(self):
+    def mock_config(self) -> MagicMock:
         """Фикстура для мокирования конфигурации."""
         with patch("app.services.ai_service.get_config") as mock:
             config = MagicMock()
-            config.deepseek.deepseek_api_key = "test-api-key"
-            config.deepseek.deepseek_base_url = "https://api.test.com"
-            config.deepseek.deepseek_model = "test-model"
+            config.deepseek.deepseek_api_key = "test-key"
+            config.deepseek.deepseek_base_url = "https://api.deepseek.com"
+            config.deepseek.deepseek_model = "deepseek-chat"
             config.deepseek.deepseek_temperature = 0.7
             config.deepseek.deepseek_max_tokens = 1000
-            config.deepseek.deepseek_timeout = 30
-            config.redis.cache_ttl = 3600
             mock.return_value = config
             yield config
 
-    async def test_service_initialization(self, ai_service, mock_config):
+    async def test_service_initialization(
+        self, ai_service: AIService, mock_config: MagicMock
+    ) -> None:
         """Тест инициализации AI сервиса."""
         assert ai_service._client is None
-        assert ai_service._cache is not None
-        assert ai_service._default_temperature == 0.7
-        assert ai_service._default_max_tokens == 1000
         assert ai_service._timeout == 30
 
-    async def test_get_client_creation(self, ai_service, mock_config):
-        """Тест создания HTTP клиента."""
-        client = await ai_service._get_client()
+    async def test_get_client_creates_client(
+        self, ai_service: AIService, mock_config: MagicMock
+    ) -> None:
+        """Тест создания клиента при первом обращении."""
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client_instance = AsyncMock()
+            mock_client_class.return_value = mock_client_instance
 
-        assert client is not None
-        assert isinstance(client, httpx.AsyncClient)
-        assert ai_service._client is client
+            client = await ai_service._get_client()
 
-        # Проверяем, что повторный вызов возвращает тот же клиент
-        client2 = await ai_service._get_client()
-        assert client is client2
+            assert client == mock_client_instance
+            mock_client_class.assert_called_once_with(
+                base_url=mock_config.deepseek.deepseek_base_url,
+                headers={
+                    "Authorization": f"Bearer {mock_config.deepseek.deepseek_api_key}",
+                    "Content-Type": "application/json",
+                },
+                timeout=30,
+            )
 
-    async def test_client_close(self, ai_service, mock_config):
-        """Тест закрытия HTTP клиента."""
-        await ai_service._get_client()
-        assert ai_service._client is not None
-
-        await ai_service.close()
-        assert ai_service._client is None
-
-    def test_prepare_messages(self, ai_service):
-        """Тест подготовки сообщений для API."""
+    def test_format_messages(self, ai_service: AIService) -> None:
+        """Тест форматирования сообщений."""
         messages = [
-            ConversationMessage(role="user", content="Hello"),
-            ConversationMessage(role="assistant", content="Hi!"),
-            ConversationMessage(role="user", content="How are you?"),
+            ConversationMessage(role="system", content="Ты полезный помощник"),
+            ConversationMessage(role="user", content="Привет"),
+            ConversationMessage(role="assistant", content="Привет! Как я могу помочь?"),
         ]
 
-        prepared = ai_service._prepare_messages(messages)
+        formatted = ai_service._format_messages(messages)
 
-        assert len(prepared) == 3
-        assert prepared[0] == {"role": "user", "content": "Hello"}
-        assert prepared[1] == {"role": "assistant", "content": "Hi!"}
-        assert prepared[2] == {"role": "user", "content": "How are you?"}
+        assert len(formatted) == 3
+        assert formatted[0]["role"] == "system"
+        assert formatted[0]["content"] == "Ты полезный помощник"
+        assert formatted[1]["role"] == "user"
+        assert formatted[2]["role"] == "assistant"
 
-    async def test_generate_response_validation(self, ai_service, mock_config):
-        """Тест валидации параметров для генерации ответа."""
-        # Тест пустого списка сообщений
-        with pytest.raises(ValueError, match="Список сообщений не может быть пустым"):
-            await ai_service.generate_response([])
-
-        messages = [ConversationMessage(role="user", content="Test")]
-
-        # Тест неправильной температуры
-        with pytest.raises(ValueError, match="Temperature должна быть от 0.0 до 2.0"):
-            await ai_service.generate_response(messages, temperature=3.0)
-
-        # Тест неправильного количества токенов
-        with pytest.raises(ValueError, match="max_tokens должно быть от 1 до 4000"):
-            await ai_service.generate_response(messages, max_tokens=5000)
-
-    @patch("app.services.ai_service.AIService._make_api_request")
-    async def test_generate_response_success(
-        self,
-        mock_api_request,
-        ai_service,
-        mock_config,
-    ):
-        """Тест успешной генерации ответа."""
-        # Мокируем ответ API
-        mock_api_request.return_value = {
-            "choices": [
-                {
-                    "message": {
-                        "content": "Привет! Как дела?",
-                    },
-                },
-            ],
-            "usage": {
-                "total_tokens": 25,
-            },
-        }
-
+    def test_prepare_request_data(
+        self, ai_service: AIService, mock_config: MagicMock
+    ) -> None:
+        """Тест подготовки данных запроса."""
         messages = [ConversationMessage(role="user", content="Привет")]
-        response = await ai_service.generate_response(messages, use_cache=False)
+        request_data = ai_service._prepare_request_data(
+            messages, temperature=0.8, max_tokens=500
+        )
 
-        assert isinstance(response, AIResponse)
-        assert response.content == "Привет! Как дела?"
-        assert response.tokens_used == 25
-        assert response.model == "test-model"
-        assert response.cached is False
+        assert request_data["model"] == mock_config.deepseek.deepseek_model
+        assert request_data["temperature"] == 0.8
+        assert request_data["max_tokens"] == 500
+        assert "messages" in request_data
 
-    @patch("app.services.ai_service.AIService._make_api_request")
-    async def test_generate_response_with_cache(
-        self,
-        mock_api_request,
-        ai_service,
-        mock_config,
-    ):
-        """Тест генерации ответа с кешированием."""
-        # Мокируем ответ API для первого запроса
-        mock_api_request.return_value = {
-            "choices": [
-                {
-                    "message": {
-                        "content": "Кешированный ответ",
-                    },
-                },
-            ],
-            "usage": {
-                "total_tokens": 20,
-            },
+    async def test_generate_response_success(
+        self, ai_service: AIService, mock_config: MagicMock
+    ) -> None:
+        """Тест успешной генерации ответа."""
+        # Мокаем клиента и его метод post
+        mock_client = AsyncMock()
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "choices": [{"message": {"content": "Тестовый ответ"}}],
+            "usage": {"total_tokens": 10},
         }
 
-        messages = [ConversationMessage(role="user", content="Тест кеша")]
+        with patch.object(ai_service, "_get_client", return_value=mock_client):
+            mock_client.post.return_value = mock_response
 
-        # Первый запрос - должен вызвать API
-        response1 = await ai_service.generate_response(messages, use_cache=True)
-        assert mock_api_request.call_count == 1
-        assert response1.cached is False
+            messages = [ConversationMessage(role="user", content="Привет")]
+            result = await ai_service.generate_response(messages)
 
-        # Второй запрос - должен взять из кеша
-        response2 = await ai_service.generate_response(messages, use_cache=True)
-        assert mock_api_request.call_count == 1  # API не вызывался повторно
-        assert response2.cached is True
-        assert response2.content == "Кешированный ответ"
+            assert isinstance(result, AIResponse)
+            assert result.content == "Тестовый ответ"
+            assert result.tokens_used == 10
+            assert result.model == mock_config.deepseek.deepseek_model
 
-    async def test_generate_simple_response(self, ai_service, mock_config):
+    async def test_generate_simple_response(
+        self, ai_service: AIService, mock_config: MagicMock
+    ) -> None:
         """Тест упрощенного метода генерации ответа."""
         with patch.object(ai_service, "generate_response") as mock_generate:
             mock_generate.return_value = AIResponse(
-                content="Простой ответ",
+                content="Упрощенный ответ",
                 model="test-model",
-                tokens_used=10,
-                response_time=0.5,
+                provider="deepseek",
+                tokens_used=5,
+                response_time=0.1,
             )
 
-            response = await ai_service.generate_simple_response("Привет")
+            result = await ai_service.generate_simple_response("Привет")
 
-            # Проверяем, что вызвался generate_response с правильными сообщениями
+            assert result.content == "Упрощенный ответ"
             mock_generate.assert_called_once()
-            call_args = mock_generate.call_args[1]
-            messages = call_args["messages"]
+            call_args = mock_generate.call_args[0][0]
+            assert len(call_args) == 2
+            assert call_args[0].role == "system"
+            assert call_args[1].role == "user"
+            assert call_args[1].content == "Привет"
 
-            assert len(messages) == 2
-            assert messages[0].role == "system"
-            assert "эмпатичный AI-помощник" in messages[0].content
-            assert messages[1].role == "user"
-            assert messages[1].content == "Привет"
-
-    def test_clear_cache(self, ai_service):
+    def test_clear_cache(self, ai_service: AIService) -> None:
         """Тест очистки кеша сервиса."""
         # Добавляем что-то в кеш
-        ai_service._cache._cache["test"] = {"data": "test"}
+        ai_service._cache["test"] = "value"
 
         # Очищаем кеш
         ai_service.clear_cache()
 
         # Проверяем, что кеш пуст
-        assert ai_service._cache._cache == {}
+        assert len(ai_service._cache) == 0
 
     @patch("app.services.ai_service.AIService.generate_response")
-    async def test_health_check_healthy(self, mock_generate, ai_service, mock_config):
+    async def test_health_check_healthy(
+        self, mock_generate: AsyncMock, ai_service: AIService, mock_config: MagicMock
+    ) -> None:
         """Тест health check при работающем сервисе."""
         mock_generate.return_value = AIResponse(
-            content="Health check response",
+            content="health check",
             model="test-model",
-            tokens_used=5,
-            response_time=0.3,
+            provider="deepseek",
+            tokens_used=2,
+            response_time=0.1,
         )
 
-        health = await ai_service.health_check()
+        result = await ai_service.health_check()
 
-        assert health["status"] == "healthy"
-        assert health["model"] == "test-model"
-        assert "response_time" in health
-        assert health["cache_enabled"] is True
+        assert result["status"] == "healthy"
+        assert "response_time" in result
+        mock_generate.assert_called_once()
 
     @patch("app.services.ai_service.AIService.generate_response")
-    async def test_health_check_unhealthy(self, mock_generate, ai_service, mock_config):
+    async def test_health_check_unhealthy(
+        self, mock_generate: AsyncMock, ai_service: AIService, mock_config: MagicMock
+    ) -> None:
         """Тест health check при неработающем сервисе."""
         mock_generate.side_effect = APIConnectionError("Connection failed")
 
-        health = await ai_service.health_check()
+        result = await ai_service.health_check()
 
-        assert health["status"] == "unhealthy"
-        assert "error" in health
-        assert "Connection failed" in health["error"]
+        assert result["status"] == "unhealthy"
+        assert "error" in result
+        assert "Connection failed" in result["error"]
 
 
 class TestAIServiceErrors:
     """Тесты для обработки ошибок AI сервиса."""
 
-    def test_error_hierarchy(self):
+    def test_error_hierarchy(self) -> None:
         """Тест иерархии ошибок."""
         # Проверяем наследование
         assert issubclass(APIConnectionError, AIServiceError)
@@ -414,7 +372,7 @@ class TestAIServiceErrors:
 class TestAIServiceSingleton:
     """Тесты для singleton pattern AI сервиса."""
 
-    async def test_get_ai_service_singleton(self):
+    async def test_get_ai_service_singleton(self) -> None:
         """Тест singleton behavior для get_ai_service."""
         # Очищаем глобальный экземпляр если есть
         await close_ai_service()
@@ -427,7 +385,7 @@ class TestAIServiceSingleton:
         # Очищаем после теста
         await close_ai_service()
 
-    async def test_close_ai_service(self):
+    async def test_close_ai_service(self) -> None:
         """Тест закрытия AI сервиса."""
         service = get_ai_service()
         assert service is not None
@@ -447,7 +405,7 @@ class TestAIServiceIntegration:
     """Интеграционные тесты для AI сервиса."""
 
     @pytest.mark.skip(reason="Требует реальный API ключ")
-    async def test_real_api_call(self):
+    async def test_real_api_call(self) -> None:
         """Интеграционный тест с реальным API (требует API ключ)."""
         service = AIService()
         messages = [

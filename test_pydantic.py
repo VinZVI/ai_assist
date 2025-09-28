@@ -25,6 +25,3 @@ class TestConfig(BaseSettings):
 
 
 config = TestConfig(field1="test", field2="test2")
-print("field1:", config.field1)
-print("field2:", config.field2)
-print("computed_field:", config.computed_field)

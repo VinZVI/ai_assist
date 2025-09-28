@@ -1,0 +1,242 @@
+app\handlers\message.py:117:11: PLR0913 Too many arguments in function definition (7 > 5)
+app\handlers\start.py:159:25: ISC002 Implicitly concatenated string literals over multiple lines
+app\models\conversation.py:17:4: F821 Undefined name `TYPE_CHECKING`
+app\models\conversation.py:54:9: F821 Undefined name `ForeignKey`
+app\models\conversation.py:124:34: F821 Undefined name `Any`
+app\models\conversation.py:125:9: F821 Undefined name `JSON`
+app\models\conversation.py:147:17: F821 Undefined name `func`
+app\models\conversation.py:159:28: F821 Undefined name `relationship`
+app\models\conversation.py:167:9: F821 Undefined name `Index`
+app\models\conversation.py:168:9: F821 Undefined name `Index`
+app\models\conversation.py:169:9: F821 Undefined name `Index`
+app\models\conversation.py:170:9: F821 Undefined name `Index`
+app\models\conversation.py:171:9: F821 Undefined name `Index`
+app\models\conversation.py:173:9: F821 Undefined name `CheckConstraint`
+app\models\conversation.py:174:9: F821 Undefined name `CheckConstraint`
+app\models\conversation.py:175:9: F821 Undefined name `CheckConstraint`
+app\models\conversation.py:179:9: F821 Undefined name `CheckConstraint`
+app\models\conversation.py:229:24: F821 Undefined name `BaseModel`
+app\models\conversation.py:232:25: F821 Undefined name `Field`
+app\models\conversation.py:238:25: F821 Undefined name `Field`
+app\models\conversation.py:239:30: F821 Undefined name `Field`
+app\models\conversation.py:240:27: F821 Undefined name `Field`
+app\models\conversation.py:242:6: F821 Undefined name `field_validator`
+app\models\conversation.py:256:20: F821 Undefined name `Field`
+app\models\conversation.py:259:26: F821 Undefined name `BaseModel`
+app\models\conversation.py:262:33: F821 Undefined name `Field`
+app\models\conversation.py:264:28: F821 Undefined name `Field`
+app\models\conversation.py:265:31: F821 Undefined name `Field`
+app\models\conversation.py:266:36: F821 Undefined name `Field`
+app\models\conversation.py:268:30: F821 Undefined name `Field`
+app\models\conversation.py:269:25: F821 Undefined name `Any`
+app\models\conversation.py:286:20: F821 Undefined name `ConfigDict`
+app\models\conversation.py:289:25: F821 Undefined name `BaseModel`
+app\models\conversation.py:299:20: F821 Undefined name `ConfigDict`
+app\models\conversation.py:302:27: F821 Undefined name `BaseModel`
+app\models\conversation.py:311:20: F821 Undefined name `ConfigDict`
+app\models\user.py:15:4: F821 Undefined name `TYPE_CHECKING`
+app\models\user.py:26:9: F821 Undefined name `BigInteger`
+app\models\user.py:33:9: F821 Undefined name `BigInteger`
+app\models\user.py:91:17: F821 Undefined name `func`
+app\models\user.py:121:17: F821 Undefined name `func`
+app\models\user.py:128:17: F821 Undefined name `func`
+app\models\user.py:129:18: F821 Undefined name `func`
+app\models\user.py:141:51: F821 Undefined name `relationship`
+app\models\user.py:150:9: F821 Undefined name `Index`
+app\models\user.py:151:9: F821 Undefined name `Index`
+app\models\user.py:152:9: F821 Undefined name `Index`
+app\models\user.py:153:9: F821 Undefined name `Index`
+app\models\user.py:154:9: F821 Undefined name `Index`
+app\models\user.py:156:9: F821 Undefined name `CheckConstraint`
+app\models\user.py:160:9: F821 Undefined name `CheckConstraint`
+app\models\user.py:161:9: F821 Undefined name `CheckConstraint`
+app\models\user.py:206:9: SIM103 Return the condition `self.last_message_date < today` directly
+app\models\user.py:214:16: F821 Undefined name `BaseModel`
+app\models\user.py:217:24: F821 Undefined name `Field`
+app\models\user.py:218:28: F821 Undefined name `Field`
+app\models\user.py:223:30: F821 Undefined name `Field`
+app\models\user.py:224:29: F821 Undefined name `Field`
+app\models\user.py:229:33: F821 Undefined name `Field`
+app\models\user.py:231:6: F821 Undefined name `field_validator`
+app\models\user.py:244:18: F821 Undefined name `BaseModel`
+app\models\user.py:247:28: F821 Undefined name `Field`
+app\models\user.py:248:30: F821 Undefined name `Field`
+app\models\user.py:249:29: F821 Undefined name `Field`
+app\models\user.py:250:33: F821 Undefined name `Field`
+app\models\user.py:267:20: F821 Undefined name `ConfigDict`
+app\models\user.py:270:17: F821 Undefined name `BaseModel`
+app\models\user.py:279:20: F821 Undefined name `ConfigDict`
+app\services\ai_manager.py:31:59: RUF012 Mutable class attributes should be annotated with `typing.ClassVar`
+app\services\ai_manager.py:67:15: TRY003 Avoid specifying long messages outside the exception class
+app\services\ai_manager.py:67:31: EM102 Exception must not use an f-string literal, assign to variable first
+app\services\ai_providers\deepseek.py:81:15: PLR0912 Too many branches (13 > 12)
+app\services\ai_providers\deepseek.py:81:15: PLR0915 Too many statements (59 > 50)
+app\services\ai_providers\deepseek.py:170:17: E722 Do not use bare `except`
+app\services\ai_providers\deepseek.py:192:17: B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+app\services\ai_providers\deepseek.py:207:17: B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+app\services\ai_providers\deepseek.py:269:17: TRY301 Abstract `raise` to an inner function
+app\services\ai_providers\deepseek.py:280:17: TRY301 Abstract `raise` to an inner function
+app\services\ai_providers\deepseek.py:325:13: B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+app\services\ai_providers\openrouter.py:82:15: PLR0912 Too many branches (13 > 12)
+app\services\ai_providers\openrouter.py:82:15: PLR0915 Too many statements (59 > 50)
+app\services\ai_providers\openrouter.py:172:17: E722 Do not use bare `except`
+app\services\ai_providers\openrouter.py:194:17: B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+app\services\ai_providers\openrouter.py:209:17: B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+app\services\ai_providers\openrouter.py:271:17: TRY301 Abstract `raise` to an inner function
+app\services\ai_providers\openrouter.py:282:17: TRY301 Abstract `raise` to an inner function
+app\services\ai_providers\openrouter.py:327:13: B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+app\services\ai_service.py:70:16: S324 Probable use of insecure hash functions in `hashlib`: `md5`
+app\services\ai_service.py:176:15: PLR0915 Too many statements (53 > 50)
+app\services\ai_service.py:259:17: B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+app\services\ai_service.py:268:17: B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+app\services\ai_service.py:334:17: TRY301 Abstract `raise` to an inner function
+app\services\ai_service.py:341:17: TRY301 Abstract `raise` to an inner function
+app\services\ai_service.py:379:13: B904 Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None` to distinguish them from errors in exception handling
+app\services\ai_service.py:442:12: PLW0603 Using the global statement to update `_ai_service_instance` is discouraged
+app\services\ai_service.py:453:12: PLW0603 Using the global statement to update `_ai_service_instance` is discouraged
+clear_webhook.py:22:11: PLR0912 Too many branches (14 > 12)
+force_stop_bot.py:31:13: S607 Starting a process with a partial executable path
+scripts\checks\test_config_simple.py:30:10: PTH123 `open()` should be replaced by `Path.open()`
+scripts\checks\test_db_connection.py:17:1: E402 Module level import not at top of file
+scripts\checks\test_db_connection.py:19:1: E402 Module level import not at top of file
+scripts\checks\test_db_connection.py:20:1: E402 Module level import not at top of file
+scripts\diagnostics\check_deepseek_api.py:1:1: INP001 File `scripts\diagnostics\check_deepseek_api.py` is part of an implicit namespace package. Add an `__init__.py`.
+scripts\diagnostics\check_deepseek_api.py:33:11: PLR0911 Too many return statements (7 > 6)
+scripts\diagnostics\check_deepseek_api.py:112:13: E722 Do not use bare `except`
+scripts\diagnostics\check_imports.py:1:1: INP001 File `scripts\diagnostics\check_imports.py` is part of an implicit namespace package. Add an `__init__.py`.
+test_pydantic_behavior.py:35:1: E402 Module level import not at top of file
+tests\conftest.py:64:22: F821 Undefined name `AppConfig`
+tests\conftest.py:136:5: ANN201 Missing return type annotation for public function `mock_deepseek_provider`
+tests\conftest.py:191:5: ANN201 Missing return type annotation for public function `mock_db_session`
+tests\conftest.py:203:5: ANN201 Missing return type annotation for public function `sample_user`
+tests\conftest.py:218:5: ANN201 Missing return type annotation for public function `sample_conversation`
+tests\conftest.py:232:5: ANN201 Missing return type annotation for public function `mock_telegram_message`
+tests\integration\test_ai_manager.py:29:65: F821 Undefined name `AppConfig`
+tests\integration\test_ai_manager.py:47:61: F821 Undefined name `AppConfig`
+tests\integration\test_ai_manager.py:59:58: F821 Undefined name `AppConfig`
+tests\integration\test_ai_manager.py:68:58: F821 Undefined name `AppConfig`
+tests\integration\test_ai_manager.py:85:9: ANN201 Missing return type annotation for public function `manager_with_mocked_providers`
+tests\integration\test_ai_manager.py:85:58: F821 Undefined name `AppConfig`
+tests\integration\test_ai_manager.py:116:42: F821 Undefined name `ConversationMessage`
+tests\integration\test_ai_manager.py:136:42: F821 Undefined name `ConversationMessage`
+tests\integration\test_ai_manager.py:159:42: F821 Undefined name `ConversationMessage`
+tests\integration\test_ai_manager.py:181:42: F821 Undefined name `ConversationMessage`
+tests\integration\test_ai_manager.py:247:39: ANN001 Missing type annotation for function argument `mock_ai_manager`
+tests\integration\test_ai_manager.py:266:46: ANN001 Missing type annotation for function argument `mock_ai_manager`
+tests\integration\test_ai_manager.py:296:9: ANN001 Missing type annotation for function argument `manager_with_mocked_providers`
+tests\integration\test_ai_manager.py:297:9: ANN001 Missing type annotation for function argument `mock_conversation_messages`
+tests\integration\test_ai_manager.py:343:9: ANN001 Missing type annotation for function argument `manager_with_mocked_providers`
+tests\integration\test_ai_manager.py:344:9: ANN001 Missing type annotation for function argument `mock_conversation_messages`
+tests\integration\test_ai_manager.py:345:9: ANN001 Missing type annotation for function argument `mock_ai_response`
+tests\integration\test_ai_manager.py:368:51: ANN001 Missing type annotation for function argument `mock_ai_manager`
+tests\integration\test_ai_manager.py:376:58: ANN001 Missing type annotation for function argument `mock_ai_manager`
+tests\integration\test_ai_manager.py:403:40: ANN001 Missing type annotation for function argument `manager_with_mocked_providers`
+tests\integration\test_ai_manager.py:430:50: ANN001 Missing type annotation for function argument `mock_ai_manager`
+tests\integration\test_ai_manager.py:441:46: ANN001 Missing type annotation for function argument `mock_ai_manager`
+tests\integration\test_ai_manager.py:454:9: ANN001 Missing type annotation for function argument `manager_with_mocked_providers`
+tests\integration\test_ai_manager.py:455:9: ANN001 Missing type annotation for function argument `mock_conversation_messages`
+tests\integration\test_ai_manager.py:479:9: ANN001 Missing type annotation for function argument `manager_with_mocked_providers`
+tests\integration\test_ai_manager.py:480:9: ANN001 Missing type annotation for function argument `mock_conversation_messages`
+tests\integration\test_ai_manager.py:481:9: ANN001 Missing type annotation for function argument `mock_ai_response`
+tests\integration\test_ai_service.py:185:9: ANN201 Missing return type annotation for public function `ai_service`
+tests\integration\test_ai_service.py:190:9: ANN201 Missing return type annotation for public function `mock_config`
+tests\integration\test_ai_service.py:204:49: ANN001 Missing type annotation for function argument `ai_service`
+tests\integration\test_ai_service.py:204:61: ANN001 Missing type annotation for function argument `mock_config`
+tests\integration\test_ai_service.py:212:46: ANN001 Missing type annotation for function argument `ai_service`
+tests\integration\test_ai_service.py:212:58: ANN001 Missing type annotation for function argument `mock_config`
+tests\integration\test_ai_service.py:224:39: ANN001 Missing type annotation for function argument `ai_service`
+tests\integration\test_ai_service.py:224:51: ANN001 Missing type annotation for function argument `mock_config`
+tests\integration\test_ai_service.py:232:37: ANN001 Missing type annotation for function argument `ai_service`
+tests\integration\test_ai_service.py:247:55: ANN001 Missing type annotation for function argument `ai_service`
+tests\integration\test_ai_service.py:247:67: ANN001 Missing type annotation for function argument `mock_config`
+tests\integration\test_ai_service.py:266:9: ANN001 Missing type annotation for function argument `mock_api_request`
+tests\integration\test_ai_service.py:267:9: ANN001 Missing type annotation for function argument `ai_service`
+tests\integration\test_ai_service.py:268:9: ANN001 Missing type annotation for function argument `mock_config`
+tests\integration\test_ai_service.py:297:9: ANN001 Missing type annotation for function argument `mock_api_request`
+tests\integration\test_ai_service.py:298:9: ANN001 Missing type annotation for function argument `ai_service`
+tests\integration\test_ai_service.py:299:9: ANN001 Missing type annotation for function argument `mock_config`
+tests\integration\test_ai_service.py:329:51: ANN001 Missing type annotation for function argument `ai_service`
+tests\integration\test_ai_service.py:329:63: ANN001 Missing type annotation for function argument `mock_config`
+tests\integration\test_ai_service.py:352:32: ANN001 Missing type annotation for function argument `ai_service`
+tests\integration\test_ai_service.py:364:47: ANN001 Missing type annotation for function argument `mock_generate`
+tests\integration\test_ai_service.py:364:62: ANN001 Missing type annotation for function argument `ai_service`
+tests\integration\test_ai_service.py:364:74: ANN001 Missing type annotation for function argument `mock_config`
+tests\integration\test_ai_service.py:381:49: ANN001 Missing type annotation for function argument `mock_generate`
+tests\integration\test_ai_service.py:381:64: ANN001 Missing type annotation for function argument `ai_service`
+tests\integration\test_ai_service.py:381:76: ANN001 Missing type annotation for function argument `mock_config`
+tests\integration\test_database.py:38:9: ANN001 Missing type annotation for function argument `mock_create_async_engine`
+tests\integration\test_database.py:39:9: ANN001 Missing type annotation for function argument `mock_get_config`
+tests\integration\test_database.py:75:51: ANN001 Missing type annotation for function argument `mock_get_config`
+tests\integration\test_database.py:125:9: ANN001 Missing type annotation for function argument `mock_check_conn`
+tests\integration\test_database.py:126:9: ANN001 Missing type annotation for function argument `mock_create_factory`
+tests\integration\test_database.py:127:9: ANN001 Missing type annotation for function argument `mock_create_engine`
+tests\integration\test_database.py:128:9: ANN001 Missing type annotation for function argument `mock_get_config`
+tests\integration\test_database.py:155:42: ANN001 Missing type annotation for function argument `mock_create_engine`
+tests\integration\test_database.py:155:62: ANN001 Missing type annotation for function argument `mock_get_config`
+tests\integration\test_database.py:173:43: ANN001 Missing type annotation for function argument `mock_engine`
+tests\integration\test_database.py:194:51: ANN001 Missing type annotation for function argument `mock_get_session`
+tests\integration\test_database.py:212:51: ANN001 Missing type annotation for function argument `mock_get_session`
+tests\integration\test_database.py:264:46: ANN001 Missing type annotation for function argument `mock_get_factory`
+tests\integration\test_database.py:281:56: ANN001 Missing type annotation for function argument `mock_get_factory`
+tests\integration\test_database.py:300:60: ANN001 Missing type annotation for function argument `mock_get_factory`
+tests\integration\test_database.py:307:9: PT012 `pytest.raises()` block should contain a single simple statement
+tests\integration\test_database.py:307:28: PT011 `pytest.raises(ValueError)` is too broad, set the `match` parameter or use a more specific exception
+tests\integration\test_database.py:322:48: ANN001 Missing type annotation for function argument `mock_get_engine`
+tests\integration\test_database.py:340:48: ANN001 Missing type annotation for function argument `mock_get_engine`
+tests\integration\test_database.py:358:49: ANN001 Missing type annotation for function argument `mock_get_engine`
+tests\integration\test_database.py:358:66: ANN001 Missing type annotation for function argument `mock_get_config`
+tests\integration\test_database.py:380:54: ANN001 Missing type annotation for function argument `mock_get_config`
+tests\integration\test_database.py:447:18: B017 Do not assert blind exception: `Exception`
+tests\integration\test_database.py:447:32: PT011 `pytest.raises(Exception)` is too broad, set the `match` parameter or use a more specific exception
+tests\integration\test_deepseek_provider.py:29:44: ANN001 Missing type annotation for function argument `mock_config`
+tests\integration\test_deepseek_provider.py:37:49: ANN001 Missing type annotation for function argument `mock_config`
+tests\integration\test_deepseek_provider.py:54:48: ANN001 Missing type annotation for function argument `mock_config`
+tests\integration\test_deepseek_provider.py:70:37: F821 Undefined name `AppConfig`
+tests\integration\test_deepseek_provider.py:75:9: ANN201 Missing return type annotation for public function `sample_messages`
+tests\integration\test_deepseek_provider.py:189:9: ANN201 Missing return type annotation for public function `provider`
+tests\integration\test_deepseek_provider.py:189:24: ANN001 Missing type annotation for function argument `mock_config`
+tests\integration\test_deepseek_provider.py:194:9: ANN201 Missing return type annotation for public function `sample_messages`
+tests\integration\test_deepseek_provider.py:258:51: ANN001 Missing type annotation for function argument `provider`
+tests\integration\test_deepseek_provider.py:258:61: ANN001 Missing type annotation for function argument `sample_messages`
+tests\integration\test_deepseek_provider.py:275:39: ANN001 Missing type annotation for function argument `provider`
+tests\integration\test_deepseek_provider.py:275:49: ANN001 Missing type annotation for function argument `sample_messages`
+tests\integration\test_deepseek_provider.py:289:45: ANN001 Missing type annotation for function argument `provider`
+tests\integration\test_deepseek_provider.py:289:55: ANN001 Missing type annotation for function argument `sample_messages`
+tests\integration\test_deepseek_provider.py:307:9: ANN201 Missing return type annotation for public function `provider`
+tests\integration\test_deepseek_provider.py:307:24: ANN001 Missing type annotation for function argument `mock_config`
+tests\integration\test_deepseek_provider.py:312:52: ANN001 Missing type annotation for function argument `provider`
+tests\integration\test_deepseek_provider.py:349:54: ANN001 Missing type annotation for function argument `provider`
+tests\integration\test_deepseek_provider.py:367:51: ANN001 Missing type annotation for function argument `provider`
+tests\integration\test_deepseek_provider.py:450:41: ANN001 Missing type annotation for function argument `mock_config`
+tests\integration\test_deepseek_provider.py:480:9: ANN201 Missing return type annotation for public function `provider`
+tests\integration\test_deepseek_provider.py:480:24: ANN001 Missing type annotation for function argument `mock_config`
+tests\integration\test_deepseek_provider.py:485:50: ANN001 Missing type annotation for function argument `provider`
+tests\integration\test_deepseek_provider.py:523:47: ANN001 Missing type annotation for function argument `provider`
+tests\integration\test_deepseek_provider.py:564:46: ANN001 Missing type annotation for function argument `mock_config`
+tests\integration\test_message_handler.py:38:9: ANN201 Missing return type annotation for public function `mock_message`
+tests\integration\test_message_handler.py:48:44: ANN001 Missing type annotation for function argument `mock_message`
+tests\integration\test_message_handler.py:48:58: ANN001 Missing type annotation for function argument `mock_session`
+tests\integration\test_message_handler.py:74:78: F821 Undefined name `AsyncSession`
+tests\integration\test_message_handler.py:89:61: F821 Undefined name `AsyncSession`
+tests\integration\test_message_handler.py:102:78: F821 Undefined name `AsyncSession`
+tests\integration\test_message_handler.py:122:65: F821 Undefined name `AsyncSession`
+tests\integration\test_message_handler.py:131:28: DTZ001 `datetime.datetime()` called without a `tzinfo` argument
+tests\integration\test_message_handler.py:137:28: DTZ001 `datetime.datetime()` called without a `tzinfo` argument
+tests\integration\test_message_handler.py:157:67: F821 Undefined name `AsyncSession`
+tests\integration\test_message_handler.py:171:76: F821 Undefined name `AsyncSession`
+tests\integration\test_message_handler.py:187:66: F821 Undefined name `AsyncSession`
+tests\integration\test_message_handler.py:214:73: F821 Undefined name `AsyncSession`
+tests\integration\test_message_handler.py:254:9: ANN201 Missing return type annotation for public function `mock_user`
+tests\integration\test_message_handler.py:264:86: F821 Undefined name `AsyncSession`
+tests\integration\test_message_handler.py:300:88: F821 Undefined name `AsyncSession`
+tests\integration\test_message_handler.py:330:95: F821 Undefined name `AsyncSession`
+tests\integration\test_message_handler.py:356:9: ANN201 Missing return type annotation for public function `mock_message`
+tests\integration\test_message_handler.py:369:9: ANN201 Missing return type annotation for public function `mock_user`
+tests\integration\test_message_handler.py:384:23: F821 Undefined name `AsyncSession`
+tests\integration\test_message_handler.py:478:98: F821 Undefined name `AsyncSession`
+tests\integration\test_message_handler.py:527:98: F821 Undefined name `AsyncSession`
+tests\integration\test_openrouter_provider.py:77:9: ANN201 Missing return type annotation for public function `sample_messages`
+tests\integration\test_openrouter_provider.py:115:41: F821 Undefined name `AIResponse`
+tests\integration\test_openrouter_provider.py:190:9: ANN201 Missing return type annotation for public function `sample_messages`
+Found 240 errors.
+No fixes available (2 hidden fixes can be enabled with the `--unsafe-fixes` option).

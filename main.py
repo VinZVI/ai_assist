@@ -10,7 +10,7 @@ import asyncio
 import signal
 import sys
 from collections.abc import AsyncGenerator
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
@@ -21,6 +21,33 @@ from loguru import logger
 from app.config import get_config
 from app.database import close_db, init_db
 from app.handlers import ROUTERS
+from app.log_lexicon import (
+    BOT_AI_MANAGER_CLOSE_TIMEOUT,
+    BOT_AI_MANAGER_CLOSED,
+    BOT_COMMANDS_SET,
+    BOT_CRITICAL_ERROR,
+    BOT_DB_CLOSE_TIMEOUT,
+    BOT_DB_CLOSED,
+    BOT_DB_INITIALIZING,
+    BOT_INITIALIZED,
+    BOT_KEYBOARD_INTERRUPT,
+    BOT_POLLING_STARTED,
+    BOT_POLLING_STOP_TIMEOUT,
+    BOT_POLLING_STOPPED,
+    BOT_PROGRAM_FINISHED,
+    BOT_REGISTERED_ROUTERS,
+    BOT_SESSION_CLOSE_TIMEOUT,
+    BOT_SESSION_CLOSED,
+    BOT_SHUTDOWN_COMPLETED,
+    BOT_SHUTDOWN_ERROR,
+    BOT_SHUTDOWN_STARTED,
+    BOT_SIGNAL_RECEIVED,
+    BOT_STARTED,
+    BOT_STARTING,
+    BOT_USER_INTERRUPTED,
+    BOT_WEBHOOK_SET,
+    BOT_WEBHOOK_STARTED,
+)
 from app.services.ai_manager import close_ai_manager
 from app.utils.logging import setup_logging
 
@@ -28,7 +55,7 @@ from app.utils.logging import setup_logging
 class AIAssistantBot:
     """Основной класс Telegram бота AI-Компаньон."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.config = get_config()
         self.bot: Bot | None = None
         self.dp: Dispatcher | None = None
@@ -63,7 +90,7 @@ class AIAssistantBot:
         for router in ROUTERS:
             dp.include_router(router)
 
-        logger.info(f"✅ Зарегистрировано {len(ROUTERS)} роутеров")
+        logger.info(BOT_REGISTERED_ROUTERS.format(count=len(ROUTERS)))
 
     async def setup_bot_commands(self) -> None:
         """Настройка команд бота для меню."""
@@ -79,15 +106,15 @@ class AIAssistantBot:
         ]
 
         await self.bot.set_my_commands(commands)
-        logger.info("✅ Команды бота настроены")
+        logger.info(BOT_COMMANDS_SET)
 
     async def startup(self) -> None:
         """Инициализация бота и подключений."""
         try:
-            logger.info("🚀 Запуск AI-Компаньон бота...")
+            logger.info(BOT_STARTING)
 
             # Инициализация базы данных
-            logger.info("📊 Инициализация базы данных...")
+            logger.info(BOT_DB_INITIALIZING)
             await init_db()
 
             # Создание бота и диспетчера
@@ -96,56 +123,60 @@ class AIAssistantBot:
 
             # Получение информации о боте
             bot_info = await self.bot.get_me()
-            logger.info(f"🤖 Бот запущен: @{bot_info.username} ({bot_info.full_name})")
+            logger.info(
+                BOT_STARTED.format(
+                    username=bot_info.username, full_name=bot_info.full_name
+                )
+            )
 
             # Настройка команд
             await self.setup_bot_commands()
 
-            logger.success("✨ Бот успешно инициализирован и готов к работе!")
+            logger.success(BOT_INITIALIZED)
 
         except Exception as e:
-            logger.error(f"💥 Ошибка при запуске бота: {e}")
+            logger.error(BOT_SHUTDOWN_ERROR.format(error=e))
             raise
 
     async def shutdown(self) -> None:
         """Корректное завершение работы бота."""
-        logger.info("🛑 Завершение работы бота...")
+        logger.info(BOT_SHUTDOWN_STARTED)
 
         try:
             # Остановка диспетчера с таймаутом
             if self.dp:
                 try:
                     await asyncio.wait_for(self.dp.stop_polling(), timeout=10.0)
-                    logger.info("📡 Polling остановлен")
+                    logger.info(BOT_POLLING_STOPPED)
                 except TimeoutError:
-                    logger.warning("⚠️ Таймаут при остановке polling")
+                    logger.warning(BOT_POLLING_STOP_TIMEOUT)
 
             # Закрытие сессии бота с таймаутом
             if self.bot:
                 try:
                     await asyncio.wait_for(self.bot.session.close(), timeout=5.0)
-                    logger.info("🤖 Сессия бота закрыта")
+                    logger.info(BOT_SESSION_CLOSED)
                 except TimeoutError:
-                    logger.warning("⚠️ Таймаут при закрытии сессии бота")
+                    logger.warning(BOT_SESSION_CLOSE_TIMEOUT)
 
             # Закрытие подключения к БД с таймаутом
             try:
                 await asyncio.wait_for(close_db(), timeout=5.0)
-                logger.info("🗄️ База данных закрыта")
+                logger.info(BOT_DB_CLOSED)
             except TimeoutError:
-                logger.warning("⚠️ Таймаут при закрытии БД")
+                logger.warning(BOT_DB_CLOSE_TIMEOUT)
 
             # Закрытие AI менеджера с таймаутом
             try:
                 await asyncio.wait_for(close_ai_manager(), timeout=5.0)
-                logger.info("🤖 AI менеджер закрыт")
+                logger.info(BOT_AI_MANAGER_CLOSED)
             except TimeoutError:
-                logger.warning("⚠️ Таймаут при закрытии AI менеджера")
+                logger.warning(BOT_AI_MANAGER_CLOSE_TIMEOUT)
 
-            logger.success("✅ Бот корректно завершил работу")
+            logger.success(BOT_SHUTDOWN_COMPLETED)
 
         except Exception as e:
-            logger.error(f"❌ Ошибка при завершении работы: {e}")
+            logger.error(BOT_SHUTDOWN_ERROR.format(error=e))
 
     def setup_signal_handlers(self) -> None:
         """Настройка обработчиков сигналов для корректного завершения."""
@@ -157,17 +188,18 @@ class AIAssistantBot:
             # Windows
             signal.signal(signal.SIGINT, self._signal_handler)
 
-    def _signal_handler(self, signum, frame):
+    def _signal_handler(self, signum, frame) -> None:  # noqa: ANN001
         """Обработчик сигналов завершения."""
-        logger.info(f"📡 Получен сигнал {signum}, инициирую завершение работы...")
+        logger.info(BOT_SIGNAL_RECEIVED.format(signal=signum))
         self._shutdown_event.set()
 
     async def run_polling(self) -> None:
         """Запуск бота в режиме polling с поддержкой graceful shutdown."""
         if not self.dp or not self.bot:
-            raise RuntimeError("Бот или диспетчер не инициализированы")
+            msg = "Бот или диспетчер не инициализированы"
+            raise RuntimeError(msg)
 
-        logger.info("📡 Запуск в режиме polling...")
+        logger.info(BOT_POLLING_STARTED)
 
         try:
             # Создаем задачу для polling
@@ -191,10 +223,8 @@ class AIAssistantBot:
             # Отменяем оставшиеся задачи
             for task in pending:
                 task.cancel()
-                try:
+                with suppress(asyncio.CancelledError):
                     await task
-                except asyncio.CancelledError:
-                    pass
 
             # Если polling завершился с ошибкой, проверим это
             if polling_task in done:
@@ -211,12 +241,14 @@ class AIAssistantBot:
     async def run_webhook(self) -> None:
         """Запуск бота в режиме webhook (для продакшена)."""
         if not self.config.telegram or not self.config.telegram.webhook_url:
-            raise ValueError("WEBHOOK_URL не настроен для режима webhook")
+            msg = "WEBHOOK_URL не настроен для режима webhook"
+            raise ValueError(msg)
 
         if not self.bot or not self.dp:
-            raise RuntimeError("Бот или диспетчер не инициализированы")
+            msg = "Бот или диспетчер не инициализированы"
+            raise RuntimeError(msg)
 
-        logger.info(f"🌐 Запуск в режиме webhook: {self.config.telegram.webhook_url}")
+        logger.info(BOT_WEBHOOK_STARTED.format(url=self.config.telegram.webhook_url))
 
         # Настройка webhook
         await self.bot.set_webhook(
@@ -226,7 +258,7 @@ class AIAssistantBot:
             drop_pending_updates=True,
         )
 
-        logger.info("✅ Webhook настроен")
+        logger.info(BOT_WEBHOOK_SET)
 
     async def run(self) -> None:
         """Главный метод запуска бота."""
@@ -248,9 +280,9 @@ class AIAssistantBot:
             logger.info("🛑 Начинаю корректное завершение работы...")
 
         except KeyboardInterrupt:
-            logger.info("⌨️ Получено прерывание с клавиатуры")
+            logger.info(BOT_KEYBOARD_INTERRUPT)
         except Exception as e:
-            logger.error(f"💥 Критическая ошибка: {e}")
+            logger.error(BOT_CRITICAL_ERROR.format(error=e))
             raise
         finally:
             await self.shutdown()
@@ -270,8 +302,16 @@ async def lifespan() -> AsyncGenerator[None, None]:
 
 async def main() -> None:
     """Главная функция приложения."""
-    # Настройка логирования
-    setup_logging()
+    # Настройка логирования с файловым выводом и улучшенным форматированием
+    from pathlib import Path
+
+    setup_logging(
+        log_level="INFO",
+        enable_console=True,
+        log_file_path=Path("logs"),
+        enable_json=True,
+        enable_request_logging=True,
+    )
 
     logger.info("🎯 AI-Компаньон: Telegram бот для эмоциональной поддержки")
     logger.info("📅 Версия: 1.0.0 | Дата: 2025-09-12")
@@ -284,17 +324,15 @@ async def main() -> None:
         await bot_app.run()
 
     except KeyboardInterrupt:
-        logger.info("👋 Работа бота прервана пользователем")
+        logger.info(BOT_USER_INTERRUPTED)
     except Exception as e:
-        logger.error(f"💥 Критическая ошибка при запуске: {e}")
+        logger.error(BOT_CRITICAL_ERROR.format(error=e))
         if bot_app:
-            try:
+            with suppress(Exception):
                 await bot_app.shutdown()
-            except Exception:
-                pass
         sys.exit(1)
     finally:
-        logger.info("🏁 Программа завершена")
+        logger.info(BOT_PROGRAM_FINISHED)
 
 
 if __name__ == "__main__":
@@ -306,7 +344,6 @@ if __name__ == "__main__":
         # Запуск приложения
         asyncio.run(main())
     except KeyboardInterrupt:
-        print("\n👋 Завершение по Ctrl+C")
-    except Exception as e:
-        print(f"\n💥 Критическая ошибка: {e}")
+        pass
+    except Exception:
         sys.exit(1)

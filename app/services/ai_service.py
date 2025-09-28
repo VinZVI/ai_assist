@@ -57,7 +57,7 @@ class APIAuthenticationError(AIServiceError):
 class ResponseCache:
     """Простой кеш для ответов AI."""
 
-    def __init__(self, ttl_seconds: int = 3600):
+    def __init__(self, ttl_seconds: int = 3600) -> None:
         self._cache: dict[str, dict[str, Any]] = {}
         self._ttl = ttl_seconds
 
@@ -108,7 +108,7 @@ class ResponseCache:
 class AIService:
     """Сервис для работы с DeepSeek API."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.config = get_config()
         self._client: httpx.AsyncClient | None = None
         self._cache = ResponseCache(ttl_seconds=self.config.redis.cache_ttl)
@@ -206,16 +206,19 @@ class AIService:
                     logger.info(
                         f"✅ Успешный ответ от DeepSeek API за {response_time:.2f}с",
                     )
-                    data = response.json()
-                    return data
+                    return response.json()
 
                 if response.status_code == 401:
-                    raise APIAuthenticationError("Неверный API ключ DeepSeek")
+                    msg = "Неверный API ключ DeepSeek"
+                    raise APIAuthenticationError(msg)
 
                 if response.status_code == 402:
-                    raise APIAuthenticationError(
+                    msg = (
                         "Недостаточно средств на счете DeepSeek API. "
-                        "Пополните баланс в личном кабинете DeepSeek.",
+                        "Пополните баланс в личном кабинете DeepSeek."
+                    )
+                    raise APIAuthenticationError(
+                        msg,
                     )
 
                 if response.status_code == 429:
@@ -224,22 +227,26 @@ class AIService:
                         logger.warning(f"⏳ Rate limit достигнут. Ожидание {delay}с...")
                         await asyncio.sleep(delay)
                         continue
-                    raise APIRateLimitError("Превышен лимит запросов к DeepSeek API")
+                    msg = "Превышен лимит запросов к DeepSeek API"
+                    raise APIRateLimitError(msg)
 
                 if response.status_code >= 500:
                     if attempt < self._max_retries - 1:
                         delay = self._retry_delay * (attempt + 1)
                         logger.warning(
-                            f"🔄 Ошибка сервера {response.status_code}. Повтор через {delay}с...",
+                            f"🔄 Ошибка сервера {response.status_code}. "
+                            f"Повтор через {delay}с...",
                         )
                         await asyncio.sleep(delay)
                         continue
+                    msg = f"Ошибка сервера DeepSeek: {response.status_code}"
                     raise APIConnectionError(
-                        f"Ошибка сервера DeepSeek: {response.status_code}",
+                        msg,
                     )
 
+                msg = f"Неожиданный статус ответа: {response.status_code}"
                 raise APIConnectionError(
-                    f"Неожиданный статус ответа: {response.status_code}",
+                    msg,
                 )
 
             except httpx.TimeoutException:
@@ -248,7 +255,8 @@ class AIService:
                     logger.warning(f"⏰ Timeout запроса. Повтор через {delay}с...")
                     await asyncio.sleep(delay)
                     continue
-                raise APIConnectionError("Timeout при обращении к DeepSeek API")
+                msg = "Timeout при обращении к DeepSeek API"
+                raise APIConnectionError(msg)
 
             except httpx.ConnectError:
                 if attempt < self._max_retries - 1:
@@ -256,9 +264,11 @@ class AIService:
                     logger.warning(f"🌐 Ошибка подключения. Повтор через {delay}с...")
                     await asyncio.sleep(delay)
                     continue
-                raise APIConnectionError("Не удалось подключиться к DeepSeek API")
+                msg = "Не удалось подключиться к DeepSeek API"
+                raise APIConnectionError(msg)
 
-        raise APIConnectionError("Исчерпаны все попытки подключения к API")
+        msg = "Исчерпаны все попытки подключения к API"
+        raise APIConnectionError(msg)
 
     async def generate_response(
         self,
@@ -280,7 +290,8 @@ class AIService:
             AIResponse: Ответ от AI сервиса
         """
         if not messages:
-            raise ValueError("Список сообщений не может быть пустым")
+            msg = "Список сообщений не может быть пустым"
+            raise ValueError(msg)
 
         # Используем значения по умолчанию если не указаны
         temperature = temperature or self._default_temperature
@@ -288,10 +299,12 @@ class AIService:
 
         # Валидация параметров
         if not 0.0 <= temperature <= 2.0:
-            raise ValueError("Temperature должна быть от 0.0 до 2.0")
+            msg = "Temperature должна быть от 0.0 до 2.0"
+            raise ValueError(msg)
 
         if not 1 <= max_tokens <= 4000:
-            raise ValueError("max_tokens должно быть от 1 до 4000")
+            msg = "max_tokens должно быть от 1 до 4000"
+            raise ValueError(msg)
 
         # Проверяем кеш
         if use_cache:
@@ -317,13 +330,15 @@ class AIService:
 
             # Извлекаем ответ
             if "choices" not in data or not data["choices"]:
-                raise APIConnectionError("Некорректный формат ответа от DeepSeek API")
+                msg = "Некорректный формат ответа от DeepSeek API"
+                raise APIConnectionError(msg)
 
             choice = data["choices"][0]
             content = choice.get("message", {}).get("content", "")
 
             if not content:
-                raise APIConnectionError("Пустой ответ от DeepSeek API")
+                msg = "Пустой ответ от DeepSeek API"
+                raise APIConnectionError(msg)
 
             # Подсчитываем токены (приблизительно)
             tokens_used = data.get("usage", {}).get(
@@ -349,7 +364,8 @@ class AIService:
                 )
 
             logger.info(
-                f"🤖 Сгенерирован ответ: {len(content)} символов, {tokens_used} токенов",
+                f"🤖 Сгенерирован ответ: {len(content)} символов, "
+                f"{tokens_used} токенов",
             )
             return ai_response
 
@@ -359,7 +375,8 @@ class AIService:
 
         except Exception as e:
             logger.exception("💥 Неожиданная ошибка при генерации ответа AI")
-            raise AIServiceError(f"Неожиданная ошибка: {e!s}")
+            msg = f"Неожиданная ошибка: {e!s}"
+            raise AIServiceError(msg)
 
     async def generate_simple_response(self, user_message: str) -> AIResponse:
         """
@@ -374,7 +391,8 @@ class AIService:
         messages = [
             ConversationMessage(
                 role="system",
-                content="Ты - эмпатичный AI-помощник. Отвечай доброжелательно и поддерживающе.",
+                content="Ты - эмпатичный AI-помощник. "
+                "Отвечай доброжелательно и поддерживающе.",
             ),
             ConversationMessage(
                 role="user",

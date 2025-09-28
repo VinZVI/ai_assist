@@ -7,6 +7,7 @@
 
 from abc import ABC
 from datetime import datetime
+from typing import Any
 
 import pytest
 
@@ -27,7 +28,7 @@ from app.services.ai_providers.base import (
 class TestConversationMessage:
     """Тесты для структуры ConversationMessage."""
 
-    def test_message_creation(self):
+    def test_message_creation(self) -> None:
         """Тест создания сообщения диалога."""
         msg = ConversationMessage(
             role="user",
@@ -38,7 +39,7 @@ class TestConversationMessage:
         assert msg.content == "Привет, как дела?"
         assert msg.timestamp is None  # По умолчанию None
 
-    def test_message_with_timestamp(self):
+    def test_message_with_timestamp(self) -> None:
         """Тест создания сообщения с временной меткой."""
         now = datetime.now()
         msg = ConversationMessage(
@@ -51,7 +52,7 @@ class TestConversationMessage:
         assert msg.content == "Привет! У меня всё отлично!"
         assert msg.timestamp == now
 
-    def test_message_roles_validation(self):
+    def test_message_roles_validation(self) -> None:
         """Тест валидации ролей сообщений."""
         # Валидные роли
         valid_roles = ["system", "user", "assistant"]
@@ -60,7 +61,7 @@ class TestConversationMessage:
             msg = ConversationMessage(role=role, content="Тестовое сообщение")
             assert msg.role == role
 
-    def test_message_equality(self):
+    def test_message_equality(self) -> None:
         """Тест сравнения сообщений."""
         msg1 = ConversationMessage(role="user", content="Тест")
         msg2 = ConversationMessage(role="user", content="Тест")
@@ -70,7 +71,7 @@ class TestConversationMessage:
         assert msg1.content == msg2.content
         assert msg1.content != msg3.content
 
-    def test_message_string_representation(self):
+    def test_message_string_representation(self) -> None:
         """Тест строкового представления сообщения."""
         msg = ConversationMessage(role="user", content="Короткий тест")
 
@@ -85,7 +86,7 @@ class TestConversationMessage:
 class TestAIResponse:
     """Тесты для структуры AIResponse."""
 
-    def test_response_creation(self):
+    def test_response_creation(self) -> None:
         """Тест создания AI ответа."""
         response = AIResponse(
             content="Это ответ от AI",
@@ -102,7 +103,7 @@ class TestAIResponse:
         assert response.response_time == 1.5
         assert response.cached is False  # По умолчанию
 
-    def test_cached_response(self):
+    def test_cached_response(self) -> None:
         """Тест кешированного ответа."""
         response = AIResponse(
             content="Кешированный ответ",
@@ -117,7 +118,7 @@ class TestAIResponse:
         assert response.tokens_used == 0
         assert response.response_time == 0.1
 
-    def test_response_with_minimal_data(self):
+    def test_response_with_minimal_data(self) -> None:
         """Тест ответа с минимальными данными."""
         response = AIResponse(
             content="Минимальный ответ",
@@ -131,7 +132,7 @@ class TestAIResponse:
         assert response.model == "unknown"
         assert response.provider == "unknown"
 
-    def test_response_string_representation(self):
+    def test_response_string_representation(self) -> None:
         """Тест строкового представления ответа."""
         response = AIResponse(
             content="Тестовый ответ для repr",
@@ -151,42 +152,42 @@ class TestAIResponse:
 class TestAIProviderErrors:
     """Тесты для иерархии ошибок AI провайдеров."""
 
-    def test_base_ai_provider_error(self):
+    def test_base_ai_provider_error(self) -> None:
         """Тест базовой ошибки AI провайдера."""
         error = AIProviderError("Базовая ошибка AI", "test-provider")
 
         assert str(error) == "Базовая ошибка AI"
         assert isinstance(error, Exception)
 
-    def test_api_connection_error(self):
+    def test_api_connection_error(self) -> None:
         """Тест ошибки подключения к API."""
         error = APIConnectionError("Не удалось подключиться к API", "test-provider")
 
         assert str(error) == "Не удалось подключиться к API"
         assert isinstance(error, AIProviderError)
 
-    def test_api_authentication_error(self):
+    def test_api_authentication_error(self) -> None:
         """Тест ошибки аутентификации."""
         error = APIAuthenticationError("Неверный API ключ", "test-provider")
 
         assert str(error) == "Неверный API ключ"
         assert isinstance(error, AIProviderError)
 
-    def test_api_rate_limit_error(self):
+    def test_api_rate_limit_error(self) -> None:
         """Тест ошибки превышения лимита."""
         error = APIRateLimitError("Превышен лимит запросов", "test-provider")
 
         assert str(error) == "Превышен лимит запросов"
         assert isinstance(error, AIProviderError)
 
-    def test_api_quota_exceeded_error(self):
+    def test_api_quota_exceeded_error(self) -> None:
         """Тест ошибки превышения квоты."""
         error = APIQuotaExceededError("Превышена квота API", "test-provider")
 
         assert str(error) == "Превышена квота API"
         assert isinstance(error, AIProviderError)
 
-    def test_error_hierarchy(self):
+    def test_error_hierarchy(self) -> None:
         """Тест иерархии ошибок."""
         # Все специфичные ошибки должны быть подклассами AIProviderError
         connection_error = APIConnectionError("Тест", "test-provider")
@@ -205,7 +206,7 @@ class TestAIProviderErrors:
 class TestBaseAIProvider:
     """Тесты для абстрактного базового AI провайдера."""
 
-    def test_base_provider_is_abstract(self):
+    def test_base_provider_is_abstracttract(self) -> None:
         """Тест что BaseAIProvider является абстрактным классом."""
         assert issubclass(BaseAIProvider, ABC)
 
@@ -213,24 +214,24 @@ class TestBaseAIProvider:
         with pytest.raises(TypeError):
             BaseAIProvider("test")
 
-    def test_concrete_provider_implementation(self):
+    def test_concrete_provider_implementation(self) -> None:
         """Тест конкретной реализации провайдера."""
 
         class TestProvider(BaseAIProvider):
-            def __init__(self):
+            def __init__(self) -> None:
                 self.name = "test-provider"
 
             @property
-            def provider_name(self):
+            def provider_name(self) -> str:
                 return "test-provider"
 
             async def generate_response(
                 self,
-                messages,
-                temperature=None,
-                max_tokens=None,
-                **kwargs,
-            ):
+                messages: list[ConversationMessage],
+                temperature: float | None = None,
+                max_tokens: int | None = None,
+                **kwargs: Any,
+            ) -> AIResponse:
                 return AIResponse(
                     content="Тестовый ответ",
                     model="test-model",
@@ -239,16 +240,16 @@ class TestBaseAIProvider:
                     response_time=0.5,
                 )
 
-            def is_configured(self):
+            def is_configured(self) -> bool:
                 return True
 
-            async def is_available(self):
+            async def is_available(self) -> bool:
                 return True
 
-            async def health_check(self):
+            async def health_check(self) -> dict[str, str]:
                 return {"status": "healthy"}
 
-            async def close(self):
+            async def close(self) -> None:
                 pass
 
         # Должен создаваться без ошибок
@@ -256,26 +257,26 @@ class TestBaseAIProvider:
         assert provider.name == "test-provider"
 
     @pytest.mark.asyncio
-    async def test_provider_interface_methods(self):
+    async def test_provider_interface_methods(self) -> None:
         """Тест интерфейса методов провайдера."""
 
         class MockProvider(BaseAIProvider):
-            def __init__(self):
+            def __init__(self) -> None:
                 self.name = "mock-provider"
                 self._configured = True
                 self._available = True
 
             @property
-            def provider_name(self):
+            def provider_name(self) -> str:
                 return "mock-provider"
 
             async def generate_response(
                 self,
-                messages,
-                temperature=None,
-                max_tokens=None,
-                **kwargs,
-            ):
+                messages: list[ConversationMessage],
+                temperature: float | None = None,
+                max_tokens: int | None = None,
+                **kwargs: Any,
+            ) -> AIResponse:
                 return AIResponse(
                     content=f"Ответ на {len(messages)} сообщений",
                     model="mock-model",
@@ -284,16 +285,16 @@ class TestBaseAIProvider:
                     response_time=0.2,
                 )
 
-            def is_configured(self):
+            def is_configured(self) -> bool:
                 return self._configured
 
-            async def is_available(self):
+            async def is_available(self) -> bool:
                 return self._available
 
-            async def health_check(self):
+            async def health_check(self) -> dict[str, str]:
                 return {"status": "healthy" if self._available else "unhealthy"}
 
-            async def close(self):
+            async def close(self) -> None:
                 self._available = False
 
         provider = MockProvider()
@@ -320,28 +321,29 @@ class TestBaseAIProvider:
         assert await provider.is_available() is False
 
     @pytest.mark.asyncio
-    async def test_provider_configuration_states(self):
+    async def test_provider_configuration_states(self) -> None:
         """Тест различных состояний конфигурации провайдера."""
 
         class ConfigurableProvider(BaseAIProvider):
-            def __init__(self, api_key=None):
+            def __init__(self, api_key: str | None = None) -> None:
                 self.name = "configurable-provider"
                 self._api_key = api_key
 
             @property
-            def provider_name(self):
+            def provider_name(self) -> str:
                 return "configurable-provider"
 
             async def generate_response(
                 self,
-                messages,
-                temperature=None,
-                max_tokens=None,
-                **kwargs,
-            ):
+                messages: list[ConversationMessage],
+                temperature: float | None = None,
+                max_tokens: int | None = None,
+                **kwargs: Any,
+            ) -> AIResponse:
                 if not self.is_configured():
+                    msg = "Провайдер не настроен"
                     raise APIAuthenticationError(
-                        "Провайдер не настроен",
+                        msg,
                         "configurable",
                     )
                 return AIResponse(
@@ -352,16 +354,16 @@ class TestBaseAIProvider:
                     response_time=0.3,
                 )
 
-            def is_configured(self):
+            def is_configured(self) -> bool:
                 return self._api_key is not None and self._api_key != ""
 
-            async def is_available(self):
+            async def is_available(self) -> bool:
                 return self.is_configured()
 
-            async def health_check(self):
+            async def health_check(self) -> dict[str, str]:
                 return {"status": "healthy" if self.is_configured() else "unhealthy"}
 
-            async def close(self):
+            async def close(self) -> None:
                 pass
 
         # Провайдер без конфигурации
@@ -379,33 +381,39 @@ class TestBaseAIProvider:
         assert await configured_provider.is_available() is True
 
     @pytest.mark.asyncio
-    async def test_provider_error_handling(self):
+    async def test_provider_error_handling(self) -> None:
         """Тест обработки ошибок в провайдере."""
 
         class ErrorProvider(BaseAIProvider):
-            def __init__(self, error_type=None):
+            def __init__(self, error_type: str | None = None) -> None:
                 self.name = "error-provider"
                 self._error_type = error_type
 
             @property
-            def provider_name(self):
+            def provider_name(self) -> str:
                 return "error-provider"
 
             async def generate_response(
                 self,
-                messages,
-                temperature=None,
-                max_tokens=None,
-                **kwargs,
-            ):
+                messages: list[ConversationMessage],
+                temperature: float | None = None,
+                max_tokens: int | None = None,
+                **kwargs: Any,
+            ) -> AIResponse:
+                # Используем аргументы чтобы избежать предупреждений
+                _ = messages, temperature, max_tokens, kwargs
                 if self._error_type == "auth":
-                    raise APIAuthenticationError("Ошибка аутентификации", "error")
+                    msg = "Ошибка аутентификации"
+                    raise APIAuthenticationError(msg, "error")
                 if self._error_type == "rate_limit":
-                    raise APIRateLimitError("Превышен лимит", "error")
+                    msg = "Превышен лимит"
+                    raise APIRateLimitError(msg, "error")
                 if self._error_type == "connection":
-                    raise APIConnectionError("Ошибка соединения", "error")
+                    msg = "Ошибка соединения"
+                    raise APIConnectionError(msg, "error")
                 if self._error_type == "quota":
-                    raise APIQuotaExceededError("Превышена квота", "error-provider")
+                    msg = "Превышена квота"
+                    raise APIQuotaExceededError(msg, "error-provider")
 
                 return AIResponse(
                     content="Успешный ответ",
@@ -415,16 +423,16 @@ class TestBaseAIProvider:
                     response_time=0.1,
                 )
 
-            def is_configured(self):
+            def is_configured(self) -> bool:
                 return True
 
-            async def is_available(self):
+            async def is_available(self) -> bool:
                 return True
 
-            async def health_check(self):
+            async def health_check(self) -> dict[str, str]:
                 return {"status": "healthy"}
 
-            async def close(self):
+            async def close(self) -> None:
                 pass
 
         messages = [ConversationMessage(role="user", content="Тест ошибок")]
@@ -458,25 +466,27 @@ class TestProviderParameterHandling:
     """Тесты обработки параметров в провайдерах."""
 
     @pytest.mark.asyncio
-    async def test_parameter_passing(self):
+    async def test_parameter_passing(self) -> None:
         """Тест передачи параметров в провайдер."""
 
         class ParameterProvider(BaseAIProvider):
-            def __init__(self):
+            def __init__(self) -> None:
                 self.name = "parameter-provider"
                 self.last_params = {}
 
             @property
-            def provider_name(self):
+            def provider_name(self) -> str:
                 return "parameter-provider"
 
             async def generate_response(
                 self,
-                messages,
-                temperature=None,
-                max_tokens=None,
-                **kwargs,
-            ):
+                messages: list[ConversationMessage],
+                temperature: float | None = None,
+                max_tokens: int | None = None,
+                **kwargs: Any,
+            ) -> AIResponse:
+                # Используем аргументы чтобы избежать предупреждений
+                _ = messages
                 self.last_params = {
                     "temperature": temperature,
                     "max_tokens": max_tokens,
@@ -491,16 +501,16 @@ class TestProviderParameterHandling:
                     response_time=0.1,
                 )
 
-            def is_configured(self):
+            def is_configured(self) -> bool:
                 return True
 
-            async def is_available(self):
+            async def is_available(self) -> bool:
                 return True
 
-            async def health_check(self):
+            async def health_check(self) -> dict[str, str]:
                 return {"status": "healthy"}
 
-            async def close(self):
+            async def close(self) -> None:
                 pass
 
         provider = ParameterProvider()
@@ -532,27 +542,30 @@ class TestProviderLifecycle:
     """Тесты жизненного цикла AI провайдеров."""
 
     @pytest.mark.asyncio
-    async def test_provider_context_manager(self):
+    async def test_provider_context_manager(self) -> None:
         """Тест использования провайдера как async context manager."""
 
         class ContextProvider(BaseAIProvider):
-            def __init__(self):
+            def __init__(self) -> None:
                 self.name = "context-provider"
                 self.closed = False
 
             @property
-            def provider_name(self):
+            def provider_name(self) -> str:
                 return "context-provider"
 
             async def generate_response(
                 self,
-                messages,
-                temperature=None,
-                max_tokens=None,
-                **kwargs,
-            ):
+                messages: list[ConversationMessage],
+                temperature: float | None = None,
+                max_tokens: int | None = None,
+                **kwargs: Any,
+            ) -> AIResponse:
+                # Используем аргументы чтобы избежать предупреждений
+                _ = messages, temperature, max_tokens, kwargs
                 if self.closed:
-                    raise APIConnectionError("Провайдер закрыт", "context")
+                    msg = "Провайдер закрыт"
+                    raise APIConnectionError(msg, "context")
 
                 return AIResponse(
                     content="Ответ от контекстного провайдера",
@@ -562,22 +575,27 @@ class TestProviderLifecycle:
                     response_time=0.2,
                 )
 
-            def is_configured(self):
+            def is_configured(self) -> bool:
                 return True
 
-            async def is_available(self):
+            async def is_available(self) -> bool:
                 return not self.closed
 
-            async def health_check(self):
-                return {"status": "healthy" if not self.closed else "unhealthy"}
+            async def health_check(self) -> dict[str, str]:
+                return {"status": "healthy"}
 
-            async def close(self):
+            async def close(self) -> None:
                 self.closed = True
 
-            async def __aenter__(self):
+            async def __aenter__(self) -> "ContextProvider":
                 return self
 
-            async def __aexit__(self, exc_type, exc_val, exc_tb):
+            async def __aexit__(
+                self,
+                exc_type: type[BaseException] | None,
+                exc_val: BaseException | None,
+                exc_tb: object | None,
+            ) -> None:
                 await self.close()
 
         # Тест использования как context manager

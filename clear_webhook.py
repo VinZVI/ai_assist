@@ -19,7 +19,7 @@ from loguru import logger
 from app.config import get_config
 
 
-async def clear_webhook():
+async def clear_webhook() -> bool:
     """Очистка webhook для решения конфликтов."""
     logger.info("🔧 Начинаем очистку webhook...")
 
@@ -85,7 +85,8 @@ async def clear_webhook():
                     logger.error(f"❌ Ошибка удаления webhook: {delete_data}")
             else:
                 logger.error(
-                    f"❌ HTTP ошибка при удалении webhook: {delete_response.status_code}",
+                    f"❌ HTTP ошибка при удалении webhook: "
+                    f"{delete_response.status_code}",
                 )
 
     except httpx.TimeoutException:
@@ -96,14 +97,14 @@ async def clear_webhook():
     return False
 
 
-async def wait_for_conflict_resolution():
+async def wait_for_conflict_resolution() -> None:
     """Ожидание разрешения конфликта."""
     logger.info("⏳ Ждем разрешения конфликта (30 секунд)...")
     await asyncio.sleep(30)
     logger.info("✅ Ожидание завершено")
 
 
-async def main():
+async def main() -> None:
     """Основная функция."""
     logger.add("webhook_clear.log", rotation="1 MB", retention="1 week")
 

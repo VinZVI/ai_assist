@@ -10,6 +10,16 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from aiogram.types import Chat, Message
+from aiogram.types import User as TelegramUser
+
+from app.config import AppConfig, _config_manager
+from app.models.conversation import Conversation
+from app.models.user import User
+from app.services.ai_providers.base import AIResponse, ConversationMessage
+
+# Импорты для фикстур (перемещены на верхний уровень)
+from app.utils.logging import setup_logging
 
 # Добавляем корневую папку проекта в Python path
 project_root = Path(__file__).parent.parent
@@ -17,17 +27,15 @@ sys.path.insert(0, str(project_root))
 
 
 @pytest.fixture(scope="session")
-def project_root_path():
+def project_root_path() -> Path:
     """Фикстура возвращающая путь к корню проекта."""
     return project_root
 
 
 @pytest.fixture(autouse=True)
-def setup_test_environment():
+def setup_test_environment() -> None:
     """Автоматическая настройка тестового окружения."""
     # Настройка логирования для тестов
-    from app.utils.logging import setup_logging
-
     setup_logging(
         log_level="WARNING",  # Только важные сообщения в тестах
         enable_console=False,  # Отключаем консольный вывод в тестах
@@ -37,20 +45,15 @@ def setup_test_environment():
 
 
 @pytest.fixture
-def clean_config_cache():
+def clean_config_cache() -> None:
     """Фикстура для очистки кеша конфигурации между тестами."""
-    import app.config
-
     # Сохраняем текущее состояние
-    original_instance = getattr(app.config, "_config_instance", None)
+    # Используем новый метод reset_config вместо прямого доступа к _config_instance
 
-    # Очищаем кеш
-    app.config._config_instance = None
+    # Очищаем кеш с помощью нового метода
+    _config_manager.reset_config()
 
-    yield
-
-    # Восстанавливаем состояние
-    app.config._config_instance = original_instance
+    # Восстанавливаем состояние (ничего не делаем, так как reset_config достаточно)
 
 
 # =============================================================================
@@ -59,7 +62,7 @@ def clean_config_cache():
 
 
 @pytest.fixture
-def mock_config():
+def mock_config() -> AppConfig:
     """Мок конфигурации для тестов."""
     config = MagicMock()
 
@@ -87,9 +90,8 @@ def mock_config():
 
 
 @pytest.fixture
-def mock_ai_response():
+def mock_ai_response() -> AIResponse:
     """Стандартный мок AI ответа."""
-    from app.services.ai_providers.base import AIResponse
 
     return AIResponse(
         content="Это тестовый ответ от AI",
@@ -102,9 +104,8 @@ def mock_ai_response():
 
 
 @pytest.fixture
-def mock_conversation_messages():
+def mock_conversation_messages() -> list[ConversationMessage]:
     """Тестовые сообщения диалога."""
-    from app.services.ai_providers.base import ConversationMessage
 
     return [
         ConversationMessage(
@@ -123,7 +124,7 @@ def mock_conversation_messages():
 
 
 @pytest.fixture
-def mock_openrouter_provider():
+def mock_openrouter_provider() -> AsyncMock:
     """Мок OpenRouter провайдера."""
     provider = AsyncMock()
     provider.name = "openrouter"
@@ -133,7 +134,7 @@ def mock_openrouter_provider():
 
 
 @pytest.fixture
-def mock_deepseek_provider():
+def mock_deepseek_provider() -> AsyncMock:
     """Мок DeepSeek провайдера."""
     provider = AsyncMock()
     provider.name = "deepseek"
@@ -143,7 +144,11 @@ def mock_deepseek_provider():
 
 
 @pytest.fixture
-def mock_ai_manager(mock_openrouter_provider, mock_deepseek_provider, mock_ai_response):
+def mock_ai_manager(
+    mock_openrouter_provider: AsyncMock,
+    mock_deepseek_provider: AsyncMock,
+    mock_ai_response: AIResponse,
+) -> AsyncMock:
     """Мок AI менеджера с настроенными провайдерами."""
     manager = AsyncMock()
 
@@ -184,7 +189,7 @@ def mock_ai_manager(mock_openrouter_provider, mock_deepseek_provider, mock_ai_re
 
 
 @pytest.fixture
-def mock_db_session():
+def mock_db_session() -> AsyncMock:
     """Мок сессии базы данных."""
     session = AsyncMock()
     session.get.return_value = None
@@ -196,10 +201,8 @@ def mock_db_session():
 
 
 @pytest.fixture
-def sample_user():
+def sample_user() -> User:
     """Пример пользователя для тестов."""
-    from app.models.user import User
-
     return User(
         telegram_id=12345,
         username="test_user",
@@ -211,9 +214,9 @@ def sample_user():
 
 
 @pytest.fixture
-def sample_conversation():
+def sample_conversation() -> Conversation:
     """Пример диалога для тестов."""
-    from app.models.conversation import Conversation, MessageRole
+    from app.models.conversation import MessageRole
 
     return Conversation(
         user_id=12345,
@@ -225,10 +228,8 @@ def sample_conversation():
 
 
 @pytest.fixture
-def mock_telegram_message():
+def mock_telegram_message() -> MagicMock:
     """Мок Telegram сообщения."""
-    from aiogram.types import Chat, Message
-    from aiogram.types import User as TelegramUser
 
     message = MagicMock(spec=Message)
     message.from_user = MagicMock(spec=TelegramUser)
@@ -248,7 +249,7 @@ def mock_telegram_message():
 
 
 # Маркеры для категоризации тестов
-def pytest_configure(config):
+def pytest_configure(config: pytest.Config) -> None:
     """Конфигурация pytest с пользовательскими маркерами."""
     config.addinivalue_line(
         "markers",

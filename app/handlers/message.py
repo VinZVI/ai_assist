@@ -1,62 +1,34 @@
 """
 @file: message.py
-@description: Обработчик текстовых сообщений для AI диалогов с поддержкой множественных провайдеров
+@description: Обработчик текстовых сообщений для AI диалогов
+              с поддержкой множественных провайдеров
 @dependencies: aiogram, sqlalchemy, loguru, app.services.ai_manager
 @created: 2025-09-12
 @updated: 2025-09-20
 """
 
-from datetime import datetime
+from datetime import UTC, datetime, timezone
 
 from aiogram import F, Router
 from aiogram.types import Message
+from aiogram.utils.markdown import bold, italic
 from loguru import logger
+from sqlalchemy import desc, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_config
 from app.database import get_session
-from app.models import Conversation, User
-from app.services.ai_manager import AIProviderError, ConversationMessage, get_ai_manager
+from app.models.conversation import Conversation, ConversationStatus, save_conversation
+from app.models.user import User, get_or_update_user
+from app.services.ai_manager import AIProviderError, get_ai_manager
+from app.services.ai_providers.base import ConversationMessage
 
 # Создаем роутер для обработчиков сообщений
 message_router = Router()
 
 
-async def get_or_update_user(message: Message) -> User | None:
-    """Получение или обновление данных пользователя."""
-    if not message.from_user:
-        return None
-
-    async with get_session() as session:
-        try:
-            from sqlalchemy import select
-
-            # Получаем пользователя по telegram_id
-            stmt = select(User).where(User.telegram_id == message.from_user.id)
-            result = await session.execute(stmt)
-            user = result.scalar_one_or_none()
-
-            if not user:
-                logger.warning(
-                    f"👤 Пользователь {message.from_user.id} не найден, требуется /start",
-                )
-                return None
-
-            # Обновляем время последней активности
-            user.last_activity_at = datetime.utcnow()
-            await session.commit()
-
-            return user
-
-        except Exception as e:
-            logger.error(
-                f"❌ Ошибка при получении пользователя {message.from_user.id}: {e}",
-            )
-            await session.rollback()
-            return None
-
-
 async def get_recent_conversation_history(
-    session,
+    session: AsyncSession,
     user_id: int,
     limit: int = 10,
 ) -> list[ConversationMessage]:
@@ -110,44 +82,6 @@ async def get_recent_conversation_history(
         return []
 
 
-async def save_conversation(
-    session,
-    user_id: int,
-    user_message: str,
-    ai_response: str,
-    ai_model: str,
-    tokens_used: int,
-    response_time: float,
-) -> bool:
-    """Сохранение диалога в базу данных."""
-    try:
-        from app.models.conversation import ConversationStatus, MessageRole
-
-        # Сохраняем сообщение пользователя
-        user_conv = Conversation(
-            user_id=user_id,
-            message_text=user_message,
-            response_text=ai_response,
-            role=MessageRole.USER,
-            status=ConversationStatus.COMPLETED,
-            ai_model=ai_model,
-            tokens_used=tokens_used,
-            response_time_ms=int(response_time * 1000),  # конвертируем в мс
-            created_at=datetime.utcnow(),
-            processed_at=datetime.utcnow(),
-        )
-        session.add(user_conv)
-
-        await session.commit()
-        logger.debug(f"💾 Диалог сохранен для пользователя {user_id}")
-        return True
-
-    except Exception as e:
-        logger.error(f"❌ Ошибка при сохранении диалога: {e}")
-        await session.rollback()
-        return False
-
-
 def create_system_message() -> ConversationMessage:
     """Создание системного сообщения для AI."""
     return ConversationMessage(
@@ -156,9 +90,11 @@ def create_system_message() -> ConversationMessage:
             "Ты - эмпатичный AI-помощник и компаньон. "
             "Твоя задача - предоставлять эмоциональную поддержку и понимание. "
             "Отвечай доброжелательно, поддерживающе и с пониманием. "
-            "Задавай уточняющие вопросы, чтобы лучше понять чувства и потребности пользователя. "
+            "Задавай уточняющие вопросы, чтобы лучше понять чувства "
+            "и потребности пользователя. "
             "Избегай давать медицинские или юридические советы. "
-            "Если пользователь находится в кризисной ситуации, мягко предложи обратиться к специалисту."
+            "Если пользователь находится в кризисной ситуации, "
+            "мягко предложи обратиться к специалисту."
         ),
     )
 
@@ -175,7 +111,7 @@ async def generate_ai_response(
     """
     try:
         ai_manager = get_ai_manager()
-        start_time = datetime.utcnow()
+        start_time = datetime.now(UTC)
 
         # Получаем историю диалога
         async with get_session() as session:
@@ -206,7 +142,7 @@ async def generate_ai_response(
             max_tokens=1000,
         )
 
-        response_time = (datetime.utcnow() - start_time).total_seconds()
+        response_time = (datetime.now(UTC) - start_time).total_seconds()
 
         logger.info(
             f"🤖 AI ответ получен от {response.provider}: "
@@ -255,7 +191,8 @@ async def generate_ai_response(
         # Возвращаем общий fallback ответ
         return (
             "Извините, у меня временные технические трудности. "
-            "Я понимаю, что вам нужна поддержка. Попробуйте написать еще раз через несколько минут.",
+            "Я понимаю, что вам нужна поддержка. "
+            "Попробуйте написать еще раз через несколько минут.",
             0,
             "fallback",
             0.0,
@@ -298,13 +235,15 @@ async def handle_text_message(message: Message) -> None:
     # Проверяем длину сообщения
     if len(user_text.strip()) < 2:
         await message.answer(
-            "⚠️ Пожалуйста, напишите более содержательное сообщение (минимум 2 символа).",
+            "⚠️ Пожалуйста, напишите более содержательное "
+            "сообщение (минимум 2 символа).",
         )
         return
 
     if len(user_text) > 2000:  # Ограничиваем длину для эффективности
         await message.answer(
-            "⚠️ Ваше сообщение слишком длинное. Пожалуйста, сократите его до 2000 символов.",
+            "⚠️ Ваше сообщение слишком длинное. "
+            "Пожалуйста, сократите его до 2000 символов.",
         )
         return
 
@@ -312,7 +251,8 @@ async def handle_text_message(message: Message) -> None:
     user = await get_or_update_user(message)
     if not user:
         await message.answer(
-            "👋 Добро пожаловать! Пожалуйста, начните с команды /start для регистрации.",
+            "👋 Добро пожаловать! Пожалуйста, начните с команды "
+            "/start для регистрации.",
         )
         return
 

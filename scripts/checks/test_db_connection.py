@@ -28,9 +28,12 @@ async def test_database_connection() -> None:
         # Загружаем конфигурацию
         config = get_config()
         logger.info("✅ Конфигурация загружена успешно")
-        logger.info(
-            f"📊 DATABASE_URL: {config.database.database_url.split('@')[1] if '@' in config.database.database_url else 'скрыт'}",
+        db_url_display = (
+            config.database.database_url.split("@")[1]
+            if "@" in config.database.database_url
+            else "скрыт"
         )
+        logger.info(f"📊 DATABASE_URL: {db_url_display}")
 
         # Инициализируем базу данных
         await init_db()
@@ -106,7 +109,11 @@ if __name__ == "__main__":
     logger.remove()
     logger.add(
         sys.stdout,
-        format="<green>{time:HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{message}</cyan>",
+        format=(
+            "<green>{time:HH:mm:ss}</green> | "
+            "<level>{level: <8}</level> | "
+            "<cyan>{message}</cyan>"
+        ),
         level="INFO",
     )
 

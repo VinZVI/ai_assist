@@ -27,7 +27,7 @@ from .base import (
 class DeepSeekProvider(BaseAIProvider):
     """Провайдер AI для DeepSeek API."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__("deepseek")
         self.config = get_config().deepseek
         self._client: httpx.AsyncClient | None = None
@@ -113,16 +113,20 @@ class DeepSeekProvider(BaseAIProvider):
                     return response.json()
 
                 if response.status_code == 401:
+                    msg = "Неверный API ключ DeepSeek"
                     raise APIAuthenticationError(
-                        "Неверный API ключ DeepSeek",
+                        msg,
                         self.provider_name,
                         "401",
                     )
 
                 if response.status_code == 402:
-                    raise APIQuotaExceededError(
+                    msg = (
                         "Недостаточно средств на счете DeepSeek API. "
-                        "Пополните баланс в личном кабинете DeepSeek.",
+                        "Пополните баланс в личном кабинете DeepSeek."
+                    )
+                    raise APIQuotaExceededError(
+                        msg,
                         self.provider_name,
                         "402",
                     )
@@ -135,8 +139,9 @@ class DeepSeekProvider(BaseAIProvider):
                         )
                         await asyncio.sleep(delay)
                         continue
+                    msg = "Превышен лимит запросов к DeepSeek API"
                     raise APIRateLimitError(
-                        "Превышен лимит запросов к DeepSeek API",
+                        msg,
                         self.provider_name,
                         "429",
                     )
@@ -145,12 +150,14 @@ class DeepSeekProvider(BaseAIProvider):
                     if attempt < self._max_retries - 1:
                         delay = self._retry_delay * (attempt + 1)
                         logger.warning(
-                            f"🔄 Ошибка сервера DeepSeek {response.status_code}. Повтор через {delay}с...",
+                            f"🔄 Ошибка сервера DeepSeek {response.status_code}. "
+                            f"Повтор через {delay}с...",
                         )
                         await asyncio.sleep(delay)
                         continue
+                    msg = f"Ошибка сервера DeepSeek: {response.status_code}"
                     raise APIConnectionError(
-                        f"Ошибка сервера DeepSeek: {response.status_code}",
+                        msg,
                         self.provider_name,
                         str(response.status_code),
                     )
@@ -163,8 +170,12 @@ class DeepSeekProvider(BaseAIProvider):
                 except:
                     error_text = response.text
 
+                msg = (
+                    f"Неожиданный статус ответа DeepSeek: {response.status_code}. "
+                    f"{error_text}"
+                )
                 raise APIConnectionError(
-                    f"Неожиданный статус ответа DeepSeek: {response.status_code}. {error_text}",
+                    msg,
                     self.provider_name,
                     str(response.status_code),
                 )
@@ -177,8 +188,9 @@ class DeepSeekProvider(BaseAIProvider):
                     )
                     await asyncio.sleep(delay)
                     continue
+                msg = "Timeout при обращении к DeepSeek API"
                 raise APIConnectionError(
-                    "Timeout при обращении к DeepSeek API",
+                    msg,
                     self.provider_name,
                     "timeout",
                 )
@@ -191,14 +203,16 @@ class DeepSeekProvider(BaseAIProvider):
                     )
                     await asyncio.sleep(delay)
                     continue
+                msg = "Не удалось подключиться к DeepSeek API"
                 raise APIConnectionError(
-                    "Не удалось подключиться к DeepSeek API",
+                    msg,
                     self.provider_name,
                     "connection_error",
                 )
 
+        msg = "Исчерпаны все попытки подключения к DeepSeek API"
         raise APIConnectionError(
-            "Исчерпаны все попытки подключения к DeepSeek API",
+            msg,
             self.provider_name,
             "max_retries_exceeded",
         )
@@ -208,15 +222,17 @@ class DeepSeekProvider(BaseAIProvider):
         messages: list[ConversationMessage],
         temperature: float | None = None,
         max_tokens: int | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> AIResponse:
         """Генерация ответа от DeepSeek AI."""
         if not messages:
-            raise ValueError("Список сообщений не может быть пустым")
+            msg = "Список сообщений не может быть пустым"
+            raise ValueError(msg)
 
         if not self.is_configured():
+            msg = "DeepSeek API не настроен. Проверьте DEEPSEEK_API_KEY в .env"
             raise APIAuthenticationError(
-                "DeepSeek API не настроен. Проверьте DEEPSEEK_API_KEY в .env",
+                msg,
                 self.provider_name,
                 "not_configured",
             )
@@ -227,10 +243,12 @@ class DeepSeekProvider(BaseAIProvider):
 
         # Валидация параметров
         if not 0.0 <= temperature <= 2.0:
-            raise ValueError("Temperature должна быть от 0.0 до 2.0")
+            msg = "Temperature должна быть от 0.0 до 2.0"
+            raise ValueError(msg)
 
         if not 1 <= max_tokens <= 4000:
-            raise ValueError("max_tokens должно быть от 1 до 4000")
+            msg = "max_tokens должно быть от 1 до 4000"
+            raise ValueError(msg)
 
         try:
             # Подготавливаем сообщения
@@ -247,8 +265,9 @@ class DeepSeekProvider(BaseAIProvider):
 
             # Извлекаем ответ
             if "choices" not in data or not data["choices"]:
+                msg = "Некорректный формат ответа от DeepSeek API"
                 raise APIConnectionError(
-                    "Некорректный формат ответа от DeepSeek API",
+                    msg,
                     self.provider_name,
                     "invalid_response",
                 )
@@ -257,8 +276,9 @@ class DeepSeekProvider(BaseAIProvider):
             content = choice.get("message", {}).get("content", "")
 
             if not content:
+                msg = "Пустой ответ от DeepSeek API"
                 raise APIConnectionError(
-                    "Пустой ответ от DeepSeek API",
+                    msg,
                     self.provider_name,
                     "empty_response",
                 )
@@ -296,18 +316,17 @@ class DeepSeekProvider(BaseAIProvider):
         except Exception as e:
             if isinstance(
                 e,
-                (
-                    APIConnectionError,
-                    APIRateLimitError,
-                    APIAuthenticationError,
-                    APIQuotaExceededError,
-                ),
+                APIConnectionError
+                | APIRateLimitError
+                | APIAuthenticationError
+                | APIQuotaExceededError,
             ):
                 raise
 
             logger.exception("💥 Неожиданная ошибка при генерации ответа DeepSeek")
+            msg = f"Неожиданная ошибка DeepSeek: {e!s}"
             raise APIConnectionError(
-                f"Неожиданная ошибка DeepSeek: {e!s}",
+                msg,
                 self.provider_name,
                 "unexpected_error",
             )

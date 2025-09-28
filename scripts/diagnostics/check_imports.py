@@ -1,55 +1,50 @@
-#!/usr/bin/env python3
 """
-Тестовый скрипт для проверки работы импортов в IDE.
-Если этот файл открыт в IDE и импорты подсвечиваются красным,
-значит IDE не видит виртуальное окружение uv.
+@file: check_imports.py
+@description: Скрипт для проверки корректности импортов проекта
+@created: 2025-09-20
 """
 
+import contextlib
 import sys
 from pathlib import Path
 
-# Проверяем основные зависимости
+# Добавляем корневую папку проекта в Python path
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
+
+# Пробуем импортировать основные модули проекта
 try:
-    import pytest
+    # Основные компоненты
+    # Telegram бот
+    from aiogram import Bot, Dispatcher
+    from aiogram.types import Message
 
-    print(f"✅ pytest {pytest.__version__} - OK")
-except ImportError as e:
-    print(f"❌ pytest не найден: {e}")
+    from app.config import get_config
+    from app.database import get_session, init_database
 
-try:
-    import loguru
+    # Хендлеры
+    from app.handlers import callbacks, message_handler
+    from app.models.conversation import Conversation
 
-    print(f"✅ loguru {loguru.__version__} - OK")
-except ImportError as e:
-    print(f"❌ loguru не найден: {e}")
+    # Модели данных
+    from app.models.user import User
 
-try:
-    import pydantic
+    # Сервисы
+    from app.services.ai_manager import get_ai_manager
+    from app.services.conversation_service import ConversationService
+    from app.services.user_service import UserService
+    from app.utils.logging import setup_logging
 
-    print(f"✅ pydantic {pydantic.__version__} - OK")
-except ImportError as e:
-    print(f"❌ pydantic не найден: {e}")
 
-try:
-    import aiogram
+except ImportError:
+    sys.exit(1)
 
-    print(f"✅ aiogram {aiogram.__version__} - OK")
-except ImportError as e:
-    print(f"❌ aiogram не найден: {e}")
+except Exception:
+    sys.exit(1)
 
-# Проверяем путь к интерпретатору
-print(f"\n📍 Python интерпретатор: {sys.executable}")
-print(f"📁 Рабочая директория: {Path.cwd()}")
-print(f"🐍 Версия Python: {sys.version}")
-
-# Проверяем пути Python
-print("\n📚 Python paths:")
-for i, path in enumerate(sys.path[:5], 1):
-    print(f"  {i}. {path}")
+# Дополнительная проверка конфигурации
+with contextlib.suppress(Exception):
+    config = get_config()
 
 if __name__ == "__main__":
-    print("\n🎉 Все импорты успешно загружены!")
-    print("💡 Если в IDE все еще ошибки, настройте интерпретатор Python:")
-    print("   VS Code: Ctrl+Shift+P -> 'Python: Select Interpreter'")
-    print("   PyCharm: File -> Settings -> Project -> Python Interpreter")
-    print(f"   Путь: {Path.cwd() / '.venv' / 'Scripts' / 'python.exe'}")
+    pass

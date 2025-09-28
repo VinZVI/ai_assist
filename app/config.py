@@ -6,10 +6,14 @@
 """
 
 from pathlib import Path
+from typing import Any
 
 from loguru import logger
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
+
+from app.constants import ConfigErrorMessages, ConfigMagicValues
+from app.log_lexicon import CONFIG_LOADED_SUCCESS
 
 
 class DatabaseConfig(BaseSettings):
@@ -59,11 +63,11 @@ class TelegramConfig(BaseSettings):
     def validate_bot_token(cls, v: str) -> str:
         """Валидация формата токена бота."""
         if not v or v == "your_telegram_bot_token_here":
-            raise ValueError("BOT_TOKEN must be set to a valid Telegram bot token")
+            raise ValueError(ConfigErrorMessages.INVALID_BOT_TOKEN_FORMAT)
 
         # Базовая проверка формата токена (number:hash)
         if ":" not in v:
-            raise ValueError("BOT_TOKEN must be in format 'number:hash'")
+            raise ValueError(ConfigErrorMessages.INVALID_BOT_TOKEN_STRUCTURE)
 
         return v
 
@@ -95,8 +99,8 @@ class DeepSeekConfig(BaseSettings):
     def validate_api_key(cls, v: str) -> str:
         """Валидация API ключа DeepSeek."""
         # Проверяем, что ключ не пустой и не placeholder
-        if v is None or v == "" or v == "your_deepseek_api_key_here":
-            raise ValueError("DEEPSEEK_API_KEY must be set to a valid API key")
+        if v in {"", "your_deepseek_api_key_here"} or v is None:
+            raise ValueError(ConfigErrorMessages.INVALID_DEEPSEEK_API_KEY)
         return v
 
     def is_configured(self) -> bool:
@@ -107,16 +111,20 @@ class DeepSeekConfig(BaseSettings):
     @classmethod
     def validate_temperature(cls, v: float) -> float:
         """Валидация температуры генерации."""
-        if not 0.0 <= v <= 2.0:
-            raise ValueError("DEEPSEEK_TEMPERATURE must be between 0.0 and 2.0")
+        min_temp = ConfigMagicValues.DEEPSEEK_MIN_TEMPERATURE
+        max_temp = ConfigMagicValues.DEEPSEEK_MAX_TEMPERATURE
+        if not min_temp <= v <= max_temp:
+            raise ValueError(ConfigErrorMessages.INVALID_DEEPSEEK_TEMPERATURE)
         return v
 
     @field_validator("deepseek_max_tokens")
     @classmethod
     def validate_max_tokens(cls, v: int) -> int:
         """Валидация максимального количества токенов."""
-        if v <= 0 or v > 4000:
-            raise ValueError("DEEPSEEK_MAX_TOKENS must be between 1 and 4000")
+        min_tokens = ConfigMagicValues.DEEPSEEK_MIN_MAX_TOKENS
+        max_tokens = ConfigMagicValues.DEEPSEEK_MAX_MAX_TOKENS_DEEPSEEK
+        if v < min_tokens or v > max_tokens:
+            raise ValueError(ConfigErrorMessages.INVALID_DEEPSEEK_MAX_TOKENS)
         return v
 
 
@@ -154,7 +162,7 @@ class OpenRouterConfig(BaseSettings):
         """Валидация API ключа OpenRouter."""
         # Пока просто проверяем, что ключ не пустой
         if not v:
-            raise ValueError("OPENROUTER_API_KEY cannot be empty")
+            raise ValueError(ConfigErrorMessages.INVALID_OPENROUTER_API_KEY)
         return v
 
     def is_configured(self) -> bool:
@@ -165,16 +173,20 @@ class OpenRouterConfig(BaseSettings):
     @classmethod
     def validate_temperature(cls, v: float) -> float:
         """Валидация температуры генерации."""
-        if not 0.0 <= v <= 2.0:
-            raise ValueError("OPENROUTER_TEMPERATURE must be between 0.0 and 2.0")
+        min_temp = ConfigMagicValues.OPENROUTER_MIN_TEMPERATURE
+        max_temp = ConfigMagicValues.OPENROUTER_MAX_TEMPERATURE
+        if not min_temp <= v <= max_temp:
+            raise ValueError(ConfigErrorMessages.INVALID_OPENROUTER_TEMPERATURE)
         return v
 
     @field_validator("openrouter_max_tokens")
     @classmethod
     def validate_max_tokens(cls, v: int) -> int:
         """Валидация максимального количества токенов."""
-        if v <= 0 or v > 8000:  # OpenRouter поддерживает больше токенов
-            raise ValueError("OPENROUTER_MAX_TOKENS must be between 1 and 8000")
+        min_tokens = ConfigMagicValues.OPENROUTER_MIN_MAX_TOKENS
+        max_tokens = ConfigMagicValues.DEEPSEEK_MAX_MAX_TOKENS_OPENROUTER
+        if v < min_tokens or v > max_tokens:  # OpenRouter поддерживает больше токенов
+            raise ValueError(ConfigErrorMessages.INVALID_OPENROUTER_MAX_TOKENS)
         return v
 
 
@@ -201,15 +213,20 @@ class AIProviderConfig(BaseSettings):
         """Валидация названия провайдера."""
         allowed_providers = ["deepseek", "openrouter"]
         if v not in allowed_providers:
-            raise ValueError(f"Provider must be one of: {allowed_providers}")
+            raise ValueError(ConfigErrorMessages.INVALID_AI_PROVIDER)
         return v
 
     @field_validator("max_retries_per_provider")
     @classmethod
     def validate_retries(cls, v: int) -> int:
         """Валидация количества попыток."""
-        if v < 1 or v > 10:
-            raise ValueError("AI_MAX_RETRIES_PER_PROVIDER must be between 1 and 10")
+        min_retries = ConfigMagicValues.AI_PROVIDER_MAX_RETRIES_MIN
+        max_retries = ConfigMagicValues.AI_PROVIDER_MAX_RETRIES_MAX
+        if v < min_retries or v > max_retries:
+            message = ConfigErrorMessages.INVALID_AI_PROVIDER_RETRIES_FORMAT.format(
+                min_retries=min_retries, max_retries=max_retries
+            )
+            raise ValueError(message)
         return v
 
 
@@ -229,7 +246,8 @@ class UserLimitsConfig(BaseSettings):
     def validate_free_limit(cls, v: int) -> int:
         """Валидация лимита бесплатных сообщений."""
         if v < 0:
-            raise ValueError("FREE_MESSAGES_LIMIT must be non-negative")
+            message = ConfigErrorMessages.INVALID_FREE_MESSAGES_LIMIT_NON_NEGATIVE
+            raise ValueError(message)
         return v
 
     @field_validator("premium_price")
@@ -237,7 +255,7 @@ class UserLimitsConfig(BaseSettings):
     def validate_premium_price(cls, v: int) -> int:
         """Валидация цены премиум доступа."""
         if v <= 0:
-            raise ValueError("PREMIUM_PRICE must be positive")
+            raise ValueError(ConfigErrorMessages.INVALID_PREMIUM_PRICE)
         return v
 
 
@@ -254,7 +272,7 @@ class AdminConfig(BaseSettings):
     def validate_admin_id(cls, v: int) -> int:
         """Валидация ID администратора."""
         if v <= 0:
-            raise ValueError("ADMIN_USER_ID must be a positive integer")
+            raise ValueError(ConfigErrorMessages.INVALID_ADMIN_USER_ID_POSITIVE)
         return v
 
     def get_admin_ids(self) -> list[int]:
@@ -294,7 +312,7 @@ class PaymentConfig(BaseSettings):
         """Валидация провайдера платежей."""
         allowed_providers = ["telegram_stars", "yookassa"]
         if v not in allowed_providers:
-            raise ValueError(f"PAYMENT_PROVIDER must be one of: {allowed_providers}")
+            raise ValueError(ConfigErrorMessages.INVALID_PAYMENT_PROVIDER)
         return v
 
 
@@ -311,7 +329,7 @@ class RedisConfig(BaseSettings):
     def validate_ttl(cls, v: int) -> int:
         """Валидация времени жизни кеша."""
         if v <= 0:
-            raise ValueError("CACHE_TTL must be positive")
+            raise ValueError(ConfigErrorMessages.INVALID_CACHE_TTL)
         return v
 
 
@@ -344,7 +362,7 @@ class RateLimitConfig(BaseSettings):
     def validate_positive(cls, v: int) -> int:
         """Валидация положительных значений."""
         if v <= 0:
-            raise ValueError("Rate limit values must be positive")
+            raise ValueError(ConfigErrorMessages.INVALID_RATE_LIMIT_VALUE)
         return v
 
 
@@ -372,11 +390,11 @@ class AppConfig(BaseSettings):
     monitoring: MonitoringConfig | None = None
     rate_limit: RateLimitConfig | None = None
 
-    def __init__(self, **data):
+    def __init__(self, **data: dict[str, Any]) -> None:
         super().__init__(**data)
         # Создаем экземпляры вложенных конфигураций
         # Используем те же параметры, что и у родительской конфигурации
-        nested_config_params = {}
+        nested_config_params: dict[str, Any] = {}
         if "_env_file" in data:
             nested_config_params["_env_file"] = data["_env_file"]
 
@@ -399,7 +417,7 @@ class AppConfig(BaseSettings):
         allowed_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
         v_upper = v.upper()
         if v_upper not in allowed_levels:
-            raise ValueError(f"LOG_LEVEL must be one of: {allowed_levels}")
+            raise ValueError(ConfigErrorMessages.INVALID_LOG_LEVEL)
         return v_upper
 
     @field_validator("secret_key")
@@ -407,9 +425,9 @@ class AppConfig(BaseSettings):
     def validate_secret_key(cls, v: str) -> str:
         """Валидация секретного ключа."""
         if not v or v == "your_secret_key_here":
-            raise ValueError("SECRET_KEY must be set to a secure random string")
-        if len(v) < 32:
-            raise ValueError("SECRET_KEY must be at least 32 characters long")
+            raise ValueError(ConfigErrorMessages.INVALID_SECRET_KEY)
+        if len(v) < ConfigMagicValues.MIN_SECRET_KEY_LENGTH:
+            raise ValueError(ConfigErrorMessages.SECRET_KEY_TOO_SHORT)
         return v
 
     model_config = {
@@ -420,25 +438,43 @@ class AppConfig(BaseSettings):
     }
 
 
-# Глобальный экземпляр конфигурации (создается лениво)
-_config_instance: AppConfig | None = None
+class ConfigManager:
+    """Менеджер конфигурации приложения с паттерном Singleton."""
+
+    _instance: "ConfigManager | None" = None
+    _config: AppConfig | None = None
+
+    def __new__(cls) -> "ConfigManager":
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
+    def get_config(self) -> AppConfig:
+        """Получение экземпляра конфигурации приложения."""
+        if self._config is None:
+            # Загружаем .env файл если он существует
+            env_file = Path(".env")
+            if env_file.exists():
+                self._config = AppConfig(_env_file=str(env_file))
+            else:
+                self._config = AppConfig()
+
+            logger.info(CONFIG_LOADED_SUCCESS)
+
+        return self._config
+
+    def reset_config(self) -> None:
+        """Сброс экземпляра конфигурации (для тестирования)."""
+        self._config = None
+
+
+# Глобальный экземпляр менеджера конфигурации
+_config_manager = ConfigManager()
 
 
 def get_config() -> AppConfig:
     """Получение экземпляра конфигурации приложения."""
-    global _config_instance
-
-    if _config_instance is None:
-        # Загружаем .env файл если он существует
-        env_file = Path(".env")
-        if env_file.exists():
-            _config_instance = AppConfig(_env_file=str(env_file))
-        else:
-            _config_instance = AppConfig()
-
-        logger.info("✅ Конфигурация приложения загружена успешно")
-
-    return _config_instance
+    return _config_manager.get_config()
 
 
 # Экспорт для удобного использования

@@ -6,19 +6,29 @@
 """
 
 import asyncio
+import logging
 import sys
 from pathlib import Path
 
-# Добавляем корневую папку проекта в PATH
-project_root = Path(__file__).parent
+# Добавляем корневую папку проекта в Python path
+project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from loguru import logger
+from app.config import get_config
+from app.services.ai_manager import get_ai_manager
+from app.services.ai_providers.base import ConversationMessage
 
-from app.services.ai_manager import ConversationMessage, get_ai_manager
+# Настройка логирования
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+
+logger = logging.getLogger(__name__)
 
 
-async def test_openrouter_integration():
+async def test_openrouter_integration() -> bool | None:
     """Тестирование интеграции с OpenRouter."""
     logger.info("🚀 Начинаем тест интеграции с OpenRouter...")
 
@@ -98,7 +108,8 @@ async def test_openrouter_integration():
 
         for provider, provider_stats in stats["provider_stats"].items():
             logger.info(
-                f"   {provider}: {provider_stats['successes']}/{provider_stats['requests']} успешно",
+                f"   {provider}: "
+                f"{provider_stats['successes']}/{provider_stats['requests']} успешно",
             )
 
         return True
@@ -112,7 +123,7 @@ async def test_openrouter_integration():
         await manager.close()
 
 
-async def main():
+async def main() -> None:
     """Основная функция теста."""
     logger.add("openrouter_test.log", rotation="1 MB", retention="1 week")
 

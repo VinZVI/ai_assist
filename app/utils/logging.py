@@ -49,7 +49,7 @@ def json_formatter(record: dict[str, Any]) -> str:
             "traceback": record["exception"].traceback,
         }
 
-    return json.dumps(log_entry, ensure_ascii=False)
+    return json.dumps(log_entry, ensure_ascii=False) + "\n"
 
 
 def console_formatter(record: dict[str, Any]) -> str:
@@ -75,31 +75,18 @@ def console_formatter(record: dict[str, Any]) -> str:
 
     emoji = level_emoji.get(record["level"].name, "📝")
 
-    # Цветовое кодирование
-    colors = {
-        "TRACE": "<dim>",
-        "DEBUG": "<blue>",
-        "INFO": "<cyan>",
-        "SUCCESS": "<green>",
-        "WARNING": "<yellow>",
-        "ERROR": "<red>",
-        "CRITICAL": "<red><bold>",
-    }
-
-    color = colors.get(record["level"].name, "")
-
     # Формат для консоли
     time_str = record["time"].strftime("%H:%M:%S")
     level_str = record["level"].name.ljust(8)
-    module_str = f"{record['module']}:{record['line']}"
 
-    return (
-        f"{color}{emoji} {time_str} | "
-        f"{level_str} | "
-        f"{module_str:<20} | "
-        f"{record['message']}"
-        f"</>"
-    )
+    # Обработка имени модуля для избежания проблем с тегами
+    module_name = record["module"]
+    if module_name == "<string>":
+        module_name = "main"
+    module_str = f"{module_name}:{record['line']}"
+
+    # Простое форматирование без сложных переносов строк для избежания проблем с цветами
+    return f"{emoji} {time_str} | {level_str} | {module_str:<20} | {record['message']}"
 
 
 def setup_logging(
@@ -128,7 +115,7 @@ def setup_logging(
             sys.stdout,
             format=console_formatter,
             level=log_level,
-            colorize=True,
+            colorize=False,  # Отключаем цвета для избежания проблем
             backtrace=True,
             diagnose=True,
         )
@@ -141,13 +128,14 @@ def setup_logging(
             # JSON формат для структурированных логов
             logger.add(
                 log_file_path / "app.json",
-                format=json_formatter,
+                format="{message}",
                 level=log_level,
                 rotation="10 MB",
                 retention="30 days",
                 compression="gz",
                 backtrace=True,
                 diagnose=True,
+                serialize=True,  # Используем встроенную сериализацию loguru
             )
 
         # Обычный текстовый формат для удобочитаемости
@@ -206,7 +194,8 @@ def setup_logging(
     logger.debug(f"📁 JSON формат: {'включен' if enable_json else 'отключен'}")
     logger.debug(f"📋 Консольный вывод: {'включен' if enable_console else 'отключен'}")
     logger.debug(
-        f"🌐 Логирование запросов: {'включено' if enable_request_logging else 'отключено'}"
+        f"🌐 Логирование запросов: "
+        f"{'включено' if enable_request_logging else 'отключено'}"
     )
 
 
