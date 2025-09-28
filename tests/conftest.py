@@ -201,6 +201,18 @@ def mock_db_session() -> AsyncMock:
 
 
 @pytest.fixture
+def mock_session() -> AsyncMock:
+    """Мок сессии базы данных (альтернативное имя для совместимости)."""
+    session = AsyncMock()
+    session.get.return_value = None
+    session.commit = AsyncMock()
+    session.rollback = AsyncMock()
+    session.add = MagicMock()
+    session.execute = AsyncMock()
+    return session
+
+
+@pytest.fixture
 def sample_user() -> User:
     """Пример пользователя для тестов."""
     return User(

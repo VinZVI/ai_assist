@@ -18,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_config
 from app.database import get_session
-from app.models.conversation import Conversation, ConversationStatus, save_conversation
+from app.models.conversation import Conversation, ConversationStatus
 from app.models.user import User, get_or_update_user
 from app.services.ai_manager import AIProviderError, get_ai_manager
 from app.services.ai_providers.base import ConversationMessage
@@ -97,6 +97,63 @@ def create_system_message() -> ConversationMessage:
             "мягко предложи обратиться к специалисту."
         ),
     )
+
+
+async def save_conversation(
+    session: AsyncSession,
+    user_id: int,
+    user_message: str,
+    ai_response: str,
+    ai_model: str,
+    tokens_used: int,
+    response_time: float,
+) -> bool:
+    """
+    Сохранение диалога в базе данных.
+
+    Args:
+        session: Сессия базы данных
+        user_id: ID пользователя
+        user_message: Сообщение пользователя
+        ai_response: Ответ AI
+        ai_model: Модель AI
+        tokens_used: Количество использованных токенов
+        response_time: Время ответа в секундах
+
+    Returns:
+        bool: True если успешно сохранено, False в случае ошибки
+    """
+    try:
+        # Создаем запись сообщения пользователя
+        user_conv = Conversation(
+            user_id=user_id,
+            message_text=user_message,
+            role="user",
+            status=ConversationStatus.COMPLETED,
+        )
+        session.add(user_conv)
+
+        # Создаем запись ответа AI
+        ai_conv = Conversation(
+            user_id=user_id,
+            message_text=user_message,
+            response_text=ai_response,
+            role="assistant",
+            status=ConversationStatus.COMPLETED,
+            ai_model=ai_model,
+            tokens_used=tokens_used,
+            response_time_ms=int(response_time * 1000),
+        )
+        session.add(ai_conv)
+
+        await session.commit()
+        logger.info(f"💾 Диалог сохранен для пользователя {user_id}")
+        return True
+
+    except Exception as e:
+        logger.exception(f"💥 Ошибка при сохранении диалога: {e}")
+        await session.rollback()
+        return False
 
 
 async def generate_ai_response(
@@ -208,133 +265,90 @@ async def generate_ai_response(
         )
 
 
-@message_router.message(F.text & ~F.text.startswith("/"))
+@message_router.message(F.text)
 async def handle_text_message(message: Message) -> None:
-    """
-    Обработчик текстовых сообщений.
-
-    Логика:
-    1. Проверяем, что пользователь зарегистрирован
-    2. Проверяем лимиты сообщений
-    3. Генерируем ответ AI
-    4. Сохраняем диалог
-    5. Отправляем ответ пользователю
-    """
-    # Проверка наличия данных
-    if not message.from_user or not message.text:
-        logger.warning("⚠️ Получено сообщение без данных пользователя или текста")
-        return
-
-    user_id = message.from_user.id
-    user_text = message.text
-
-    logger.info(
-        f"💬 Получено сообщение от пользователя {user_id}: {len(user_text)} символов",
-    )
-
-    # Проверяем длину сообщения
-    if len(user_text.strip()) < 2:
-        await message.answer(
-            "⚠️ Пожалуйста, напишите более содержательное "
-            "сообщение (минимум 2 символа).",
-        )
-        return
-
-    if len(user_text) > 2000:  # Ограничиваем длину для эффективности
-        await message.answer(
-            "⚠️ Ваше сообщение слишком длинное. "
-            "Пожалуйста, сократите его до 2000 символов.",
-        )
-        return
-
-    # Получаем данные пользователя
-    user = await get_or_update_user(message)
-    if not user:
-        await message.answer(
-            "👋 Добро пожаловать! Пожалуйста, начните с команды "
-            "/start для регистрации.",
-        )
-        return
-
-    # Сбрасываем дневной счетчик если нужно
-    user.reset_daily_count_if_needed()
-
-    # Проверяем лимиты сообщений
-    if not user.can_send_message():
-        config = get_config()
-        if config.user_limits:
-            premium_price = config.user_limits.premium_price
-            free_messages_limit = config.user_limits.free_messages_limit
-        else:
-            premium_price = 99
-            free_messages_limit = 10
-
-        await message.answer(
-            f"🚫 **Превышен дневной лимит сообщений**\n\n"
-            f"Бесплатный лимит: {free_messages_limit} сообщений в день\n"
-            f"Использовано: {user.daily_message_count}\n\n"
-            f"💎 **Премиум доступ** ({premium_price}₽):\n"
-            f"• Безлимитные сообщения\n"
-            f"• Приоритетная поддержка\n"
-            f"• Расширенные возможности\n\n"
-            f"Используйте /premium для оформления премиум доступа.",
-            parse_mode="Markdown",
-        )
-        return
-
-    # Показываем индикатор набора текста
-    if message.bot:
-        await message.bot.send_chat_action(chat_id=message.chat.id, action="typing")
-
+    """Обработка входящих текстовых сообщений от пользователей."""
     try:
-        # Генерируем ответ AI
+        logger.info(
+            f"📥 Получено сообщение от @{message.from_user.username}: {message.text[:50]}..."
+        )
+
+        # Проверяем наличие пользователя
+        user = await get_or_update_user(message)
+        if not user:
+            await message.answer(
+                "❌ Извините, возникла проблема с регистрацией. Попробуйте позже.",
+            )
+            return
+
+        # Проверяем лимиты
+        if not user.can_send_message():
+            await message.answer(
+                "📝 Вы исчерпали дневной лимит сообщений.\n"
+                "Завтра вы снова сможете общаться со мной!",
+            )
+            return
+
+        # Проверяем длину сообщения
+        if len(message.text) > 4000:
+            await message.answer(
+                "📝 Ваше сообщение слишком длинное (более 4000 символов).\n"
+                "Пожалуйста, сократите его.",
+            )
+            return
+
+        # Отправляем статус "печатает"
+        await message.bot.send_chat_action(
+            chat_id=message.chat.id,
+            action="typing",
+        )
+
+        # Генерируем ответ от AI
         (
             ai_response,
             tokens_used,
             model_name,
             response_time,
-        ) = await generate_ai_response(user, user_text)
+        ) = await generate_ai_response(user, message.text)
 
-        # Обновляем счетчик сообщений пользователя и сохраняем диалог
+        # Сохраняем диалог
         async with get_session() as session:
-            # Получаем пользователя заново для обновления
-            user_db = await session.get(User, user.id)
-            if user_db:
-                user_db.daily_message_count += 1
-                user_db.total_messages += 1
-                await session.commit()
+            success = await save_conversation(
+                session=session,
+                user_id=user.id,
+                user_message=message.text,
+                ai_response=ai_response,
+                ai_model=model_name,
+                tokens_used=tokens_used,
+                response_time=response_time,
+            )
 
-                # Сохраняем диалог
-                await save_conversation(
-                    session=session,
-                    user_id=user.id,
-                    user_message=user_text,
-                    ai_response=ai_response,
-                    ai_model=model_name,
-                    tokens_used=tokens_used,
-                    response_time=response_time,
+            if not success:
+                logger.error(
+                    f"❌ Не удалось сохранить диалог для пользователя {user.id}"
                 )
 
         # Отправляем ответ пользователю
+        response_text = (
+            f"{ai_response}\n\n"
+            f"{italic('⏱️ Время ответа:')} {response_time:.1f}с | "
+            f"{bold('🤖 Модель:')} {model_name}"
+        )
+
         await message.answer(
-            text=ai_response,
+            response_text,
             parse_mode="Markdown",
         )
 
+        # Обновляем счетчик сообщений пользователя
+        user.increment_message_count()
         logger.info(
-            f"✅ Ответ отправлен пользователю {user_id}: "
-            f"{len(ai_response)} символов, {tokens_used} токенов, "
-            f"{response_time:.2f}с",
+            f"📤 Ответ отправлен @{message.from_user.username} "
+            f"(токены: {tokens_used}, модель: {model_name})",
         )
 
-    except Exception as e:
-        logger.exception(f"💥 Критическая ошибка при обработке сообщения: {e}")
-
+    except Exception:
+        logger.exception("💥 Ошибка при обработке текстового сообщения")
         await message.answer(
-            "😔 Произошла ошибка при обработке вашего сообщения. "
-            "Пожалуйста, попробуйте еще раз через несколько секунд.",
+            "😔 Извините, произошла неожиданная ошибка. Попробуйте позже.",
         )
-
-
-# Экспорт роутера
-__all__ = ["message_router"]

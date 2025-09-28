@@ -40,15 +40,15 @@ async def test_openrouter_integration() -> bool | None:
         logger.info("🔍 Проверка здоровья провайдеров...")
         health = await manager.health_check()
 
-        logger.info(f"📊 Статус менеджера: {health['manager_status']}")
+        logger.info("📊 Статус менеджера: %s", health["manager_status"])
 
         for provider_name, provider_health in health["providers"].items():
             status = provider_health.get("status", "unknown")
-            logger.info(f"📋 {provider_name}: {status}")
+            logger.info("📋 %s: %s", provider_name, status)
 
             if status != "healthy":
                 error = provider_health.get("error", "Неизвестная ошибка")
-                logger.warning(f"⚠️ {provider_name} недоступен: {error}")
+                logger.warning("⚠️ %s недоступен: %s", provider_name, error)
 
         # Тестируем OpenRouter если он доступен
         openrouter = manager.get_provider("openrouter")
@@ -74,15 +74,15 @@ async def test_openrouter_integration() -> bool | None:
                     use_cache=False,
                 )
 
-                logger.success("✅ OpenRouter тест успешен!")
-                logger.info(f"🤖 Ответ: {response.content[:100]}...")
-                logger.info(f"📊 Модель: {response.model}")
-                logger.info(f"🔗 Провайдер: {response.provider}")
-                logger.info(f"⏱️ Время ответа: {response.response_time:.2f}с")
-                logger.info(f"🎯 Токенов использовано: {response.tokens_used}")
+                logger.info("✅ OpenRouter тест успешен!")
+                logger.info("🤖 Ответ: %s...", response.content[:100])
+                logger.info("📊 Модель: %s", response.model)
+                logger.info("🔗 Провайдер: %s", response.provider)
+                logger.info("⏱️ Время ответа: %.2fс", response.response_time)
+                logger.info("🎯 Токенов использовано: %s", response.tokens_used)
 
-            except Exception as e:
-                logger.error(f"❌ Ошибка OpenRouter: {e}")
+            except Exception:
+                logger.exception("❌ Ошибка OpenRouter")
                 logger.info("💡 Проверьте OPENROUTER_API_KEY в .env файле")
         else:
             logger.warning("⚠️ OpenRouter не настроен")
@@ -95,27 +95,30 @@ async def test_openrouter_integration() -> bool | None:
         )
 
         logger.info(
-            f"🔄 Fallback тест - использован провайдер: {simple_response.provider}",
+            "🔄 Fallback тест - использован провайдер: %s",
+            simple_response.provider,
         )
 
         # Показываем статистику
         stats = manager.get_stats()
         logger.info("📈 Статистика менеджера:")
-        logger.info(f"   Всего запросов: {stats['requests_total']}")
-        logger.info(f"   Успешных: {stats['requests_successful']}")
-        logger.info(f"   Неудачных: {stats['requests_failed']}")
-        logger.info(f"   Fallback использован: {stats['fallback_used']} раз")
+        logger.info("   Всего запросов: %s", stats["requests_total"])
+        logger.info("   Успешных: %s", stats["requests_successful"])
+        logger.info("   Неудачных: %s", stats["requests_failed"])
+        logger.info("   Fallback использован: %s раз", stats["fallback_used"])
 
         for provider, provider_stats in stats["provider_stats"].items():
             logger.info(
-                f"   {provider}: "
-                f"{provider_stats['successes']}/{provider_stats['requests']} успешно",
+                "   %s: %s/%s успешно",
+                provider,
+                provider_stats["successes"],
+                provider_stats["requests"],
             )
 
         return True
 
-    except Exception as e:
-        logger.exception(f"💥 Критическая ошибка в тесте: {e}")
+    except Exception:
+        logger.exception("💥 Критическая ошибка в тесте")
         return False
 
     finally:
@@ -125,7 +128,8 @@ async def test_openrouter_integration() -> bool | None:
 
 async def main() -> None:
     """Основная функция теста."""
-    logger.add("openrouter_test.log", rotation="1 MB", retention="1 week")
+    # Remove the logger.add line as it's not compatible with standard logging
+    # logger.add("openrouter_test.log", rotation="1 MB", retention="1 week")
 
     logger.info("🧪 Запуск теста интеграции OpenRouter")
     logger.info("=" * 50)
@@ -135,13 +139,14 @@ async def main() -> None:
     logger.info("=" * 50)
 
     if success:
-        logger.success("🎉 Тест завершен успешно!")
+        logger.info("🎉 Тест завершен успешно!")
         logger.info("✅ OpenRouter интеграция работает корректно")
     else:
         logger.error("😞 Тест завершился с ошибками")
         logger.info("📋 Проверьте настройки в .env файле")
 
-    logger.info("📝 Лог теста сохранен в: openrouter_test.log")
+    # Remove the log file reference as we're not using loguru
+    # logger.info("📝 Лог теста сохранен в: openrouter_test.log")
 
 
 if __name__ == "__main__":
