@@ -341,7 +341,9 @@ class TestOpenRouterResponseParsing:
 
     @pytest.mark.asyncio
     async def test_basic_response_parsing(
-        self, provider: OpenRouterProvider, sample_messages: list[ConversationMessage]
+        self,
+        provider: OpenRouterProvider,
+        mock_conversation_messages: list[ConversationMessage],
     ) -> None:
         """Тест парсинга минимального ответа."""
         mock_response = MagicMock()
@@ -351,7 +353,7 @@ class TestOpenRouterResponseParsing:
         }
 
         with patch("httpx.AsyncClient.post", return_value=mock_response):
-            response = await provider.generate_response(sample_messages)
+            response = await provider.generate_response(mock_conversation_messages)
 
             assert response.content == "Минимальный ответ"
             assert (

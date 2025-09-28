@@ -130,7 +130,9 @@ class TestConfigValidation:
     def test_admin_config_validation(self) -> None:
         """Тест валидации AdminConfig."""
         # Тест с невалидным ID
-        with pytest.raises(ValueError, match="ADMIN_USER_ID must be positive"):
+        with pytest.raises(
+            ValueError, match="ADMIN_USER_ID must be a positive integer"
+        ):
             AdminConfig(ADMIN_USER_ID=0)
 
         # Тест с валидными ID

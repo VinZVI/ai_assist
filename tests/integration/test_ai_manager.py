@@ -25,6 +25,45 @@ from app.services.ai_providers.base import (
 )
 
 
+@pytest.fixture
+def manager_with_mocked_providers(
+    mock_config: AppConfig,
+) -> tuple[AIManager, AsyncMock, AsyncMock]:
+    """Менеджер с мокированными провайдерами."""
+    # Ensure the mock config has the correct AI provider settings
+    mock_config.ai_provider.primary_provider = "openrouter"
+    mock_config.ai_provider.fallback_provider = "deepseek"
+    mock_config.ai_provider.enable_fallback = True
+
+    with patch("app.services.ai_manager.get_config", return_value=mock_config):
+        manager = AIManager()
+
+        # Мокаем провайдеры с полной совместимостью
+        mock_openrouter = AsyncMock()
+        mock_openrouter.name = "openrouter"
+        mock_openrouter.provider_name = "openrouter"
+        mock_openrouter.is_configured.return_value = True
+        mock_openrouter.is_available = AsyncMock(return_value=True)
+        mock_openrouter.health_check = AsyncMock(return_value={"status": "healthy"})
+        mock_openrouter.close = AsyncMock()
+        mock_openrouter.generate_response = AsyncMock()
+
+        mock_deepseek = AsyncMock()
+        mock_deepseek.name = "deepseek"
+        mock_deepseek.provider_name = "deepseek"
+        mock_deepseek.is_configured.return_value = True
+        mock_deepseek.is_available = AsyncMock(return_value=True)
+        mock_deepseek.health_check = AsyncMock(return_value={"status": "healthy"})
+        mock_deepseek.close = AsyncMock()
+        mock_deepseek.generate_response = AsyncMock()
+
+        # Заменяем провайдеры в менеджере на моки
+        manager._providers["openrouter"] = mock_openrouter
+        manager._providers["deepseek"] = mock_deepseek
+
+        return manager, mock_openrouter, mock_deepseek
+
+
 @pytest.mark.ai_manager
 @pytest.mark.integration
 class TestAIManagerInitialization:
@@ -86,40 +125,10 @@ class TestAIManagerInitialization:
 class TestAIManagerFallbackLogic:
     """Тесты fallback логики между провайдерами."""
 
-    @pytest.fixture
-    def manager_with_mocked_providers(
-        self, mock_config: AppConfig
-    ) -> tuple[AIManager, AsyncMock, AsyncMock]:
-        """Менеджер с мокированными провайдерами."""
-        with patch("app.services.ai_manager.get_config", return_value=mock_config):
-            manager = AIManager()
-
-            # Мокаем провайдеры с полной совместимостью
-            mock_openrouter = AsyncMock()
-            mock_openrouter.name = "openrouter"
-            mock_openrouter.provider_name = "openrouter"
-            mock_openrouter.is_configured.return_value = True
-            mock_openrouter.is_available = AsyncMock(return_value=True)
-            mock_openrouter.health_check = AsyncMock(return_value={"status": "healthy"})
-            mock_openrouter.close = AsyncMock()
-
-            mock_deepseek = AsyncMock()
-            mock_deepseek.name = "deepseek"
-            mock_deepseek.provider_name = "deepseek"
-            mock_deepseek.is_configured.return_value = True
-            mock_deepseek.is_available = AsyncMock(return_value=True)
-            mock_deepseek.health_check = AsyncMock(return_value={"status": "healthy"})
-            mock_deepseek.close = AsyncMock()
-
-            manager._providers["openrouter"] = mock_openrouter
-            manager._providers["deepseek"] = mock_deepseek
-
-            return manager, mock_openrouter, mock_deepseek
-
     @pytest.mark.asyncio
     async def test_successful_primary_provider(
         self,
-        manager_with_mocked_providers: AIManager,
+        manager_with_mocked_providers: tuple[AIManager, AsyncMock, AsyncMock],
         mock_conversation_messages: list[ConversationMessage],
         mock_ai_response: AIResponse,
     ) -> None:
@@ -129,7 +138,9 @@ class TestAIManagerFallbackLogic:
         # Настраиваем успешный ответ от OpenRouter
         mock_openrouter.generate_response.return_value = mock_ai_response
 
-        response = await manager.generate_response(mock_conversation_messages)
+        response = await manager.generate_response(
+            mock_conversation_messages, use_cache=False
+        )
 
         assert response.content == "Это тестовый ответ от AI"
         assert response.provider == "test-provider"
@@ -139,7 +150,7 @@ class TestAIManagerFallbackLogic:
     @pytest.mark.asyncio
     async def test_fallback_on_primary_failure(
         self,
-        manager_with_mocked_providers: AIManager,
+        manager_with_mocked_providers: tuple[AIManager, AsyncMock, AsyncMock],
         mock_conversation_messages: list[ConversationMessage],
         mock_ai_response: AIResponse,
     ) -> None:
@@ -153,7 +164,9 @@ class TestAIManagerFallbackLogic:
         )
         mock_deepseek.generate_response.return_value = mock_ai_response
 
-        response = await manager.generate_response(mock_conversation_messages)
+        response = await manager.generate_response(
+            mock_conversation_messages, use_cache=False
+        )
 
         assert response.content == "Это тестовый ответ от AI"
         mock_openrouter.generate_response.assert_called_once()
@@ -162,7 +175,7 @@ class TestAIManagerFallbackLogic:
     @pytest.mark.asyncio
     async def test_both_providers_fail(
         self,
-        manager_with_mocked_providers: AIManager,
+        manager_with_mocked_providers: tuple[AIManager, AsyncMock, AsyncMock],
         mock_conversation_messages: list[ConversationMessage],
     ) -> None:
         """Тест когда оба провайдера недоступны."""
@@ -178,13 +191,13 @@ class TestAIManagerFallbackLogic:
             "deepseek",
         )
 
-        with pytest.raises(APIConnectionError, match="DeepSeek недоступен"):
-            await manager.generate_response(mock_conversation_messages)
+        with pytest.raises(AIProviderError, match="DeepSeek недоступен"):
+            await manager.generate_response(mock_conversation_messages, use_cache=False)
 
     @pytest.mark.asyncio
     async def test_rate_limit_fallback(
         self,
-        manager_with_mocked_providers: AIManager,
+        manager_with_mocked_providers: tuple[AIManager, AsyncMock, AsyncMock],
         mock_conversation_messages: list[ConversationMessage],
         mock_ai_response: AIResponse,
     ) -> None:
@@ -198,7 +211,9 @@ class TestAIManagerFallbackLogic:
         )
         mock_deepseek.generate_response.return_value = mock_ai_response
 
-        response = await manager.generate_response(mock_conversation_messages)
+        response = await manager.generate_response(
+            mock_conversation_messages, use_cache=False
+        )
 
         assert response is not None
         # Проверяем что статистика fallback увеличилась
@@ -223,7 +238,7 @@ class TestAIManagerHealthCheck:
 
     @pytest.mark.asyncio
     async def test_health_check_with_failures(
-        self, manager_with_mocked_providers: AIManager
+        self, manager_with_mocked_providers: tuple[AIManager, AsyncMock, AsyncMock]
     ) -> None:
         """Тест health check с недоступными провайдерами."""
         manager, mock_openrouter, mock_deepseek = manager_with_mocked_providers
@@ -482,9 +497,9 @@ class TestAIManagerErrorHandling:
 
         with pytest.raises(
             AIProviderError,
-            match="Ошибки аутентификации во всех провайдерах",
+            match="Все AI провайдеры недоступны: Invalid API key",
         ):
-            await manager.generate_response(mock_conversation_messages)
+            await manager.generate_response(mock_conversation_messages, use_cache=False)
 
     @pytest.mark.asyncio
     async def test_mixed_error_handling(

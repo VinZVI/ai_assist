@@ -7,7 +7,7 @@
 """
 
 from datetime import UTC, date, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from aiogram.types import Message
 from loguru import logger
@@ -178,6 +178,21 @@ class User(Base):
         CheckConstraint("telegram_id > 0", name="check_telegram_id_positive"),
     )
 
+    def __init__(self, **kwargs: Any) -> None:
+        # Set default values for fields that don't have database defaults
+        if "is_premium" not in kwargs:
+            kwargs["is_premium"] = False
+        if "is_blocked" not in kwargs:
+            kwargs["is_blocked"] = False
+        if "is_active" not in kwargs:
+            kwargs["is_active"] = True
+        if "daily_message_count" not in kwargs:
+            kwargs["daily_message_count"] = 0
+        if "total_messages" not in kwargs:
+            kwargs["total_messages"] = 0
+
+        super().__init__(**kwargs)
+
     def __repr__(self) -> str:
         return (
             f"<User(id={self.id}, telegram_id={self.telegram_id}, "
@@ -196,8 +211,13 @@ class User(Base):
 
     def is_premium_active(self) -> bool:
         """Проверка активности премиум статуса."""
-        if not self.premium_expires_at:
+        # If user is not premium, return False
+        if not self.is_premium:
             return False
+
+        # If user is premium but no expiration date, consider it active
+        if not self.premium_expires_at:
+            return True
 
         return datetime.now(UTC) <= self.premium_expires_at
 
@@ -211,7 +231,7 @@ class User(Base):
 
         # Сброс счетчика если прошел день
         today = date.today()
-        if self.last_message_date < today:
+        if self.last_message_date is not None and self.last_message_date < today:
             return True
 
         return self.daily_message_count < free_limit
@@ -220,9 +240,17 @@ class User(Base):
         """Сброс дневного счетчика если прошел день."""
         # Сброс счетчика если прошел день
         today = datetime.now(UTC).date()
-        if self.last_message_date < today:
+        if self.last_message_date is not None and self.last_message_date < today:
+            self.daily_message_count = 0
+            self.last_message_date = today
             return True
         return False
+
+    def increment_message_count(self) -> None:
+        """Увеличение счетчика сообщений пользователя."""
+        self.daily_message_count += 1
+        self.total_messages = (self.total_messages or 0) + 1
+        self.last_message_date = datetime.now(UTC).date()
 
 
 # Pydantic схемы для валидации и сериализации
@@ -265,8 +293,12 @@ class UserUpdate(BaseModel):
     first_name: str | None = Field(None, max_length=255)
     last_name: str | None = Field(None, max_length=255)
     language_code: str | None = Field(None, max_length=10)
+    is_premium: bool | None = None
     is_active: bool | None = None
     is_blocked: bool | None = None
+    daily_message_count: int | None = Field(None, ge=0)
+    premium_expires_at: datetime | None = None
+    last_message_date: date | None = None
 
 
 class UserResponse(UserBase):

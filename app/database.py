@@ -1,6 +1,6 @@
 """
 @file: database.py
-@description: Настройка подключения к базе данных с
+@description: Настройка подключения к базе данных с  # noqa: RUF002
               использованием SQLAlchemy async
 @dependencies: sqlalchemy, asyncpg, loguru
 @created: 2025-09-07

@@ -208,21 +208,16 @@ class TestDeepSeekErrorHandling:
     async def test_specific_deepseek_errors(
         self, provider: DeepSeekProvider, sample_messages: list[ConversationMessage]
     ) -> None:
-        """Тест специфичных ошибок DeepSeek."""
-        # Тест ошибки модели
+        """Тест специфичных ошибок DeepSeek API."""
         mock_response = MagicMock()
         mock_response.status_code = 400
-        mock_response.json.return_value = {
-            "error": {
-                "message": "Model not found",
-                "type": "invalid_request_error",
-            },
-        }
+        mock_response.text = "Model not found"
+        mock_response.json.return_value = {"error": {"message": "Model not found"}}
 
         with patch("httpx.AsyncClient.post", return_value=mock_response):
             with pytest.raises(
                 APIConnectionError,
-                match="Ошибка запроса к DeepSeek API: Model not found",
+                match="Неожиданный статус ответа DeepSeek: 400. Model not found",
             ):
                 await provider.generate_response(sample_messages)
 

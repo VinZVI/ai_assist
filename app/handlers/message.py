@@ -304,12 +304,14 @@ async def handle_text_message(message: Message) -> None:
         )
 
         # Генерируем ответ от AI
+        logger.info("Генерируем ответ от AI")
         (
             ai_response,
             tokens_used,
             model_name,
             response_time,
         ) = await generate_ai_response(user, message.text)
+        logger.info(f"Ответ от AI сгенерирован: {ai_response}")
 
         # Сохраняем диалог
         async with get_session() as session:
@@ -342,6 +344,10 @@ async def handle_text_message(message: Message) -> None:
 
         # Обновляем счетчик сообщений пользователя
         user.increment_message_count()
+        # Сохраняем изменения в базе данных
+        async with get_session() as session:
+            session.add(user)
+            await session.commit()
         logger.info(
             f"📤 Ответ отправлен @{message.from_user.username} "
             f"(токены: {tokens_used}, модель: {model_name})",
