@@ -25,7 +25,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.pool import NullPool
 
 from app.config import get_config
-from app.log_lexicon import (
+from app.log_lexicon.database import (
     DB_CHECK_EXISTENCE,
     DB_CHECK_TABLES,
     DB_CLOSED,

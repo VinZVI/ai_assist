@@ -15,6 +15,16 @@ from sqlalchemy import select
 from app.config import get_config
 from app.database import get_session
 from app.keyboards import create_main_menu_keyboard
+from app.lexicon.callbacks import (
+    MAIN_MENU_TEXT,
+    PLACEHOLDER_MESSAGE,
+    MAIN_MENU_ERROR,
+    MAIN_MENU_FALLBACK_ERROR
+)
+from app.log_lexicon.callbacks import (
+    CALLBACK_MAIN_MENU_ERROR,
+    CALLBACK_MAIN_MENU_FALLBACK_ERROR
+)
 from app.models import User
 
 # Создаем роутер для обработчиков callback-запросов
@@ -25,15 +35,31 @@ callback_router = Router(name="callbacks")
 async def show_main_menu(callback: CallbackQuery) -> None:
     """Показать главное меню."""
     try:
-        await callback.message.edit_text(
-            "🏠 **Главное меню**\n\nВыберите действие:",
-            reply_markup=create_main_menu_keyboard(),
-            parse_mode="Markdown",
-        )
+        # Check if the message content and reply markup are actually different
+        # before attempting to edit to prevent "message is not modified" error
+        new_text = MAIN_MENU_TEXT
+        new_keyboard = create_main_menu_keyboard()
+        
+        if callback.message.text != new_text or callback.message.reply_markup != new_keyboard:
+            await callback.message.edit_text(
+                new_text,
+                reply_markup=new_keyboard,
+                parse_mode="Markdown",
+            )
         await callback.answer()
     except Exception as e:
-        logger.error(f"❌ Ошибка при показе главного меню: {e}")
-        await callback.answer("Произошла ошибка. Попробуйте еще раз.")
+        logger.error(CALLBACK_MAIN_MENU_ERROR.format(error=e))
+        # Try to send a new message if editing fails
+        try:
+            await callback.message.answer(
+                MAIN_MENU_TEXT,
+                reply_markup=create_main_menu_keyboard(),
+                parse_mode="Markdown",
+            )
+            await callback.answer()
+        except Exception as fallback_error:
+            logger.error(CALLBACK_MAIN_MENU_FALLBACK_ERROR.format(error=fallback_error))
+            await callback.answer(MAIN_MENU_ERROR)
 
 
 # Заглушки для остальных callback'ов
@@ -57,7 +83,7 @@ async def show_main_menu(callback: CallbackQuery) -> None:
 )
 async def placeholder_callback(callback: CallbackQuery) -> None:
     """Заглушка для еще не реализованных функций."""
-    await callback.answer("🚧 Эта функция в разработке. Скоро будет доступна!")
+    await callback.answer(PLACEHOLDER_MESSAGE)
 
 
 # Экспорт роутера

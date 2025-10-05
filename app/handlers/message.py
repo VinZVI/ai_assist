@@ -18,6 +18,46 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_config
 from app.database import get_session
+from app.lexicon.message import (
+    USER_REGISTRATION_ERROR,
+    DAILY_LIMIT_EXCEEDED,
+    MESSAGE_TOO_LONG,
+    AI_QUOTA_ERROR,
+    AI_ALL_PROVIDERS_DOWN,
+    AI_GENERAL_ERROR,
+    AI_UNEXPECTED_ERROR,
+    PROCESSING_ERROR
+)
+from app.log_lexicon.message import (
+    MESSAGE_RECEIVED,
+    MESSAGE_USER_LIMIT_EXCEEDED,
+    MESSAGE_PROCESSING,
+    MESSAGE_AI_RESPONSE,
+    MESSAGE_SENT,
+    MESSAGE_ERROR,
+    MESSAGE_CONVERSATION_SAVED,
+    MESSAGE_CONVERSATION_SAVE_ERROR,
+    MESSAGE_AI_GENERATING,
+    MESSAGE_AI_RESPONSE_GENERATED
+)
+from app.constants.errors import (
+    DB_CONNECTION_ERROR,
+    DB_INTEGRITY_ERROR,
+    DB_SQLALCHEMY_ERROR,
+    AI_PROVIDER_ERROR,
+    AI_QUOTA_ERROR as AI_QUOTA_ERROR_CONST,
+    AI_AUTH_ERROR,
+    AI_RATE_LIMIT_ERROR,
+    AI_CONNECTION_ERROR,
+    AI_TIMEOUT_ERROR,
+    AI_INVALID_RESPONSE_ERROR,
+    AI_EMPTY_RESPONSE_ERROR,
+    AI_ALL_PROVIDERS_FAILED,
+    USER_NOT_FOUND_ERROR,
+    USER_CREATION_ERROR,
+    USER_UPDATE_ERROR,
+    CONVERSATION_SAVE_ERROR
+)
 from app.models.conversation import Conversation, ConversationStatus
 from app.models.user import User, get_or_update_user
 from app.services.ai_manager import AIProviderError, get_ai_manager
@@ -78,7 +118,7 @@ async def get_recent_conversation_history(
         return messages[-limit:] if len(messages) > limit else messages
 
     except Exception as e:
-        logger.error(f"❌ Ошибка при получении истории: {e}")
+        logger.error(CONVERSATION_HISTORY_ERROR.format(error=e))
         return []
 
 
@@ -147,11 +187,11 @@ async def save_conversation(
         session.add(ai_conv)
 
         await session.commit()
-        logger.info(f"💾 Диалог сохранен для пользователя {user_id}")
+        logger.info(MESSAGE_CONVERSATION_SAVED.format(user_id=user_id))
         return True
 
     except Exception as e:
-        logger.exception(f"💥 Ошибка при сохранении диалога: {e}")
+        logger.exception(MESSAGE_CONVERSATION_SAVE_ERROR.format(error=e))
         await session.rollback()
         return False
 
@@ -202,9 +242,12 @@ async def generate_ai_response(
         response_time = (datetime.now(UTC) - start_time).total_seconds()
 
         logger.info(
-            f"🤖 AI ответ получен от {response.provider}: "
-            f"{len(response.content)} символов, {response.tokens_used} токенов, "
-            f"{response.response_time:.2f}с",
+            MESSAGE_AI_RESPONSE.format(
+                provider=response.provider,
+                chars=len(response.content),
+                tokens=response.tokens_used,
+                duration=f"{response.response_time:.2f}"
+            )
         )
 
         return response.content, response.tokens_used, response.model, response_time
@@ -212,7 +255,7 @@ async def generate_ai_response(
     except AIProviderError as e:
         error_msg = str(e)
         provider = getattr(e, "provider", "unknown")
-        logger.error(f"❌ Ошибка AI провайдера {provider}: {error_msg}")
+        logger.error(AI_PROVIDER_ERROR.format(provider=provider, error=error_msg))
 
         # Проверяем на ошибки с балансом/квотой
         if any(
@@ -226,9 +269,7 @@ async def generate_ai_response(
             ]
         ):
             return (
-                "💳 Извините, у нас временные трудности с AI сервисом.\n"
-                "Мы уже работаем над решением этой проблемы.\n\n"
-                "🕰️ Попробуйте еще раз через несколько минут.",
+                AI_QUOTA_ERROR,
                 0,
                 "quota_error",
                 0.0,
@@ -237,9 +278,7 @@ async def generate_ai_response(
         # Проверяем критические ошибки (все провайдеры недоступны)
         if "все ai провайдеры недоступны" in error_msg.lower():
             return (
-                "😔 К сожалению, все наши AI сервисы временно недоступны.\n"
-                "Мы работаем над устранением проблемы.\n\n"
-                "🔄 Пожалуйста, попробуйте позже.",
+                AI_ALL_PROVIDERS_DOWN,
                 0,
                 "all_providers_down",
                 0.0,
@@ -247,9 +286,7 @@ async def generate_ai_response(
 
         # Возвращаем общий fallback ответ
         return (
-            "Извините, у меня временные технические трудности. "
-            "Я понимаю, что вам нужна поддержка. "
-            "Попробуйте написать еще раз через несколько минут.",
+            AI_GENERAL_ERROR,
             0,
             "fallback",
             0.0,
@@ -258,7 +295,7 @@ async def generate_ai_response(
     except Exception:
         logger.exception("💥 Неожиданная ошибка при генерации AI ответа")
         return (
-            "Произошла неожиданная ошибка. Пожалуйста, попробуйте еще раз.",
+            AI_UNEXPECTED_ERROR,
             0,
             "error",
             0.0,
@@ -270,31 +307,27 @@ async def handle_text_message(message: Message) -> None:
     """Обработка входящих текстовых сообщений от пользователей."""
     try:
         logger.info(
-            f"📥 Получено сообщение от @{message.from_user.username}: {message.text[:50]}..."
+            MESSAGE_RECEIVED.format(
+                username=message.from_user.username,
+                chars=len(message.text[:50])
+            ) + f"... ({message.text[:50]})"
         )
 
         # Проверяем наличие пользователя
         user = await get_or_update_user(message)
         if not user:
-            await message.answer(
-                "❌ Извините, возникла проблема с регистрацией. Попробуйте позже.",
-            )
+            await message.answer(USER_REGISTRATION_ERROR)
             return
 
         # Проверяем лимиты
         if not user.can_send_message():
-            await message.answer(
-                "📝 Вы исчерпали дневной лимит сообщений.\n"
-                "Завтра вы снова сможете общаться со мной!",
-            )
+            await message.answer(DAILY_LIMIT_EXCEEDED)
+            logger.info(MESSAGE_USER_LIMIT_EXCEEDED.format(user_id=user.id))
             return
 
         # Проверяем длину сообщения
         if len(message.text) > 4000:
-            await message.answer(
-                "📝 Ваше сообщение слишком длинное (более 4000 символов).\n"
-                "Пожалуйста, сократите его.",
-            )
+            await message.answer(MESSAGE_TOO_LONG)
             return
 
         # Отправляем статус "печатает"
@@ -304,14 +337,14 @@ async def handle_text_message(message: Message) -> None:
         )
 
         # Генерируем ответ от AI
-        logger.info("Генерируем ответ от AI")
+        logger.info(MESSAGE_AI_GENERATING)
         (
             ai_response,
             tokens_used,
             model_name,
             response_time,
         ) = await generate_ai_response(user, message.text)
-        logger.info(f"Ответ от AI сгенерирован: {ai_response}")
+        logger.info(MESSAGE_AI_RESPONSE_GENERATED.format(response=ai_response[:50] + "..."))
 
         # Сохраняем диалог
         async with get_session() as session:
@@ -326,16 +359,10 @@ async def handle_text_message(message: Message) -> None:
             )
 
             if not success:
-                logger.error(
-                    f"❌ Не удалось сохранить диалог для пользователя {user.id}"
-                )
+                logger.error(CONVERSATION_SAVE_ERROR.format(user_id=user.id))
 
         # Отправляем ответ пользователю
-        response_text = (
-            f"{ai_response}\n\n"
-            f"{italic('⏱️ Время ответа:')} {response_time:.1f}с | "
-            f"{bold('🤖 Модель:')} {model_name}"
-        )
+        response_text = f"{ai_response}"
 
         await message.answer(
             response_text,
@@ -349,12 +376,14 @@ async def handle_text_message(message: Message) -> None:
             session.add(user)
             await session.commit()
         logger.info(
-            f"📤 Ответ отправлен @{message.from_user.username} "
-            f"(токены: {tokens_used}, модель: {model_name})",
+            MESSAGE_SENT.format(
+                username=message.from_user.username,
+                chars=len(response_text),
+                tokens=tokens_used,
+                duration=f"{response_time:.2f}"
+            )
         )
 
-    except Exception:
-        logger.exception("💥 Ошибка при обработке текстового сообщения")
-        await message.answer(
-            "😔 Извините, произошла неожиданная ошибка. Попробуйте позже.",
-        )
+    except Exception as e:
+        logger.exception(MESSAGE_ERROR.format(user_id=getattr(message.from_user, 'id', 'unknown'), error=e))
+        await message.answer(PROCESSING_ERROR)

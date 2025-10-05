@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  # AI-Компаньон веб-сервер (для webhook режима)
+  ai_assist_web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ai_assist_web
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      # Переменные окружения из .env файла
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_NAME: ${DATABASE_NAME:-ai_assist}
+      DATABASE_USER: ${DATABASE_USER:-postgres}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_secure_password}
+      LOG_LEVEL: INFO
+      USE_POLLING: false
+      WEBHOOK_URL: ${WEBHOOK_URL:-http://ai_assist_web:8080/webhook}
+    env_file:
+      - .env.docker
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - ai_assist_network
+    ports:
+      - "8080:8080"
+    command: ["uv", "run", "python", "-m", "app.web"]
+
+  # Nginx reverse proxy (опционально)
+  nginx:
+    image: nginx:alpine
+    container_name: ai_assist_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./ssl:/etc/nginx/ssl
+    depends_on:
+      - ai_assist_web
+    networks:
+      - ai_assist_network
+    profiles:
+      - production

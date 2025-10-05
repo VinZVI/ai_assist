@@ -7,6 +7,7 @@
 """
 
 from .callbacks import callback_router
+from .health import health_router
 from .message import message_router
 from .start import start_router
 
@@ -15,11 +16,13 @@ ROUTERS = [
     start_router,  # Обработчик команды /start
     callback_router,  # Обработчик callback запросов
     message_router,  # Обработчик текстовых сообщений
+    health_router,  # Обработчик healthcheck
 ]
 
 __all__ = [
     "ROUTERS",
     "callback_router",
+    "health_router",
     "message_router",
     "start_router",
 ]

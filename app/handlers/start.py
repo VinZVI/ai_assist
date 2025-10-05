@@ -17,6 +17,33 @@ from sqlalchemy.exc import IntegrityError
 from app.config import AppConfig, get_config
 from app.database import get_session
 from app.keyboards import create_main_menu_keyboard
+from app.lexicon.start import (
+    FIRST_MESSAGE_TEXT,
+    FIRST_MESSAGE_TITLE,
+    REGISTRATION_ERROR,
+    UNEXPECTED_ERROR,
+    WELCOME_INTRO,
+    WELCOME_TITLE,
+    FUNCTIONALITY_TITLE,
+    FUNCTIONALITY_ITEMS,
+    LIMITS_TITLE,
+    LIMITS_FREE,
+    LIMITS_USED,
+    PREMIUM_ACTIVE,
+    PREMIUM_INFO_TITLE,
+    PREMIUM_INFO,
+    COMMANDS_INFO
+)
+from app.log_lexicon.start import (
+    START_COMMAND_RECEIVED,
+    START_COMMAND_PROCESSED,
+    START_COMMAND_ERROR,
+    START_USER_INFO_UPDATED,
+    START_NEW_USER_CREATED,
+    START_USER_CREATION_ERROR,
+    START_UNEXPECTED_ERROR,
+    START_ERROR_SENDING_MESSAGE
+)
 from app.models import User, UserCreate
 
 # Создаем роутер для обработчиков команды start
@@ -72,7 +99,7 @@ async def get_or_create_user(telegram_user: TgUser) -> User | None:
                 if user_updated:
                     await session.commit()
                     logger.info(
-                        f"👤 Обновлена информация пользователя {telegram_user.id}",
+                        START_USER_INFO_UPDATED.format(user_id=telegram_user.id)
                     )
 
                 return existing_user
@@ -100,24 +127,30 @@ async def get_or_create_user(telegram_user: TgUser) -> User | None:
             await session.refresh(new_user)
 
             logger.info(
-                f"🆕 Создан новый пользователь: {telegram_user.id} "
-                f"(@{telegram_user.username})",
+                START_NEW_USER_CREATED.format(
+                    user_id=telegram_user.id,
+                    username=telegram_user.username
+                )
             )
             return new_user
 
         except IntegrityError as e:
             await session.rollback()
             logger.error(
-                f"❌ Ошибка целостности при создании пользователя "
-                f"{telegram_user.id}: {e}",
+                START_USER_CREATION_ERROR.format(
+                    user_id=telegram_user.id,
+                    error=e
+                )
             )
             return None
 
         except Exception as e:
             await session.rollback()
             logger.error(
-                f"💥 Неожиданная ошибка при работе с пользователем "
-                f"{telegram_user.id}: {e}",
+                START_UNEXPECTED_ERROR.format(
+                    user_id=telegram_user.id,
+                    error=e
+                )
             )
             return None
 
@@ -137,39 +170,34 @@ def format_welcome_message(user: User, config: AppConfig) -> str:
 
     # Базовое приветствие
     welcome_text = f"""
-🤖 <b>Добро пожаловать в AI-Компаньон, {display_name}!</b>
+🤖 <b>{WELCOME_TITLE.format(display_name=display_name)}</b>
 
-Я ваш персональный помощник для эмоциональной поддержки и дружеского общения.
-Готов выслушать, поддержать и помочь советом в любое время! 💙
+{WELCOME_INTRO}
 
-<b>🎯 Что я умею:</b>
-• Поддерживающие беседы и эмоциональная помощь
-• Советы по саморазвитию и мотивация
-• Ответы на вопросы и интересные диалоги
-• Помощь в решении повседневных задач
+<b>{FUNCTIONALITY_TITLE}</b>
+"""
+    for item in FUNCTIONALITY_ITEMS:
+        welcome_text += f"• {item}\n"
 
-<b>📊 Ваши лимиты:</b>
-• Бесплатно: <b>{config.user_limits.free_messages_limit} сообщений в день</b>
-• Сегодня использовано: <b>{user.daily_message_count}/"
-                f"{config.user_limits.free_messages_limit}</b>
+    welcome_text += f"""
+<b>{LIMITS_TITLE}</b>
+• {LIMITS_FREE.format(free_limit=config.user_limits.free_messages_limit)}
+• {LIMITS_USED.format(used=user.daily_message_count, total=config.user_limits.free_messages_limit)}
 """
 
     # Дополнительная информация для премиум пользователей
     if user.is_premium_active():
-        welcome_text += (
-            "\n⭐ <b>У вас активна премиум подписка!</b>\n• Безлимитное "
-            "общение без ограничений"
-        )
+        welcome_text += f"\n{PREMIUM_ACTIVE}"
     else:
         welcome_text += f"""
-💎 <b>Хотите больше?</b>
-• Премиум доступ: <b>{config.user_limits.premium_price} Telegram Stars</b>
-• Безлимитное общение на {config.user_limits.premium_duration_days} дней
-• Приоритетная поддержка
+<b>{PREMIUM_INFO_TITLE}</b>
+{PREMIUM_INFO.format(
+    price=config.user_limits.premium_price,
+    days=config.user_limits.premium_duration_days
+)}
 """
 
-    welcome_text += """\n\n<i>Команды: /help - справка, /profile - ваш профиль, """
-    welcome_text += """/limits - лимиты, /premium - премиум</i>"""
+    welcome_text += f"\n\n{COMMANDS_INFO}"
 
     return welcome_text
 
@@ -195,7 +223,7 @@ async def handle_start_command(message: Message) -> None:
             if message.from_user.username
             else f"ID:{message.from_user.id}"
         )
-        logger.info(f"🚀 Команда /start от пользователя {user_info}")
+        logger.info(START_COMMAND_RECEIVED.format(user_info=user_info))
 
         # Получаем или создаем пользователя в БД
         user = await get_or_create_user(message.from_user)
@@ -203,9 +231,7 @@ async def handle_start_command(message: Message) -> None:
         if user is None:
             # Если не удалось создать/получить пользователя
             await message.answer(
-                "❌ <b>Произошла ошибка при регистрации</b>\n\n"
-                "Попробуйте повторить команду /start через несколько секунд.\n"
-                "Если проблема повторяется, обратитесь к администратору.",
+                REGISTRATION_ERROR,
                 parse_mode="HTML",
             )
             return
@@ -223,33 +249,32 @@ async def handle_start_command(message: Message) -> None:
         # Дополнительное сообщение для новых пользователей
         if user.total_messages == 0:
             await message.answer(
-                "✨ <b>Это ваше первое сообщение!</b>\n\n"
-                "Напишите мне что-нибудь, и я отвечу вам. "
-                "Например, расскажите о своем настроении или задайте вопрос! 😊",
+                f"{FIRST_MESSAGE_TITLE}\n\n{FIRST_MESSAGE_TEXT}",
                 parse_mode="HTML",
             )
 
         logger.info(
-            f"✅ Успешно обработана команда /start для пользователя "
-            f"{message.from_user.id}",
+            START_COMMAND_PROCESSED.format(user_id=message.from_user.id)
         )
 
     except Exception as e:
         logger.error(
-            f"💥 Ошибка в обработчике /start для пользователя "
-            f"{message.from_user.id}: {e}",
+            START_COMMAND_ERROR.format(
+                user_id=message.from_user.id,
+                error=e
+            )
         )
 
         # Отправляем пользователю сообщение об ошибке
         try:
             await message.answer(
-                "😔 <b>Произошла неожиданная ошибка</b>\n\n"
-                "Мы уже работаем над исправлением. "
-                "Пожалуйста, попробуйте позже или обратитесь к администратору.",
+                UNEXPECTED_ERROR,
                 parse_mode="HTML",
             )
         except Exception as send_error:
-            logger.error(f"💥 Не удалось отправить сообщение об ошибке: {send_error}")
+            logger.error(
+                START_ERROR_SENDING_MESSAGE.format(error=send_error)
+            )
 
 
 # Экспорт роутера для регистрации в основном приложении

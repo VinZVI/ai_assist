@@ -21,7 +21,7 @@ from loguru import logger
 from app.config import get_config
 from app.database import close_db, init_db
 from app.handlers import ROUTERS
-from app.log_lexicon import (
+from app.log_lexicon.main import (
     BOT_AI_MANAGER_CLOSE_TIMEOUT,
     BOT_AI_MANAGER_CLOSED,
     BOT_COMMANDS_SET,

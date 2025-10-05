@@ -1,21 +1,9 @@
 """
-@file: constants.py
-@description: Константы и сообщения об ошибках для всего приложения (УСТАРЕЛ - ИСПОЛЬЗУЙТЕ МОДУЛЬНЫЕ ФАЙЛЫ)
-@created: 2025-09-27
+@file: constants/config.py
+@description: Константы и сообщения об ошибках для конфигурации
+@created: 2025-10-03
 """
 
-# ПРЕДУПРЕЖДЕНИЕ: Этот файл устарел!
-# Используйте модульные файлы констант из app/constants/:
-# - app/constants/config.py для конфигурации
-# - app/constants/errors.py для ошибок
-# и т.д.
-
-import warnings
-warnings.warn(
-    "app/constants.py устарел. Используйте модульные файлы из app/constants/.",
-    DeprecationWarning,
-    stacklevel=2
-)
 
 # Сообщения об ошибках для конфигурации
 class ConfigErrorMessages:

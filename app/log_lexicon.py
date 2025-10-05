@@ -1,8 +1,22 @@
 """
 @file: log_lexicon.py
-@description: Сообщения для логирования в приложении
+@description: Сообщения для логирования в приложении (УСТАРЕЛ - ИСПОЛЬЗУЙТЕ МОДУЛЬНЫЕ ФАЙЛЫ)
 @created: 2025-09-27
 """
+
+# ПРЕДУПРЕЖДЕНИЕ: Этот файл устарел!
+# Используйте модульные файлы лог-лексиконов из app/log_lexicon/:
+# - app/log_lexicon/start.py для команды /start
+# - app/log_lexicon/message.py для обработки сообщений
+# - app/log_lexicon/callbacks.py для callback-запросов
+# и т.д.
+
+import warnings
+warnings.warn(
+    "app/log_lexicon.py устарел. Используйте модульные файлы из app/log_lexicon/.",
+    DeprecationWarning,
+    stacklevel=2
+)
 
 # Сообщения логов для конфигурации
 CONFIG_LOADED_SUCCESS = "✅ Конфигурация приложения загружена успешно"
