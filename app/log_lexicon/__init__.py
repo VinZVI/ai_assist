@@ -5,7 +5,27 @@
 """
 
 # Импортируем лог-лексиконы для обратной совместимости
-from . import ai_providers, callbacks, config, database, keyboards, main, message, start, utils
+from . import (
+    ai_providers,
+    callbacks,
+    config,
+    database,
+    keyboards,
+    main,
+    message,
+    start,
+    utils,
+)
 
 # Явно экспортируем модули
-__all__ = ['ai_providers', 'callbacks', 'config', 'database', 'keyboards', 'main', 'message', 'start', 'utils']
+__all__ = [
+    "ai_providers",
+    "callbacks",
+    "config",
+    "database",
+    "keyboards",
+    "main",
+    "message",
+    "start",
+    "utils",
+]

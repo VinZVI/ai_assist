@@ -80,7 +80,7 @@ class TestConfigValidation:
 
         # Тест валидации температуры
         with pytest.raises(
-            ValueError, match="DEEPSEEK_TEMPERATURE must be between 0.0 and 2.0"
+            ValueError, match=r"DEEPSEEK_TEMPERATURE must be between 0.0 and 2.0"
         ):
             DeepSeekConfig(
                 DEEPSEEK_API_KEY="sk-test123456789",

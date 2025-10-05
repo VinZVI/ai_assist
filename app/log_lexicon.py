@@ -12,10 +12,11 @@
 # и т.д.
 
 import warnings
+
 warnings.warn(
     "app/log_lexicon.py устарел. Используйте модульные файлы из app/log_lexicon/.",
     DeprecationWarning,
-    stacklevel=2
+    stacklevel=2,
 )
 
 # Сообщения логов для конфигурации

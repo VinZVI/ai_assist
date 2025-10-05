@@ -217,7 +217,7 @@ class TestDeepSeekErrorHandling:
         with patch("httpx.AsyncClient.post", return_value=mock_response):
             with pytest.raises(
                 APIConnectionError,
-                match="Неожиданный статус ответа DeepSeek: 400. Model not found",
+                match=r"Неожиданный статус ответа DeepSeek: 400. Model not found",
             ):
                 await provider.generate_response(sample_messages)
 

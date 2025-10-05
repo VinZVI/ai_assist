@@ -321,7 +321,7 @@ class TestAIManagerCaching:
         mock_conversation_messages: list[ConversationMessage],
     ) -> None:
         """Тест попадания в кеш."""
-        manager, mock_openrouter, mock_deepseek = manager_with_mocked_providers
+        manager, mock_openrouter, _mock_deepseek = manager_with_mocked_providers
 
         # Первый запрос - кеш пустой
         first_response = AIResponse(
@@ -369,7 +369,7 @@ class TestAIManagerCaching:
         mock_ai_response: AIResponse,
     ) -> None:
         """Тест отключения кеша."""
-        manager, mock_openrouter, mock_deepseek = manager_with_mocked_providers
+        manager, mock_openrouter, _mock_deepseek = manager_with_mocked_providers
 
         mock_openrouter.generate_response.return_value = mock_ai_response
 
@@ -430,13 +430,13 @@ class TestAIManagerLifecycle:
         self, manager_with_mocked_providers: tuple[AIManager, AsyncMock, AsyncMock]
     ) -> None:
         """Тест корректного закрытия менеджера."""
-        manager, mock_openrouter, mock_deepseek = manager_with_mocked_providers
+        manager, mock_openrouter, _mock_deepseek = manager_with_mocked_providers
 
         await manager.close()
 
         # Проверяем что close вызван у всех провайдеров
         mock_openrouter.close.assert_called_once()
-        mock_deepseek.close.assert_called_once()
+        _mock_deepseek.close.assert_called_once()
 
     # @pytest.mark.asyncio
     # async def test_manager_context_manager(self, mock_config):
@@ -483,14 +483,14 @@ class TestAIManagerErrorHandling:
         mock_conversation_messages: list[ConversationMessage],
     ) -> None:
         """Тест обработки ошибок аутентификации."""
-        manager, mock_openrouter, mock_deepseek = manager_with_mocked_providers
+        manager, mock_openrouter, _mock_deepseek = manager_with_mocked_providers
 
         # Оба провайдера выдают ошибку аутентификации
         mock_openrouter.generate_response.side_effect = APIAuthenticationError(
             "Invalid API key",
             "openrouter",
         )
-        mock_deepseek.generate_response.side_effect = APIAuthenticationError(
+        _mock_deepseek.generate_response.side_effect = APIAuthenticationError(
             "Invalid API key",
             "deepseek",
         )
@@ -509,14 +509,14 @@ class TestAIManagerErrorHandling:
         mock_ai_response: AIResponse,
     ) -> None:
         """Тест обработки смешанных ошибок."""
-        manager, mock_openrouter, mock_deepseek = manager_with_mocked_providers
+        manager, mock_openrouter, _mock_deepseek = manager_with_mocked_providers
 
         # OpenRouter - ошибка аутентификации, DeepSeek - работает
         mock_openrouter.generate_response.side_effect = APIAuthenticationError(
             "Invalid API key",
             "openrouter",
         )
-        mock_deepseek.generate_response.return_value = mock_ai_response
+        _mock_deepseek.generate_response.return_value = mock_ai_response
 
         response = await manager.generate_response(mock_conversation_messages)
 

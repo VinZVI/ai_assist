@@ -6,4 +6,6 @@
 
 # Лог-сообщения для обработчика callback-запросов
 CALLBACK_MAIN_MENU_ERROR = "❌ Ошибка при показе главного меню: {error}"
-CALLBACK_MAIN_MENU_FALLBACK_ERROR = "❌ Fallback error при показе главного меню: {error}"
+CALLBACK_MAIN_MENU_FALLBACK_ERROR = (
+    "❌ Fallback error при показе главного меню: {error}"
+)

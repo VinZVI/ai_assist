@@ -7,7 +7,7 @@
 @updated: 2025-09-20
 """
 
-from datetime import UTC, datetime, timezone
+from datetime import UTC, datetime
 
 from aiogram import F, Router
 from aiogram.types import Message
@@ -17,46 +17,49 @@ from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_config
-from app.database import get_session
-from app.lexicon.message import (
-    USER_REGISTRATION_ERROR,
-    DAILY_LIMIT_EXCEEDED,
-    MESSAGE_TOO_LONG,
-    AI_QUOTA_ERROR,
-    AI_ALL_PROVIDERS_DOWN,
-    AI_GENERAL_ERROR,
-    AI_UNEXPECTED_ERROR,
-    PROCESSING_ERROR
-)
-from app.log_lexicon.message import (
-    MESSAGE_RECEIVED,
-    MESSAGE_USER_LIMIT_EXCEEDED,
-    MESSAGE_PROCESSING,
-    MESSAGE_AI_RESPONSE,
-    MESSAGE_SENT,
-    MESSAGE_ERROR,
-    MESSAGE_CONVERSATION_SAVED,
-    MESSAGE_CONVERSATION_SAVE_ERROR,
-    MESSAGE_AI_GENERATING,
-    MESSAGE_AI_RESPONSE_GENERATED
-)
 from app.constants.errors import (
+    AI_ALL_PROVIDERS_FAILED,
+    AI_AUTH_ERROR,
+    AI_CONNECTION_ERROR,
+    AI_EMPTY_RESPONSE_ERROR,
+    AI_INVALID_RESPONSE_ERROR,
+    AI_PROVIDER_ERROR,
+    AI_RATE_LIMIT_ERROR,
+    AI_TIMEOUT_ERROR,
+    CONVERSATION_HISTORY_ERROR,
+    CONVERSATION_SAVE_ERROR,
     DB_CONNECTION_ERROR,
     DB_INTEGRITY_ERROR,
     DB_SQLALCHEMY_ERROR,
-    AI_PROVIDER_ERROR,
-    AI_QUOTA_ERROR as AI_QUOTA_ERROR_CONST,
-    AI_AUTH_ERROR,
-    AI_RATE_LIMIT_ERROR,
-    AI_CONNECTION_ERROR,
-    AI_TIMEOUT_ERROR,
-    AI_INVALID_RESPONSE_ERROR,
-    AI_EMPTY_RESPONSE_ERROR,
-    AI_ALL_PROVIDERS_FAILED,
-    USER_NOT_FOUND_ERROR,
     USER_CREATION_ERROR,
+    USER_NOT_FOUND_ERROR,
     USER_UPDATE_ERROR,
-    CONVERSATION_SAVE_ERROR
+)
+from app.constants.errors import (
+    AI_QUOTA_ERROR as AI_QUOTA_ERROR_CONST,
+)
+from app.database import get_session
+from app.lexicon.message import (
+    AI_ALL_PROVIDERS_DOWN,
+    AI_GENERAL_ERROR,
+    AI_QUOTA_ERROR,
+    AI_UNEXPECTED_ERROR,
+    DAILY_LIMIT_EXCEEDED,
+    MESSAGE_TOO_LONG,
+    PROCESSING_ERROR,
+    USER_REGISTRATION_ERROR,
+)
+from app.log_lexicon.message import (
+    MESSAGE_AI_GENERATING,
+    MESSAGE_AI_RESPONSE,
+    MESSAGE_AI_RESPONSE_GENERATED,
+    MESSAGE_CONVERSATION_SAVE_ERROR,
+    MESSAGE_CONVERSATION_SAVED,
+    MESSAGE_ERROR,
+    MESSAGE_PROCESSING,
+    MESSAGE_RECEIVED,
+    MESSAGE_SENT,
+    MESSAGE_USER_LIMIT_EXCEEDED,
 )
 from app.models.conversation import Conversation, ConversationStatus
 from app.models.user import User, get_or_update_user
@@ -246,7 +249,7 @@ async def generate_ai_response(
                 provider=response.provider,
                 chars=len(response.content),
                 tokens=response.tokens_used,
-                duration=f"{response.response_time:.2f}"
+                duration=f"{response.response_time:.2f}",
             )
         )
 
@@ -308,9 +311,9 @@ async def handle_text_message(message: Message) -> None:
     try:
         logger.info(
             MESSAGE_RECEIVED.format(
-                username=message.from_user.username,
-                chars=len(message.text[:50])
-            ) + f"... ({message.text[:50]})"
+                username=message.from_user.username, chars=len(message.text[:50])
+            )
+            + f"... ({message.text[:50]})"
         )
 
         # Проверяем наличие пользователя
@@ -344,7 +347,9 @@ async def handle_text_message(message: Message) -> None:
             model_name,
             response_time,
         ) = await generate_ai_response(user, message.text)
-        logger.info(MESSAGE_AI_RESPONSE_GENERATED.format(response=ai_response[:50] + "..."))
+        logger.info(
+            MESSAGE_AI_RESPONSE_GENERATED.format(response=ai_response[:50] + "...")
+        )
 
         # Сохраняем диалог
         async with get_session() as session:
@@ -380,10 +385,14 @@ async def handle_text_message(message: Message) -> None:
                 username=message.from_user.username,
                 chars=len(response_text),
                 tokens=tokens_used,
-                duration=f"{response_time:.2f}"
+                duration=f"{response_time:.2f}",
             )
         )
 
     except Exception as e:
-        logger.exception(MESSAGE_ERROR.format(user_id=getattr(message.from_user, 'id', 'unknown'), error=e))
+        logger.exception(
+            MESSAGE_ERROR.format(
+                user_id=getattr(message.from_user, "id", "unknown"), error=e
+            )
+        )
         await message.answer(PROCESSING_ERROR)

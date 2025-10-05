@@ -8,4 +8,4 @@
 from . import ai_providers, callbacks, keyboards, message, start, utils
 
 # Явно экспортируем модули
-__all__ = ['ai_providers', 'callbacks', 'keyboards', 'message', 'start', 'utils']
+__all__ = ["ai_providers", "callbacks", "keyboards", "message", "start", "utils"]

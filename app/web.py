@@ -6,8 +6,8 @@
 """
 
 import asyncio
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
 
 from fastapi import FastAPI, Request, Response, status
 from fastapi.responses import JSONResponse
@@ -21,7 +21,7 @@ from app.database import close_db, init_db
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Lifespan manager for the FastAPI application."""
     logger.info("🚀 Запуск веб-сервера...")
-    
+
     # Инициализация базы данных
     try:
         await init_db()
@@ -29,9 +29,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     except Exception as e:
         logger.error(f"❌ Ошибка инициализации базы данных: {e}")
         raise
-    
+
     yield
-    
+
     # Закрытие подключения к базе данных
     try:
         await close_db()
@@ -45,7 +45,7 @@ app = FastAPI(
     title="AI-Компаньон API",
     description="API для Telegram бота AI-Компаньон",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 
@@ -53,7 +53,7 @@ app = FastAPI(
 async def health_check() -> JSONResponse:
     """
     Healthcheck endpoint.
-    
+
     Returns:
         JSONResponse: Статус здоровья приложения
     """
@@ -63,18 +63,18 @@ async def health_check() -> JSONResponse:
         if not config:
             return JSONResponse(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                content={"status": "error", "message": "Конфигурация не загружена"}
+                content={"status": "error", "message": "Конфигурация не загружена"},
             )
-            
+
         return JSONResponse(
             status_code=status.HTTP_200_OK,
-            content={"status": "ok", "message": "Приложение работает нормально"}
+            content={"status": "ok", "message": "Приложение работает нормально"},
         )
     except Exception as e:
         logger.error(f"Health check failed: {e}")
         return JSONResponse(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            content={"status": "error", "message": f"Ошибка healthcheck: {e}"}
+            content={"status": "error", "message": f"Ошибка healthcheck: {e}"},
         )
 
 
@@ -82,10 +82,10 @@ async def health_check() -> JSONResponse:
 async def telegram_webhook(request: Request) -> Response:
     """
     Telegram webhook endpoint.
-    
+
     Args:
         request: HTTP запрос от Telegram
-        
+
     Returns:
         Response: Пустой ответ
     """
@@ -98,28 +98,25 @@ async def telegram_webhook(request: Request) -> Response:
 async def root() -> JSONResponse:
     """
     Root endpoint.
-    
+
     Returns:
         JSONResponse: Приветственное сообщение
     """
     return JSONResponse(
         status_code=status.HTTP_200_OK,
-        content={
-            "message": "Добро пожаловать в AI-Компаньон API",
-            "version": "1.0.0"
-        }
+        content={"message": "Добро пожаловать в AI-Компаньон API", "version": "1.0.0"},
     )
 
 
 if __name__ == "__main__":
     import uvicorn
-    
+
     config = get_config()
-    
+
     uvicorn.run(
         "app.web:app",
         host="0.0.0.0",
         port=8000,
         reload=config.debug,
-        log_level=config.log_level.lower()
+        log_level=config.log_level.lower(),
     )

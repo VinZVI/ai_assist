@@ -11,11 +11,13 @@
 # и т.д.
 
 import warnings
+
 warnings.warn(
     "app/constants.py устарел. Используйте модульные файлы из app/constants/.",
     DeprecationWarning,
-    stacklevel=2
+    stacklevel=2,
 )
+
 
 # Сообщения об ошибках для конфигурации
 class ConfigErrorMessages:

@@ -11,7 +11,9 @@ AI_PROVIDER_CONFIGURED = "✅ {provider} провайдер настроен"
 AI_PROVIDER_NOT_CONFIGURED = "⚠️ {provider} провайдер не настроен"
 AI_PROVIDER_AVAILABLE = "✅ {provider} API доступен"
 AI_PROVIDER_UNAVAILABLE = "❌ {provider} API недоступен: {error}"
-AI_PROVIDER_RESPONSE = "🤖 {provider} ответ: {chars} символов, {tokens} токенов, {duration}s"
+AI_PROVIDER_RESPONSE = (
+    "🤖 {provider} ответ: {chars} символов, {tokens} токенов, {duration}s"
+)
 AI_PROVIDER_REQUEST_ERROR = "❌ Ошибка запроса к {provider}: {error}"
 AI_PROVIDER_TIMEOUT = "⏰ Таймаут запроса к {provider} ({timeout}s)"
 AI_PROVIDER_RATE_LIMIT = "🚦 Превышен лимит запросов к {provider}, ожидание {delay}s"
@@ -25,7 +27,9 @@ DEEPSEEK_RATE_LIMIT = "Превышен лимит запросов к DeepSeek 
 DEEPSEEK_CONNECTION_ERROR = "Не удалось подключиться к DeepSeek API"
 DEEPSEEK_TIMEOUT_ERROR = "Timeout при обращении к DeepSeek API"
 DEEPSEEK_SERVER_ERROR = "Ошибка сервера DeepSeek: {status_code}"
-DEEPSEEK_UNEXPECTED_STATUS = "Неожиданный статус ответа DeepSeek: {status_code}. {error_text}"
+DEEPSEEK_UNEXPECTED_STATUS = (
+    "Неожиданный статус ответа DeepSeek: {status_code}. {error_text}"
+)
 DEEPSEEK_RETRYING = "🔄 Ошибка сервера DeepSeek {status_code}. Повтор через {delay}с..."
 
 # Сообщения для OpenRouter провайдера
@@ -36,8 +40,12 @@ OPENROUTER_RATE_LIMIT = "Превышен лимит запросов к OpenRou
 OPENROUTER_CONNECTION_ERROR = "Не удалось подключиться к OpenRouter API"
 OPENROUTER_TIMEOUT_ERROR = "Timeout при обращении к OpenRouter API"
 OPENROUTER_SERVER_ERROR = "Ошибка сервера OpenRouter: {status_code}"
-OPENROUTER_UNEXPECTED_STATUS = "Неожиданный статус ответа OpenRouter: {status_code}. {error_text}"
-OPENROUTER_RETRYING = "🔄 Ошибка сервера OpenRouter {status_code}. Повтор через {delay}с..."
+OPENROUTER_UNEXPECTED_STATUS = (
+    "Неожиданный статус ответа OpenRouter: {status_code}. {error_text}"
+)
+OPENROUTER_RETRYING = (
+    "🔄 Ошибка сервера OpenRouter {status_code}. Повтор через {delay}с..."
+)
 
 # Сообщения для AI менеджера
 AI_MANAGER_INITIALIZING = "🔧 Инициализация AI провайдеров..."

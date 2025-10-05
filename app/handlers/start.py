@@ -18,31 +18,31 @@ from app.config import AppConfig, get_config
 from app.database import get_session
 from app.keyboards import create_main_menu_keyboard
 from app.lexicon.start import (
+    COMMANDS_INFO,
     FIRST_MESSAGE_TEXT,
     FIRST_MESSAGE_TITLE,
+    FUNCTIONALITY_ITEMS,
+    FUNCTIONALITY_TITLE,
+    LIMITS_FREE,
+    LIMITS_TITLE,
+    LIMITS_USED,
+    PREMIUM_ACTIVE,
+    PREMIUM_INFO,
+    PREMIUM_INFO_TITLE,
     REGISTRATION_ERROR,
     UNEXPECTED_ERROR,
     WELCOME_INTRO,
     WELCOME_TITLE,
-    FUNCTIONALITY_TITLE,
-    FUNCTIONALITY_ITEMS,
-    LIMITS_TITLE,
-    LIMITS_FREE,
-    LIMITS_USED,
-    PREMIUM_ACTIVE,
-    PREMIUM_INFO_TITLE,
-    PREMIUM_INFO,
-    COMMANDS_INFO
 )
 from app.log_lexicon.start import (
-    START_COMMAND_RECEIVED,
-    START_COMMAND_PROCESSED,
     START_COMMAND_ERROR,
-    START_USER_INFO_UPDATED,
+    START_COMMAND_PROCESSED,
+    START_COMMAND_RECEIVED,
+    START_ERROR_SENDING_MESSAGE,
     START_NEW_USER_CREATED,
-    START_USER_CREATION_ERROR,
     START_UNEXPECTED_ERROR,
-    START_ERROR_SENDING_MESSAGE
+    START_USER_CREATION_ERROR,
+    START_USER_INFO_UPDATED,
 )
 from app.models import User, UserCreate
 
@@ -128,8 +128,7 @@ async def get_or_create_user(telegram_user: TgUser) -> User | None:
 
             logger.info(
                 START_NEW_USER_CREATED.format(
-                    user_id=telegram_user.id,
-                    username=telegram_user.username
+                    user_id=telegram_user.id, username=telegram_user.username
                 )
             )
             return new_user
@@ -137,20 +136,14 @@ async def get_or_create_user(telegram_user: TgUser) -> User | None:
         except IntegrityError as e:
             await session.rollback()
             logger.error(
-                START_USER_CREATION_ERROR.format(
-                    user_id=telegram_user.id,
-                    error=e
-                )
+                START_USER_CREATION_ERROR.format(user_id=telegram_user.id, error=e)
             )
             return None
 
         except Exception as e:
             await session.rollback()
             logger.error(
-                START_UNEXPECTED_ERROR.format(
-                    user_id=telegram_user.id,
-                    error=e
-                )
+                START_UNEXPECTED_ERROR.format(user_id=telegram_user.id, error=e)
             )
             return None
 
@@ -191,10 +184,12 @@ def format_welcome_message(user: User, config: AppConfig) -> str:
     else:
         welcome_text += f"""
 <b>{PREMIUM_INFO_TITLE}</b>
-{PREMIUM_INFO.format(
-    price=config.user_limits.premium_price,
-    days=config.user_limits.premium_duration_days
-)}
+{
+            PREMIUM_INFO.format(
+                price=config.user_limits.premium_price,
+                days=config.user_limits.premium_duration_days,
+            )
+        }
 """
 
     welcome_text += f"\n\n{COMMANDS_INFO}"
@@ -253,17 +248,10 @@ async def handle_start_command(message: Message) -> None:
                 parse_mode="HTML",
             )
 
-        logger.info(
-            START_COMMAND_PROCESSED.format(user_id=message.from_user.id)
-        )
+        logger.info(START_COMMAND_PROCESSED.format(user_id=message.from_user.id))
 
     except Exception as e:
-        logger.error(
-            START_COMMAND_ERROR.format(
-                user_id=message.from_user.id,
-                error=e
-            )
-        )
+        logger.error(START_COMMAND_ERROR.format(user_id=message.from_user.id, error=e))
 
         # Отправляем пользователю сообщение об ошибке
         try:
@@ -272,9 +260,7 @@ async def handle_start_command(message: Message) -> None:
                 parse_mode="HTML",
             )
         except Exception as send_error:
-            logger.error(
-                START_ERROR_SENDING_MESSAGE.format(error=send_error)
-            )
+            logger.error(START_ERROR_SENDING_MESSAGE.format(error=send_error))
 
 
 # Экспорт роутера для регистрации в основном приложении

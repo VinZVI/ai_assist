@@ -16,14 +16,14 @@ from app.config import get_config
 from app.database import get_session
 from app.keyboards import create_main_menu_keyboard
 from app.lexicon.callbacks import (
+    MAIN_MENU_ERROR,
+    MAIN_MENU_FALLBACK_ERROR,
     MAIN_MENU_TEXT,
     PLACEHOLDER_MESSAGE,
-    MAIN_MENU_ERROR,
-    MAIN_MENU_FALLBACK_ERROR
 )
 from app.log_lexicon.callbacks import (
     CALLBACK_MAIN_MENU_ERROR,
-    CALLBACK_MAIN_MENU_FALLBACK_ERROR
+    CALLBACK_MAIN_MENU_FALLBACK_ERROR,
 )
 from app.models import User
 
@@ -39,8 +39,11 @@ async def show_main_menu(callback: CallbackQuery) -> None:
         # before attempting to edit to prevent "message is not modified" error
         new_text = MAIN_MENU_TEXT
         new_keyboard = create_main_menu_keyboard()
-        
-        if callback.message.text != new_text or callback.message.reply_markup != new_keyboard:
+
+        if (
+            callback.message.text != new_text
+            or callback.message.reply_markup != new_keyboard
+        ):
             await callback.message.edit_text(
                 new_text,
                 reply_markup=new_keyboard,

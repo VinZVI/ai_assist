@@ -5,6 +5,23 @@
 Формат основан на [Keep a Changelog](https://keepachangelog.com/ru/1.0.0/),
 и этот проект следует [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2025-10-05] - Настройка CI/CD pipeline и подготовка к продакшену
+### Добавлено
+- Созданы GitHub Actions workflows для CI/CD
+- Добавлен workflow для security scanning
+- Добавлен workflow для документации
+- Созданы production environment файлы
+- Созданы deployment скрипты
+- Добавлена поддержка webhook режима
+
+### Изменено
+- Обновлена документация (README, Project.md, Tasktracker.md)
+- Оптимизирован Dockerfile для продакшена
+- Улучшена структура конфигурационных файлов
+
+### Исправлено
+- Улучшена безопасность хранения конфигураций
+
 ## [2025-10-03] - Расширение модульных лексиконов и констант
 ### Добавлено
 - Созданы дополнительные файлы лексиконов для keyboards, ai_providers и utils модулей

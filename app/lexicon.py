@@ -12,10 +12,11 @@
 # и т.д.
 
 import warnings
+
 warnings.warn(
     "app/lexicon.py устарел. Используйте модульные файлы из app/lexicon/.",
     DeprecationWarning,
-    stacklevel=2
+    stacklevel=2,
 )
 
 # Приветственные сообщения
