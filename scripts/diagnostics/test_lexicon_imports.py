@@ -7,13 +7,14 @@
 import sys
 import warnings
 from pathlib import Path
+from typing import Optional
 
 # Добавляем корневую директорию проекта в путь Python
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 
-def test_lexicon_imports():
+def test_lexicon_imports() -> bool | None:
     """Тест импорта лексиконов."""
     print("🔍 Проверка импорта лексиконов...")
 

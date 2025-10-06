@@ -15,7 +15,7 @@ from loguru import logger
 from app.utils.logging import setup_logging
 
 
-def main():
+def main() -> None:
     """Test logging with new line formatting."""
     print("Testing logging with new line formatting...")
 

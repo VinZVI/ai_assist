@@ -6,6 +6,6 @@
 
 # Импортируем основные классы констант для обратной совместимости
 from .config import ConfigErrorMessages, ConfigMagicValues
-from .errors import *
+from .errors import *  # noqa: F403
 
 __all__ = ["ConfigErrorMessages", "ConfigMagicValues"]

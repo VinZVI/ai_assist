@@ -16,7 +16,7 @@ from app.services.ai_manager import AIManager
 from app.services.ai_providers.base import ConversationMessage
 
 
-async def test_apis():
+async def test_apis() -> None:
     """Test the AI APIs"""
     print("🔍 Testing AI APIs...")
 

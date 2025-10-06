@@ -6,6 +6,7 @@ Simple test script to verify polling mode is working
 import asyncio
 import sys
 from pathlib import Path
+from typing import Optional
 
 # Add the project root to the path
 project_root = Path(__file__).parent.parent.parent
@@ -16,7 +17,7 @@ from app.services.ai_manager import AIManager
 from app.services.ai_providers.base import ConversationMessage
 
 
-async def test_polling():
+async def test_polling() -> bool | None:
     """Test that polling mode is properly configured."""
     print("🔍 Testing polling configuration...")
 
@@ -39,7 +40,7 @@ async def test_polling():
         return False
 
 
-async def test_ai_manager():
+async def test_ai_manager() -> bool | None:
     """Test AI manager initialization."""
     print("\n🤖 Testing AI Manager...")
 
@@ -64,7 +65,7 @@ async def test_ai_manager():
         return False
 
 
-async def main():
+async def main() -> None:
     """Main test function."""
     print("🤖 AI-Компаньон Polling Test")
     print("=" * 40)

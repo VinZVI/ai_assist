@@ -21,7 +21,7 @@ from app.models.user import User as UserModel
 
 
 @pytest.mark.asyncio
-async def test_help_command():
+async def test_help_command() -> None:
     """Test the /help command handler"""
     # Create a mock message
     message = MagicMock(spec=Message)
@@ -40,7 +40,7 @@ async def test_help_command():
 
 
 @pytest.mark.asyncio
-async def test_profile_command():
+async def test_profile_command() -> None:
     """Test the /profile command handler"""
     # Create a mock message
     message = MagicMock(spec=Message)
@@ -59,7 +59,7 @@ async def test_profile_command():
     user.username = "testuser"
     user.personality_id = None
 
-    with patch('app.handlers.start.get_session') as mock_session:
+    with patch("app.handlers.start.get_session") as mock_session:
         mock_session.return_value.__aenter__.return_value.execute.return_value.scalar_one_or_none.return_value = user
 
         # Test the profile command
@@ -73,7 +73,7 @@ async def test_profile_command():
 
 
 @pytest.mark.asyncio
-async def test_limits_command():
+async def test_limits_command() -> None:
     """Test the /limits command handler"""
     # Create a mock message
     message = MagicMock(spec=Message)
@@ -87,10 +87,10 @@ async def test_limits_command():
     user.is_premium_active.return_value = False
     user.daily_message_count = 5
 
-    with patch('app.handlers.start.get_session') as mock_session:
+    with patch("app.handlers.start.get_session") as mock_session:
         mock_session.return_value.__aenter__.return_value.execute.return_value.scalar_one_or_none.return_value = user
 
-        with patch('app.handlers.start.get_config') as mock_config:
+        with patch("app.handlers.start.get_config") as mock_config:
             mock_config.return_value.user_limits.free_messages_limit = 10
 
             # Test the limits command
@@ -104,7 +104,7 @@ async def test_limits_command():
 
 
 @pytest.mark.asyncio
-async def test_premium_command():
+async def test_premium_command() -> None:
     """Test the /premium command handler"""
     # Create a mock message
     message = MagicMock(spec=Message)
@@ -117,10 +117,10 @@ async def test_premium_command():
     user.telegram_id = 12345
     user.is_premium_active.return_value = False
 
-    with patch('app.handlers.start.get_session') as mock_session:
+    with patch("app.handlers.start.get_session") as mock_session:
         mock_session.return_value.__aenter__.return_value.execute.return_value.scalar_one_or_none.return_value = user
 
-        with patch('app.handlers.start.get_config') as mock_config:
+        with patch("app.handlers.start.get_config") as mock_config:
             mock_config.return_value.user_limits.premium_price = 99
             mock_config.return_value.user_limits.premium_duration_days = 30
 
@@ -135,7 +135,7 @@ async def test_premium_command():
 
 
 @pytest.mark.asyncio
-async def test_list_personalities_command():
+async def test_list_personalities_command() -> None:
     """Test the /personalities command handler"""
     # Create a mock message
     message = MagicMock(spec=Message)
@@ -151,8 +151,10 @@ async def test_list_personalities_command():
     personality.is_adult = False
     personality.is_active = True
 
-    with patch('app.handlers.start.get_session') as mock_session:
-        mock_session.return_value.__aenter__.return_value.execute.return_value.scalars.return_value.all.return_value = [personality]
+    with patch("app.handlers.start.get_session") as mock_session:
+        mock_session.return_value.__aenter__.return_value.execute.return_value.scalars.return_value.all.return_value = [
+            personality
+        ]
 
         # Test the personalities command
         await list_personalities_command(message)
@@ -165,7 +167,7 @@ async def test_list_personalities_command():
 
 
 @pytest.mark.asyncio
-async def test_select_personality_command():
+async def test_select_personality_command() -> None:
     """Test the /select_personality command handler"""
     # Create a mock message
     message = MagicMock(spec=Message)
@@ -185,9 +187,12 @@ async def test_select_personality_command():
     user.telegram_id = 12345
     user.is_premium_active.return_value = False
 
-    with patch('app.handlers.start.get_session') as mock_session:
+    with patch("app.handlers.start.get_session") as mock_session:
         # Mock the personality query
-        mock_session.return_value.__aenter__.return_value.execute.return_value.scalar_one_or_none.side_effect = [personality, user]
+        mock_session.return_value.__aenter__.return_value.execute.return_value.scalar_one_or_none.side_effect = [
+            personality,
+            user,
+        ]
 
         # Test the select_personality command
         await select_personality_command(message)

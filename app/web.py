@@ -8,6 +8,7 @@
 import asyncio
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from typing import Any
 
 from fastapi import FastAPI, Request, Response, status
 from fastapi.responses import JSONResponse
@@ -18,7 +19,7 @@ from app.database import close_db, init_db
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:  # noqa: ARG001
     """Lifespan manager for the FastAPI application."""
     logger.info("🚀 Запуск веб-сервера...")
 
@@ -79,7 +80,7 @@ async def health_check() -> JSONResponse:
 
 
 @app.post("/webhook")
-async def telegram_webhook(request: Request) -> Response:
+async def telegram_webhook(request: Request) -> Response:  # noqa: ARG001
     """
     Telegram webhook endpoint.
 
@@ -115,7 +116,7 @@ if __name__ == "__main__":
 
     uvicorn.run(
         "app.web:app",
-        host="0.0.0.0",
+        host="0.0.0.0",  # noqa: S104
         port=8000,
         reload=config.debug,
         log_level=config.log_level.lower(),

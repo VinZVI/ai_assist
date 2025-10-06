@@ -13,7 +13,7 @@ from app.models.user import User as UserModel
 
 
 @pytest.mark.asyncio
-async def test_handle_text_message_with_user():
+async def test_handle_text_message_with_user() -> None:
     """Test handle_text_message with a valid user"""
     # Create a mock message with a user
     message = MagicMock(spec=Message)
@@ -37,21 +37,26 @@ async def test_handle_text_message_with_user():
     user.personality_id = None
     user.increment_message_count = MagicMock()
 
-    with patch('app.handlers.message.get_or_update_user', return_value=user):
-        with patch('app.handlers.message.generate_ai_response', return_value=("Test response", 10, "test-model", 0.1)):
-            with patch('app.handlers.message.save_conversation', return_value=True):
-                with patch('app.handlers.message.get_session') as mock_session:
+    with patch("app.handlers.message.get_or_update_user", return_value=user):
+        with patch(
+            "app.handlers.message.generate_ai_response",
+            return_value=("Test response", 10, "test-model", 0.1),
+        ):
+            with patch("app.handlers.message.save_conversation", return_value=True):
+                with patch("app.handlers.message.get_session") as mock_session:
                     mock_session.return_value.__aenter__.return_value = MagicMock()
 
                     # Test successful execution
                     await handle_text_message(message)
 
                     # Verify that the message was processed without errors
-                    message.answer.assert_called_with("Test response", parse_mode="Markdown")
+                    message.answer.assert_called_with(
+                        "Test response", parse_mode="Markdown"
+                    )
 
 
 @pytest.mark.asyncio
-async def test_handle_text_message_without_user():
+async def test_handle_text_message_without_user() -> None:
     """Test handle_text_message when message.from_user is None"""
     # Create a mock message without a user
     message = MagicMock(spec=Message)
@@ -67,7 +72,7 @@ async def test_handle_text_message_without_user():
 
 
 @pytest.mark.asyncio
-async def test_handle_text_message_exception_handling():
+async def test_handle_text_message_exception_handling() -> None:
     """Test handle_text_message exception handling with proper user_id extraction"""
     # Create a mock message with a user
     message = MagicMock(spec=Message)
@@ -77,7 +82,9 @@ async def test_handle_text_message_exception_handling():
     message.answer = AsyncMock()
 
     # Mock get_or_update_user to raise an exception
-    with patch('app.handlers.message.get_or_update_user', side_effect=Exception("Test error")):
+    with patch(
+        "app.handlers.message.get_or_update_user", side_effect=Exception("Test error")
+    ):
         # Test exception handling
         await handle_text_message(message)
 

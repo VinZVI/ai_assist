@@ -7,6 +7,7 @@ import asyncio
 import os
 import sys
 from pathlib import Path
+from typing import Optional
 
 # Add the project root to the path
 project_root = Path(__file__).parent.parent.parent
@@ -17,7 +18,7 @@ from app.services.ai_providers.deepseek import DeepSeekProvider
 from app.services.ai_providers.openrouter import OpenRouterProvider
 
 
-async def check_deepseek_api():
+async def check_deepseek_api() -> bool | None:
     """Check DeepSeek API connectivity."""
     print("🔍 Checking DeepSeek API connectivity...")
 
@@ -45,7 +46,7 @@ async def check_deepseek_api():
         return False
 
 
-async def check_openrouter_api():
+async def check_openrouter_api() -> bool | None:
     """Check OpenRouter API connectivity."""
     print("\n🔍 Checking OpenRouter API connectivity...")
 
@@ -73,7 +74,7 @@ async def check_openrouter_api():
         return False
 
 
-async def main():
+async def main() -> None:
     """Main diagnostic function."""
     print("🤖 AI-Компаньон API Diagnostic Tool")
     print("=" * 50)
