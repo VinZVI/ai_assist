@@ -138,7 +138,7 @@ class OpenRouterConfig(BaseSettings):
         default="https://openrouter.ai/api/v1", validation_alias="OPENROUTER_BASE_URL"
     )
     openrouter_model: str = Field(
-        default="anthropic/claude-3-haiku", validation_alias="OPENROUTER_MODEL"
+        default="deepseek/deepseek-chat-v3.1:free", validation_alias="OPENROUTER_MODEL"
     )
     openrouter_max_tokens: int = Field(
         default=1000, validation_alias="OPENROUTER_MAX_TOKENS"
@@ -194,10 +194,10 @@ class AIProviderConfig(BaseSettings):
     """Конфигурация провайдеров AI."""
 
     primary_provider: str = Field(
-        default="deepseek", validation_alias="AI_PRIMARY_PROVIDER"
+        default="openrouter", validation_alias="AI_PRIMARY_PROVIDER"
     )
     fallback_provider: str = Field(
-        default="openrouter", validation_alias="AI_FALLBACK_PROVIDER"
+        default="deepseek", validation_alias="AI_FALLBACK_PROVIDER"
     )
     enable_fallback: bool = Field(default=True, validation_alias="AI_ENABLE_FALLBACK")
     max_retries_per_provider: int = Field(
@@ -211,7 +211,7 @@ class AIProviderConfig(BaseSettings):
     @classmethod
     def validate_provider(cls, v: str) -> str:
         """Валидация названия провайдера."""
-        allowed_providers = ["deepseek", "openrouter"]
+        allowed_providers = ["openrouter", "deepseek"]
         if v not in allowed_providers:
             raise ValueError(ConfigErrorMessages.INVALID_AI_PROVIDER)
         return v

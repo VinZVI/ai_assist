@@ -311,7 +311,8 @@ async def handle_text_message(message: Message) -> None:
     try:
         logger.info(
             MESSAGE_RECEIVED.format(
-                username=message.from_user.username, chars=len(message.text[:50])
+                username=message.from_user.username or f"ID:{message.from_user.id}",
+                chars=len(message.text[:50]),
             )
             + f"... ({message.text[:50]})"
         )
@@ -382,7 +383,7 @@ async def handle_text_message(message: Message) -> None:
             await session.commit()
         logger.info(
             MESSAGE_SENT.format(
-                username=message.from_user.username,
+                username=message.from_user.username or f"ID:{message.from_user.id}",
                 chars=len(response_text),
                 tokens=tokens_used,
                 duration=f"{response_time:.2f}",

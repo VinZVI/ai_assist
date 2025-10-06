@@ -49,13 +49,15 @@ RETURNING_MESSAGE_TEXT = """Рад снова видеть вас!
 
 # Сообщения об ошибках
 START_ERROR_MESSAGE = "Произошла ошибка при обработке команды /start. Попробуйте позже."
+REGISTRATION_ERROR = "Произошла ошибка при регистрации пользователя. Попробуйте позже."
+UNEXPECTED_ERROR = "Произошла непредвиденная ошибка. Попробуйте позже."
 
 __all__ = [
     "FIRST_MESSAGE_TEXT",
     "FIRST_MESSAGE_TITLE",
+    "REGISTRATION_ERROR",
     "RETURNING_MESSAGE_TEXT",
     "RETURNING_MESSAGE_TITLE",
     "START_ERROR_MESSAGE",
+    "UNEXPECTED_ERROR",
 ]
-
-# ```

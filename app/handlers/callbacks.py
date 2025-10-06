@@ -40,29 +40,48 @@ async def show_main_menu(callback: CallbackQuery) -> None:
         new_text = MAIN_MENU_TEXT
         new_keyboard = create_main_menu_keyboard()
 
-        if (
-            callback.message.text != new_text
-            or callback.message.reply_markup != new_keyboard
-        ):
-            await callback.message.edit_text(
+        # Only edit if message exists and content/markup are different
+        if callback.message:
+            if (
+                callback.message.text != new_text
+                or callback.message.reply_markup != new_keyboard
+            ):
+                await callback.message.edit_text(
+                    new_text,
+                    reply_markup=new_keyboard,
+                    parse_mode="Markdown",
+                )
+            else:
+                # Message content is the same, just answer the callback
+                await callback.answer()
+        else:
+            # If there's no message, send a new one
+            await callback.message.answer(
                 new_text,
                 reply_markup=new_keyboard,
                 parse_mode="Markdown",
             )
-        await callback.answer()
-    except Exception as e:
-        logger.error(CALLBACK_MAIN_MENU_ERROR.format(error=e))
-        # Try to send a new message if editing fails
-        try:
-            await callback.message.answer(
-                MAIN_MENU_TEXT,
-                reply_markup=create_main_menu_keyboard(),
-                parse_mode="Markdown",
-            )
             await callback.answer()
-        except Exception as fallback_error:
-            logger.error(CALLBACK_MAIN_MENU_FALLBACK_ERROR.format(error=fallback_error))
-            await callback.answer(MAIN_MENU_ERROR)
+    except Exception as e:
+        # Handle the specific "message is not modified" error
+        if "message is not modified" in str(e).lower():
+            # Just answer the callback without doing anything
+            await callback.answer()
+        else:
+            logger.error(CALLBACK_MAIN_MENU_ERROR.format(error=e))
+            # Try to send a new message if editing fails
+            try:
+                await callback.message.answer(
+                    MAIN_MENU_TEXT,
+                    reply_markup=create_main_menu_keyboard(),
+                    parse_mode="Markdown",
+                )
+                await callback.answer()
+            except Exception as fallback_error:
+                logger.error(
+                    CALLBACK_MAIN_MENU_FALLBACK_ERROR.format(error=fallback_error)
+                )
+                await callback.answer(MAIN_MENU_ERROR)
 
 
 # Заглушки для остальных callback'ов

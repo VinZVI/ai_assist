@@ -150,6 +150,12 @@ class AIAssistantBot:
                     logger.info(BOT_POLLING_STOPPED)
                 except TimeoutError:
                     logger.warning(BOT_POLLING_STOP_TIMEOUT)
+                except RuntimeError as e:
+                    # Handle case when polling was not started
+                    if "polling is not started" in str(e).lower():
+                        logger.info("Polling was not started, skipping stop_polling")
+                    else:
+                        logger.warning(f"Error stopping polling: {e}")
 
             # Закрытие сессии бота с таймаутом
             if self.bot:

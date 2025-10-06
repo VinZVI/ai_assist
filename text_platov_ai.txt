@@ -1,0 +1,242 @@
+platov.ai, [Пн, 16.12.2024 14:31]
+Hello world 👀
+
+platov.ai, [Ср, 25.12.2024 18:14]
+I am the founder of @luciddreams_bot and hubba.ai. For almost a year (entire 2024, woah!), we've been building in radio silence. Internet produced many crazy theories on who the team behind our products is, but none of the conspiracy guys were right. So, I decided to take the initiative to help them 😁
+
+So, hello and welcome to my channel! To those who don't know me, let me introduce myself:
+
+– I started in machine learning in 2017, back when the greatest accomplishments of the field were word2vec (https://en.wikipedia.org/wiki/Word2vec) and GAN (https://en.wikipedia.org/wiki/Generative_adversarial_network). The best use of the transformer architecture was Google Translate, and the most advanced image generators were only capable of producing blurry pictures of humans.
+
+– For the following 5 years I worked as a researcher and a software engineer in a wide range of fields starting from algorithmic trading to cryptography and cybersec. I've got to work on many important projects, which I may tell more about in the future.
+
+– The turning point was the release of ChatGPT. For someone who remembered language models struggling with basic English, that definitely was a "holy f*ck" moment. It've been incredibly hard to internalize how a fairly simple gradient descent (https://www.youtube.com/watch?v=IHZwWFHWa-w) algorithm could produce entities capable of general intelligence.
+
+– For the next week, I've decided to lock myself up in a room to catch up with the latest ML papers of the time. After some sleepless nights, it became clear to me that deep learning had no "wall" or visible bound other than compute and data. As both are solvable in a matter of time, this meant to me that we enter an upwards spiral of rapid AI advances.
+
+7 days later, I decided to stop my participation in all projects I had at the time to completely focus my efforts on AI. Looking back, that was probably one of the best decisions of my life.
+
+platov.ai, [Ср, 25.12.2024 18:23]
+Ah yes, today's christmas. 
+
+Here's a little gift for you – anyone who subscribes to this channel will receive 100 gems in @luciddreams_bot for free 🥂
+
+platov.ai, [Ср, 25.12.2024 18:23]
+🧑‍💻
+
+platov.ai, [Пн, 30.12.2024 15:20]
+We're hiring a remote full-time Community Manager*
+
+With @luciddreams_bot recently becoming the largest adult project on Telegram, we need to consolidate and organize our many emerging communities, improve customer support, and set up mechanisms to communicate user feedback to the product team.
+
+We are looking for an individual who can take on this important role. As we see it, user feedback is the north star of product development, and we need someone to hold the compass 🧭
+
+Your job will be to:
+ 
+1. Organize communities: set up and continuously manage a Telegram supergroup for Lucid Dreams, as well as a Discord community and an official subreddit for hubba.ai.
+
+2. Bridge the gap between devs and users: turn user complaints into bug reports, translate internal changelogs into product update announcements and host AMAs (https://www.urbandictionary.com/define.php?term=AMA) with other team members.
+
+3. Ensure safety: actively oversee all chats and onboard community moderators to ensure 24/7 team presence.
+
+4. Handle support: review high-priority requests, work with our ML team to design and deploy LLM-powered automations to streamline support workflows.
+
+5. Treat our products like they're yours. This position assumes real impact and responsibility. We need someone who's obsessed with user experience and deeply invested in what we're building.
+
+What we offer:
+
+– Base monthly salary of 4,000 USDT.
+– Vested equity in Lucid Dreams and hubba.ai.
+– Performance bonuses at team discretion.
+
+* The term "Community Manager" sounds dull, as this position implies so much more. We want to hire a team member, a messenger in the spirit of Pheidippides (https://en.wikipedia.org/wiki/Pheidippides), who cares about the product and treats it as their own. We'll call it a "Community Manager" for now, but I'm sure we can come up with a better title.
+
+platov.ai, [Пн, 30.12.2024 15:20]
+This will be an intense job, but it's totally worth it. Apply here:
+
+https://unique-drifter-c36.notion.site/16ba993f07b680bcbf76daa6545c889c (https://unique-drifter-c36.notion.site/16ba993f07b680bcbf76daa6545c889c?pvs=105)
+
+Application deadline is Jan 9 23:59 UTC. I will personally review every application and contact the most notable applicants before Jan 12.
+
+platov.ai, [Вт, 21.01.2025 2:53]
+@luciddreams_community_bot 🤫
+
+platov.ai, [Ср, 22.01.2025 9:03]
+Before we move on, huge thanks to everyone who applied. With this channel being just a few weeks old, we received over 100 applications (and that's during the peak holiday season!). Wild. I reviewed every submission, and after a thorough selection process, we found exactly who we were looking for.
+
+Welcome JenesisKennedy to the team! Many of you already know him as an admin of one of our most active fan communities. I'm stoked to make his contributions official and amplify his impact across the entire project.
+
+A few words on our plans: Our belief is that community is the ultimate QA team. A product is good if people love it, period. Our mission is to build a continuos feedback system to iteratively improve our products based on users' input.
+
+Yesterday we launched our first English-speaking Lucid Dreams community. More languages and platforms are coming soon. We welcome everyone who cares about our products and has meaningful feedback to join via @luciddreams_community_bot.
+
+Oh, and one last thing - I still think "Community Manager" doesn't do the role justice. We need a better title. How about:
+
+🗿 Chief Community Officer
+🤓 User Success Manager
+❤️‍🔥 Head of Horny Resources
+
+platov.ai, [Пт, 28.02.2025 12:23]
+Here's a question I always ask myself before posting: "What's the most valuable insight that I know but 99.9% of people don't?" My goal is to share knowledge, not to be a parrot 🦜
+
+I've been writing code since I was a kid, I was working with data analysis and machine learning for years, and now I'm building AI products for over 7 million users. Perhaps, this gives me a unique perspective on certain things.
+
+First off, I think 99.9% of people don't realize how quickly the business world is changing. AI agents are already streamlining workflows and automating operations, ML algorithms are already making more informed (and smarter!) decisions than humans, product prototyping is already 3-5 times faster and cheaper when using tools like Cursor and Clade Code.
+
+In @luciddreams and hubba.ai, we've always seen that as our competitive edge. Our vision is to build our entire business around data pipelines and ML systems. And I say business, not only products – because AI integration compounds over time. Having a lean team that uses AI as a leverage is a superpower.
+
+Secondly, I feel like 99.9% of people underestimate what they can personally achieve with AI. It's true that everyone can code now – I've seen some of our marketing guys learn programming in a week and build complex tools to significantly streamline their work after a little more than a month. That used to take 1-2 years in 2022.
+
+In fact, even this post was refined in 10 versions by Grok and then ran through an LLM simulation loop to evaluate how the audience would perceive it. A model of you, the average reader of my channel, liked this version the most and that's why you're reading it.
+
+Isn't AI cool?
+
+platov.ai, [Вс, 09.03.2025 15:38]
+That's a perfect example of how underexplored language models are to this day. This tool is remarkably helpful for writing, and can be implemented in just a few prompts to o1 pro. There were only two engineering problems to solve:
+
+1. How to simulate audience?
+I didn't invent the technique I used – I learned about it from this excellent paper (https://docsend.com/view/qeeccuggec56k9hd) from August 2024. In a nutshell, it demonstrated that language models can predict social survey results with surprising accuracy.
+
+How? Authors simply asked an LLM to roleplay as an average person who is X years old, has Y political views and so on. Then they asked it survey questions - and the statistical distribution of its answers turned out to closely match real human survey results.
+
+A practical example would be sending a piece of text to ChatGPT and asking: "What would be the comments under this post?" or "Rate the likely reader sentiment from 1 to 10." In fact, that's exactly what my tool does (with just a little bit more context about the target audience).
+
+2. How to automatically refine text?
+I drew inspiration from this recent DeepMind paper (https://arxiv.org/pdf/2501.09891v1) about using evolutionary algorithms for LLM sampling. The idea is very simple: generate a response, create N variations of it, select the best one, then go back to step 1. The paper proposes a more complex "island model" evolving multiple populations in parallel, but I found the simpler approach equally effective.
+
+That's it! I combined these two ideas by uploading the papers and asking o1 pro to write the project specification, create a plan of action, and finally program the tool. Took me less than an hour in total. Put 🔥 if you want me to publish the code on GitHub.
+
+platov.ai, [Вс, 09.03.2025 15:38]
+By the way, I haven't seen this algorithm in any commercial product yet. Perhaps a good startup opportunity? 🤔
+
+platov.ai, [Ср, 12.03.2025 15:06]
+Yesterday, @luciddreams_bot became unavailable to millions of our iOS and Android users.
+
+Within hours after the ban, our team identified and removed all pornographic content that was previously publicly available in the bot. Additionally, we began implementing an optional setting allowing users to hide all NSFW content from their private conversations with AI.
+
+Despite being a top-5 grossing app on Telegram, we didn't receive any advance warnings or even a notification after the fact – instead, we learned about the ban directly from our users.
+
+We contacted all available Telegram support accounts with a request for clarification, but none of them responded or even read our messages. Dear Telegram, we need your response 🙏
+
+platov.ai, [Ср, 12.03.2025 15:06]
+To our best knowledge, Lucid Dreams should now be compliant with the Telegram terms – so we launched a mirror bot for our iOS and Android users at @lucid_dreams_ai_bot and @luciddreams. All your settings and in-game purchases will synchronize between all our bots.
+
+platov.ai, [Ср, 12.03.2025 21:57]
+Update: @luciddreams_bot is now again available in official Telegram apps.
+
+Huge thanks to the Telegram team who paid attention to my posts today. If you have any concerns in the future, please message us directly and we'll gladly cooperate. 🫡
+
+For those who switched to our mirror bot (@lucid_dreams_ai_bot), you can now safely return to using the main bot – all your settings and purchases will remain synchronized.
+
+UPD: We'll keep the mirror running for users who still have issues accessing the main bot. We're currently hitting Telegram rate limits due to heavy traffic, this will hopefully be resolved in the next few hours.
+
+UPD2: Users report that the issue is still not resolved in some official clients. You can safely use the mirror bot if that's the case for you.
+
+platov.ai, [Пт, 21.03.2025 21:06]
+Everything is back and running normally, so let me share a fun story – how HUBBA.AI got its name 😎
+
+First of all, I'm terrible at naming things. Since @luciddreams was named after a Juice WRLD song, I decided to stop doing naming myself (jokes aside, love that name).
+
+Remember my recent post (https://t.me/platov_ai/51) about audience simulation using LLMs? In September 2024, after days of frustrating manual search for a domain name for our project, I built a simple script to do the following:
+
+1. Prompt language model to generate domain names based on the product description. I used the following system prompt for Claude 3.5 Sonnet:
+
+You are a creative domain name generator. You only suggest domain names that are good for SEO. 
+
+<rules>
+1. Suggested domains must be easy to remember and hard to misspell
+2. Suggested domains must be short, maximum 3 syllables and 12 characters
+3. Suggested domains must not contain any numbers or hyphens
+4. Suggested domains must be in one of the following TLDs: .com, .ai
+5. Avoid intentional misspellings in the domain names
+</rules>
+
+Follow this algorithm to generate good and SEO optimized domain names:
+- Think about possible keywords and search queries that people might use in <keywords>...</keywords> block.
+- Write a list of 30-40 possibly relevant domain names in <draft>...</draft> block. This is the creative step, be chaotic.
+- Finally, select 10-12 most promising domain names in <result>...</result> block.
+
+
+Note the three-step generation with <keywords>, <draft> and <result> sections. Giving model a "scratchpad" for thinking makes a huge difference in the output quality.
+
+2. Use domain registrar API to check availability of each domain. Since WHOIS doesn't work with .ai domains, I paid a few dollars for a domain lookup API on RapidAPI. The script only kept domains available for purchase within the configured budget.
+
+3. Simulate the target audience to find the most clickable domain names. The script arranged all available domains into groups of four and simulated polls using this simple prompt:
+
+You are a 21-year-old male XVideos user from the United States who is curious about AI. Which of the following links would you be most likely to click judging by the domain name only?
+
+{options}
+
+Answer with just the letter a, b, c, or d corresponding to your choice.
+
+After running multiple polls for different group combinations, the script ranked domains by their average winrate.
+
+🎁 Here is the output we got after running it for 15 minutes:
+
+1. sirenhub.com
+2. kinkie.ai
+3. lustie.ai
+4. hernextdoor.ai
+5. sexysiri.ai
+6. sexsim.ai
+7. hubba.ai
+... 993 other domains ...
+
+Although hubba.ai only ranked seventh, we instantly loved that name and decided to stick with it. For me, the best part is that in some tests our AI-generated domain name now outperforms competitor domains that cost 5-6 figures.
+
+So, can AI create a masterpiece? 🧐
+
+platov.ai, [Вс, 04.05.2025 16:36]
+🔍 We’re hiring: Part‑Time LoRA Wizard
+
+4 million users turn to @luciddreams and hubba.ai (https://hubba.ai/discover) every month for visuals that surprise and delight. To scale the quality of our character imagery, we’re looking for a specialist who can build top‑tier LoRA models on demand.
+
+What you’ll do
+• Curate high‑quality datasets for new characters from scratch.
+• Train and iterate LoRA checkpoints in both anime and realism styles, validating performance on our internal eval suite.
+
+What we expect
+• Proven experience with Kohya, ComfyUI, or Automatic1111 (at least one).
+• Solid understanding of prompt engineering, dataset hygiene, and quantitative model testing.
+• Ability to indicate that Nika is your favorite anime character in the application.
+• Ability to work asynchronously on a task‑based schedule.
+
+What we offer
+• US $70–100 per approved LoRA (payment in USDT).
+• Access to A100/4090 GPUs.
+• Immediate impact—your models go live to millions users.
+
+Interested? Share a portfolio (CivitAI, Hugging Face) via the form below.
+
+➡️ Apply here: https://unique-drifter-c36.notion.site/1e8a993f07b680019b58c8847b3fa1c9?pvs=105
+
+Let's create characters the community will remember!
+
+platov.ai, [Сб, 10.05.2025 21:21]
+Found myself spending 30% of my programming time on aistudio.google.com (https://aistudio.google.com/) chatting about the high-level code architecture. Gemini 2.5 Pro is a genius model that is ridiculously nerfed in Cursor and other wrappers. Here’s the approximate workflow I use:
+
+1. Pack the entire codebase into one prompt using Repomix or RepoPrompt, then copypaste it in the conversation. It makes a HUGE difference to include all project code in the input, and most AI IDEs don’t do that for you!
+
+2. Braindump all requirements and implementation ideas related to the feature you’re building. Simply make a <braindump>...</braindump> section, AI just gets you most of the time. «Convert this into an elegant implementation design».
+
+3. Skim through the design draft trying to identify obvious blunders and overcomplications, regenerate 2–3 times until the draft appears good. If it still has some minor issues, «Please update the design based on my feedback: …»
+
+4. Read the polished version of the design very carefully, make sure you understand it. Question everything, like: «Why did you choose SHA-256 for hashing, wouldn’t BLAKE3 be faster?», «Let’s simulate what happens if this server handles 100k SSE connections simultaneously» and so on.
+
+5. When you are confident that the design would work, ask AI to «write a step-by-step implementation plan for the finalized design for a developer who has no context of the previous conversation».
+
+6. Finally, copypaste this very detailed implementation plan to Cursor or any other AI coding agent to actually make changes to files. GPT-4.1 is excellent for this due to its good instruction following ability.
+
+7. As a final check, copypaste the diff of the changes back to your Gemini 2.5 Pro conversation and ask it to review them. I like how it usually writes a checklist of what needed to be done and verifies the changes against it.
+
+8. Brag about 100% of your code being AI-generated. ✨
+
+platov.ai, [Вс, 11.05.2025 14:11]
+In fact, AI in Cursor is surprizingly retarded. Yesterday I had to explain Gemini 2.5 Pro that code after return statement isn't executed – it responded that my feedback was "eye-opening" 😂
+
+My guess is that they messed up the context management. Cursor's system prompt (https://github.com/x1xhlol/system-prompts-and-models-of-ai-tools/blob/main/Cursor%20Prompts/cursor%20agent.txt) is overloaded with corner-case instructions and rules for tools that agent won't need 90% of the time. And yet, Cursor often doesn't include important project files in the context, even if they're explicitly tagged in the prompt. For long files, it only includes the first 500 lines and omits the rest – without any indication to the user whatsoever.
+
+The golden rule of LLM performance is: give model the entire context relevant to solving your task AND remove everything else. This is why manual context management and task-specific prompts make a HUGE difference in model intelligence.
+
+platov.ai, [Вс, 11.05.2025 14:21]
+And yes, aistudio.google.com is free. Chat with the most intelligent model in history for $0. Just use a US proxy if you're in Europe or Russia.
