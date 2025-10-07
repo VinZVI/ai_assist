@@ -167,11 +167,11 @@ def create_language_keyboard(lang_code: str = "ru") -> InlineKeyboardMarkup:
     builder.row(
         InlineKeyboardButton(
             text=get_text("language.available_languages.ru", lang_code),
-            callback_data="lang_ru",
+            callback_data="select_language:ru",
         ),
         InlineKeyboardButton(
             text=get_text("language.available_languages.en", lang_code),
-            callback_data="lang_en",
+            callback_data="select_language:en",
         ),
     )
 
