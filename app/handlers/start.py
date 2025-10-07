@@ -17,17 +17,7 @@ from sqlalchemy.exc import IntegrityError
 from app.config import AppConfig, get_config
 from app.database import get_session
 from app.keyboards import create_main_menu_keyboard
-from app.lexicon.gettext import get_text
-from app.log_lexicon.start import (
-    START_COMMAND_ERROR,
-    START_COMMAND_PROCESSED,
-    START_COMMAND_RECEIVED,
-    START_ERROR_SENDING_MESSAGE,
-    START_NEW_USER_CREATED,
-    START_UNEXPECTED_ERROR,
-    START_USER_CREATION_ERROR,
-    START_USER_INFO_UPDATED,
-)
+from app.lexicon.gettext import get_log_text, get_text
 from app.models import User, UserCreate
 
 # Создаем роутер для обработчиков команды start
@@ -83,7 +73,9 @@ async def get_or_create_user(telegram_user: TgUser) -> User | None:
                 if user_updated:
                     await session.commit()
                     logger.info(
-                        START_USER_INFO_UPDATED.format(user_id=telegram_user.id)
+                        get_log_text("start.start_user_info_updated").format(
+                            user_id=telegram_user.id
+                        )
                     )
 
                 return existing_user
@@ -111,7 +103,7 @@ async def get_or_create_user(telegram_user: TgUser) -> User | None:
             await session.refresh(new_user)
 
             logger.info(
-                START_NEW_USER_CREATED.format(
+                get_log_text("start.start_user_created").format(
                     user_id=telegram_user.id, username=telegram_user.username
                 )
             )
@@ -120,14 +112,18 @@ async def get_or_create_user(telegram_user: TgUser) -> User | None:
         except IntegrityError as e:
             await session.rollback()
             logger.error(
-                START_USER_CREATION_ERROR.format(user_id=telegram_user.id, error=e)
+                get_log_text("start.start_user_creation_error").format(
+                    user_id=telegram_user.id, error=e
+                )
             )
             return None
 
         except Exception as e:
             await session.rollback()
             logger.error(
-                START_UNEXPECTED_ERROR.format(user_id=telegram_user.id, error=e)
+                get_log_text("start.start_unexpected_error").format(
+                    user_id=telegram_user.id, error=e
+                )
             )
             return None
 
@@ -200,12 +196,20 @@ async def handle_start_command(message: Message) -> None:
         config = get_config()
 
         # Логируем попытку старта
-        logger.info(START_COMMAND_RECEIVED.format(user_id=message.from_user.id))
+        logger.info(
+            get_log_text("start.start_command_received").format(
+                user_id=message.from_user.id
+            )
+        )
 
         # Получаем или создаем пользователя
         user = await get_or_create_user(message.from_user)
         if not user:
-            logger.error(START_COMMAND_ERROR.format(user_id=message.from_user.id))
+            logger.error(
+                get_log_text("start.start_command_error").format(
+                    user_id=message.from_user.id
+                )
+            )
             await message.answer(get_text("errors.user_registration_error"))
             return
 
@@ -220,7 +224,7 @@ async def handle_start_command(message: Message) -> None:
         )
 
         logger.info(
-            START_COMMAND_PROCESSED.format(
+            get_log_text("start.start_command_processed").format(
                 user_id=message.from_user.id,
                 message_id=sent_message.message_id,
             )
@@ -228,13 +232,15 @@ async def handle_start_command(message: Message) -> None:
 
     except Exception as e:
         logger.error(
-            START_UNEXPECTED_ERROR.format(user_id=message.from_user.id, error=e)
+            get_log_text("start.start_unexpected_error").format(
+                user_id=message.from_user.id, error=e
+            )
         )
         try:
             await message.answer(get_text("errors.general_error"))
         except Exception as send_error:
             logger.error(
-                START_ERROR_SENDING_MESSAGE.format(
+                get_log_text("start.start_error_sending_message").format(
                     error=send_error,
                 )
             )

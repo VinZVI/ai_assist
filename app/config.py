@@ -13,7 +13,7 @@ from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
 
 from app.constants.config import ConfigErrorMessages, ConfigMagicValues
-from app.log_lexicon.config import CONFIG_LOADED_SUCCESS
+from app.lexicon.gettext import get_log_text
 
 
 class DatabaseConfig(BaseSettings):
@@ -200,242 +200,103 @@ class AIProviderConfig(BaseSettings):
         default="deepseek", validation_alias="AI_FALLBACK_PROVIDER"
     )
     enable_fallback: bool = Field(default=True, validation_alias="AI_ENABLE_FALLBACK")
-    max_retries_per_provider: int = Field(
-        default=3, validation_alias="AI_MAX_RETRIES_PER_PROVIDER"
-    )
-    provider_timeout: int = Field(default=30, validation_alias="AI_PROVIDER_TIMEOUT")
 
     model_config = {"extra": "ignore", "env_file": ".env", "env_file_encoding": "utf-8"}
-
-    @field_validator("primary_provider", "fallback_provider")
-    @classmethod
-    def validate_provider(cls, v: str) -> str:
-        """Валидация названия провайдера."""
-        allowed_providers = ["openrouter", "deepseek"]
-        if v not in allowed_providers:
-            raise ValueError(ConfigErrorMessages.INVALID_AI_PROVIDER)
-        return v
-
-    @field_validator("max_retries_per_provider")
-    @classmethod
-    def validate_retries(cls, v: int) -> int:
-        """Валидация количества попыток."""
-        min_retries = ConfigMagicValues.AI_PROVIDER_MAX_RETRIES_MIN
-        max_retries = ConfigMagicValues.AI_PROVIDER_MAX_RETRIES_MAX
-        if v < min_retries or v > max_retries:
-            message = ConfigErrorMessages.INVALID_AI_PROVIDER_RETRIES_FORMAT.format(
-                min_retries=min_retries, max_retries=max_retries
-            )
-            raise ValueError(message)
-        return v
 
 
 class UserLimitsConfig(BaseSettings):
     """Конфигурация лимитов пользователей."""
 
-    free_messages_limit: int = Field(default=10, validation_alias="FREE_MESSAGES_LIMIT")
-    premium_price: int = Field(default=99, validation_alias="PREMIUM_PRICE")
+    free_messages_limit: int = Field(default=5, validation_alias="FREE_MESSAGES_LIMIT")
     premium_duration_days: int = Field(
         default=30, validation_alias="PREMIUM_DURATION_DAYS"
     )
+    premium_price: int = Field(default=100, validation_alias="PREMIUM_PRICE")
 
     model_config = {"extra": "ignore", "env_file": ".env", "env_file_encoding": "utf-8"}
 
     @field_validator("free_messages_limit")
     @classmethod
-    def validate_free_limit(cls, v: int) -> int:
+    def validate_free_messages_limit(cls, v: int) -> int:
         """Валидация лимита бесплатных сообщений."""
         if v < 0:
-            message = ConfigErrorMessages.INVALID_FREE_MESSAGES_LIMIT_NON_NEGATIVE
-            raise ValueError(message)
+            raise ValueError(
+                ConfigErrorMessages.INVALID_FREE_MESSAGES_LIMIT_NON_NEGATIVE
+            )
         return v
 
     @field_validator("premium_price")
     @classmethod
     def validate_premium_price(cls, v: int) -> int:
-        """Валидация цены премиум доступа."""
+        """Валидация цены премиум подписки."""
         if v <= 0:
             raise ValueError(ConfigErrorMessages.INVALID_PREMIUM_PRICE)
         return v
 
 
+class CacheConfig(BaseSettings):
+    """Конфигурация кэширования."""
+
+    ttl: int = Field(default=3600, validation_alias="CACHE_TTL")
+
+    model_config = {"extra": "ignore", "env_file": ".env", "env_file_encoding": "utf-8"}
+
+
 class AdminConfig(BaseSettings):
     """Конфигурация администраторов."""
 
-    admin_user_id: int = Field(validation_alias="ADMIN_USER_ID")
-    admin_user_ids: str | None = Field(default=None, validation_alias="ADMIN_USER_IDS")
+    admin_user_id: int = Field(default=123456789, validation_alias="ADMIN_USER_ID")
+    admin_user_ids: str = Field(default="", validation_alias="ADMIN_USER_IDS")
 
     model_config = {"extra": "ignore", "env_file": ".env", "env_file_encoding": "utf-8"}
 
     @field_validator("admin_user_id")
     @classmethod
-    def validate_admin_id(cls, v: int) -> int:
+    def validate_admin_user_id(cls, v: int) -> int:
         """Валидация ID администратора."""
         if v <= 0:
             raise ValueError(ConfigErrorMessages.INVALID_ADMIN_USER_ID_POSITIVE)
         return v
 
     def get_admin_ids(self) -> list[int]:
-        """Получение списка всех ID администраторов."""
+        """Получение списка ID администраторов."""
         admin_ids = [self.admin_user_id]
 
         if self.admin_user_ids:
-            try:
-                additional_ids = [
-                    int(uid.strip())
-                    for uid in self.admin_user_ids.split(",")
-                    if uid.strip()
-                ]
-                admin_ids.extend(additional_ids)
-            except ValueError:
-                # Логируем ошибку, но не падаем
-                pass
+            # Разбиваем строку по запятым и конвертируем в int
+            additional_ids = [
+                int(user_id.strip())
+                for user_id in self.admin_user_ids.split(",")
+                if user_id.strip().isdigit()
+            ]
+            admin_ids.extend(additional_ids)
 
-        return list(set(admin_ids))  # Убираем дубликаты
-
-
-class PaymentConfig(BaseSettings):
-    """Конфигурация платежей."""
-
-    payment_provider: str = Field(
-        default="telegram_stars", validation_alias="PAYMENT_PROVIDER"
-    )
-    payment_provider_token: str | None = Field(
-        default=None, validation_alias="PAYMENT_PROVIDER_TOKEN"
-    )
-
-    model_config = {"extra": "ignore", "env_file": ".env", "env_file_encoding": "utf-8"}
-
-    @field_validator("payment_provider")
-    @classmethod
-    def validate_provider(cls, v: str) -> str:
-        """Валидация провайдера платежей."""
-        allowed_providers = ["telegram_stars", "yookassa"]
-        if v not in allowed_providers:
-            raise ValueError(ConfigErrorMessages.INVALID_PAYMENT_PROVIDER)
-        return v
-
-
-class RedisConfig(BaseSettings):
-    """Конфигурация Redis (опционально)."""
-
-    redis_url: str | None = Field(default=None, validation_alias="REDIS_URL")
-    cache_ttl: int = Field(default=3600, validation_alias="CACHE_TTL")
-
-    model_config = {"extra": "ignore", "env_file": ".env", "env_file_encoding": "utf-8"}
-
-    @field_validator("cache_ttl")
-    @classmethod
-    def validate_ttl(cls, v: int) -> int:
-        """Валидация времени жизни кеша."""
-        if v <= 0:
-            raise ValueError(ConfigErrorMessages.INVALID_CACHE_TTL)
-        return v
-
-
-class MonitoringConfig(BaseSettings):
-    """Конфигурация мониторинга."""
-
-    enable_request_logging: bool = Field(
-        default=False, validation_alias="ENABLE_REQUEST_LOGGING"
-    )
-    enable_metrics: bool = Field(default=False, validation_alias="ENABLE_METRICS")
-    sentry_dsn: str | None = Field(default=None, validation_alias="SENTRY_DSN")
-
-    model_config = {"extra": "ignore", "env_file": ".env", "env_file_encoding": "utf-8"}
-
-
-class RateLimitConfig(BaseSettings):
-    """Конфигурация ограничения скорости запросов."""
-
-    rate_limit_per_minute: int = Field(
-        default=60, validation_alias="RATE_LIMIT_PER_MINUTE"
-    )
-    rate_limit_block_time: int = Field(
-        default=300, validation_alias="RATE_LIMIT_BLOCK_TIME"
-    )
-
-    model_config = {"extra": "ignore", "env_file": ".env", "env_file_encoding": "utf-8"}
-
-    @field_validator("rate_limit_per_minute", "rate_limit_block_time")
-    @classmethod
-    def validate_positive(cls, v: int) -> int:
-        """Валидация положительных значений."""
-        if v <= 0:
-            raise ValueError(ConfigErrorMessages.INVALID_RATE_LIMIT_VALUE)
-        return v
+        # Удаляем дубликаты и возвращаем список
+        return list(set(admin_ids))
 
 
 class AppConfig(BaseSettings):
-    """Главная конфигурация приложения."""
+    """Основная конфигурация приложения."""
 
-    # Основные настройки
+    # Компоненты конфигурации
+    database: DatabaseConfig = Field(default_factory=DatabaseConfig)
+    telegram: TelegramConfig = Field(default_factory=TelegramConfig)
+    deepseek: DeepSeekConfig = Field(default_factory=DeepSeekConfig)
+    openrouter: OpenRouterConfig = Field(default_factory=OpenRouterConfig)
+    ai_provider: AIProviderConfig = Field(default_factory=AIProviderConfig)
+    user_limits: UserLimitsConfig = Field(default_factory=UserLimitsConfig)
+    cache: CacheConfig = Field(default_factory=CacheConfig)
+
+    # Дополнительные настройки
     debug: bool = Field(default=False, validation_alias="DEBUG")
     log_level: str = Field(default="INFO", validation_alias="LOG_LEVEL")
-    secret_key: str = Field(validation_alias="SECRET_KEY")
-    timezone: str = Field(default="Europe/Moscow", validation_alias="TIMEZONE")
-    auto_reload: bool = Field(default=True, validation_alias="AUTO_RELOAD")
-    show_debug_info: bool = Field(default=False, validation_alias="SHOW_DEBUG_INFO")
 
-    # Вложенные конфигурации (создаются лениво)
-    database: DatabaseConfig | None = None
-    telegram: TelegramConfig | None = None
-    deepseek: DeepSeekConfig | None = None
-    openrouter: OpenRouterConfig | None = None
-    ai_provider: AIProviderConfig | None = None
-    user_limits: UserLimitsConfig | None = None
-    admin: AdminConfig | None = None
-    payment: PaymentConfig | None = None
-    redis: RedisConfig | None = None
-    monitoring: MonitoringConfig | None = None
-    rate_limit: RateLimitConfig | None = None
+    model_config = {"extra": "ignore", "env_file": ".env", "env_file_encoding": "utf-8"}
 
-    def __init__(self, **data: dict[str, Any]) -> None:
+    def __init__(self, **data: Any) -> None:
+        """Инициализация конфигурации с логированием."""
         super().__init__(**data)
-        # Создаем экземпляры вложенных конфигураций
-        # Используем те же параметры, что и у родительской конфигурации
-        nested_config_params: dict[str, Any] = {}
-        if "_env_file" in data:
-            nested_config_params["_env_file"] = data["_env_file"]
-
-        self.database = DatabaseConfig(**nested_config_params)
-        self.telegram = TelegramConfig(**nested_config_params)
-        self.deepseek = DeepSeekConfig(**nested_config_params)
-        self.openrouter = OpenRouterConfig(**nested_config_params)
-        self.ai_provider = AIProviderConfig(**nested_config_params)
-        self.user_limits = UserLimitsConfig(**nested_config_params)
-        self.admin = AdminConfig(**nested_config_params)
-        self.payment = PaymentConfig(**nested_config_params)
-        self.redis = RedisConfig(**nested_config_params)
-        self.monitoring = MonitoringConfig(**nested_config_params)
-        self.rate_limit = RateLimitConfig(**nested_config_params)
-
-    @field_validator("log_level")
-    @classmethod
-    def validate_log_level(cls, v: str) -> str:
-        """Валидация уровня логирования."""
-        allowed_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
-        v_upper = v.upper()
-        if v_upper not in allowed_levels:
-            raise ValueError(ConfigErrorMessages.INVALID_LOG_LEVEL)
-        return v_upper
-
-    @field_validator("secret_key")
-    @classmethod
-    def validate_secret_key(cls, v: str) -> str:
-        """Валидация секретного ключа."""
-        if not v or v == "your_secret_key_here":
-            raise ValueError(ConfigErrorMessages.INVALID_SECRET_KEY)
-        if len(v) < ConfigMagicValues.MIN_SECRET_KEY_LENGTH:
-            raise ValueError(ConfigErrorMessages.SECRET_KEY_TOO_SHORT)
-        return v
-
-    model_config = {
-        "env_file": None,  # Don't load .env file by default
-        "env_file_encoding": "utf-8",
-        "case_sensitive": False,
-        "extra": "ignore",  # Игнорируем дополнительные поля из .env
-    }
+        logger.info(get_log_text("config.config_loaded_success"))
 
 
 class ConfigManager:
@@ -452,15 +313,7 @@ class ConfigManager:
     def get_config(self) -> AppConfig:
         """Получение экземпляра конфигурации приложения."""
         if self._config is None:
-            # Загружаем .env файл если он существует
-            env_file = Path(".env")
-            if env_file.exists():
-                self._config = AppConfig(_env_file=str(env_file))
-            else:
-                self._config = AppConfig()
-
-            logger.info(CONFIG_LOADED_SUCCESS)
-
+            self._config = AppConfig()
         return self._config
 
     def reset_config(self) -> None:
@@ -473,23 +326,26 @@ _config_manager = ConfigManager()
 
 
 def get_config() -> AppConfig:
-    """Получение экземпляра конфигурации приложения."""
+    """
+    Получение глобальной конфигурации приложения (Singleton).
+
+    Returns:
+        AppConfig: Объект конфигурации приложения
+    """
     return _config_manager.get_config()
 
 
-# Экспорт для удобного использования
 __all__ = [
     "AIProviderConfig",
     "AdminConfig",
     "AppConfig",
+    "CacheConfig",
+    "ConfigManager",
     "DatabaseConfig",
     "DeepSeekConfig",
-    "MonitoringConfig",
     "OpenRouterConfig",
-    "PaymentConfig",
-    "RateLimitConfig",
-    "RedisConfig",
     "TelegramConfig",
     "UserLimitsConfig",
+    "_config_manager",
     "get_config",
 ]

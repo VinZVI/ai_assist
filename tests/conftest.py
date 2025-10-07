@@ -13,7 +13,7 @@ import pytest
 from aiogram.types import Chat, Message
 from aiogram.types import User as TelegramUser
 
-from app.config import AppConfig, _config_manager
+from app.config import AppConfig
 from app.models.conversation import Conversation
 from app.models.user import User
 from app.services.ai_providers.base import AIResponse, ConversationMessage
@@ -48,12 +48,23 @@ def setup_test_environment() -> None:
 def clean_config_cache() -> None:
     """Фикстура для очистки кеша конфигурации между тестами."""
     # Сохраняем текущее состояние
-    # Используем новый метод reset_config вместо прямого доступа к _config_instance
+    from app.config import _config
 
-    # Очищаем кеш с помощью нового метода
-    _config_manager.reset_config()
+    # Сохраняем оригинальное значение
+    original_config = _config
 
-    # Восстанавливаем состояние (ничего не делаем, так как reset_config достаточно)
+    # Очищаем кеш
+    from app.config import _config
+
+    _config = None
+
+    # Восстанавливаем состояние после теста
+    yield
+
+    # Восстанавливаем оригинальное значение
+    from app.config import _config
+
+    _config = original_config
 
 
 # =============================================================================
@@ -198,108 +209,3 @@ def mock_db_session() -> AsyncMock:
     session.add = MagicMock()
     session.execute = AsyncMock()
     return session
-
-
-@pytest.fixture
-def mock_session() -> AsyncMock:
-    """Мок сессии базы данных (альтернативное имя для совместимости)."""
-    session = AsyncMock()
-    session.get.return_value = None
-    session.commit = AsyncMock()
-    session.rollback = AsyncMock()
-    session.add = MagicMock()
-    session.execute = AsyncMock()
-    return session
-
-
-@pytest.fixture
-def sample_user() -> User:
-    """Пример пользователя для тестов."""
-    return User(
-        telegram_id=12345,
-        username="test_user",
-        first_name="Тест",
-        last_name="Пользователь",
-        daily_message_count=5,
-        is_premium=False,
-    )
-
-
-@pytest.fixture
-def sample_conversation() -> Conversation:
-    """Пример диалога для тестов."""
-    from app.models.conversation import MessageRole
-
-    return Conversation(
-        user_id=12345,
-        role=MessageRole.USER,
-        content="Тестовое сообщение",
-        ai_model="test-model",
-        tokens_used=10,
-    )
-
-
-@pytest.fixture
-def mock_telegram_message() -> MagicMock:
-    """Мок Telegram сообщения."""
-
-    message = MagicMock(spec=Message)
-    message.from_user = MagicMock(spec=TelegramUser)
-    message.from_user.id = 12345
-    message.from_user.username = "test_user"
-    message.from_user.first_name = "Тест"
-    message.from_user.last_name = "Пользователь"
-
-    message.chat = MagicMock(spec=Chat)
-    message.chat.id = 67890
-
-    message.text = "Привет, AI!"
-    message.answer = AsyncMock()
-    message.reply = AsyncMock()
-
-    return message
-
-
-# Маркеры для категоризации тестов
-def pytest_configure(config: pytest.Config) -> None:
-    """Конфигурация pytest с пользовательскими маркерами."""
-    config.addinivalue_line(
-        "markers",
-        "unit: Юнит-тесты отдельных компонентов",
-    )
-    config.addinivalue_line(
-        "markers",
-        "integration: Интеграционные тесты",
-    )
-    config.addinivalue_line(
-        "markers",
-        "config: Тесты конфигурации",
-    )
-    config.addinivalue_line(
-        "markers",
-        "database: Тесты базы данных",
-    )
-    config.addinivalue_line(
-        "markers",
-        "telegram: Тесты Telegram интеграции",
-    )
-    config.addinivalue_line(
-        "markers",
-        "slow: Медленные тесты",
-    )
-    config.addinivalue_line(
-        "markers",
-        "ai_manager: Тесты AI менеджера",
-    )
-    config.addinivalue_line(
-        "markers",
-        "ai_providers: Тесты AI провайдеров",
-    )
-    config.addinivalue_line(
-        "markers",
-        "handlers: Тесты обработчиков",
-    )
-    config.addinivalue_line(
-        "markers",
-        "message_handler: Тесты обработчика сообщений",
-    )

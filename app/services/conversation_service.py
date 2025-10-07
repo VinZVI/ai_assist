@@ -13,10 +13,7 @@ from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.lexicon.ai_prompts import create_system_message
-from app.log_lexicon.message import (
-    MESSAGE_CONVERSATION_SAVE_ERROR,
-    MESSAGE_CONVERSATION_SAVED,
-)
+from app.lexicon.gettext import get_log_text
 from app.models.conversation import Conversation, ConversationStatus
 from app.services.ai_providers.base import ConversationMessage
 
@@ -120,10 +117,16 @@ async def save_conversation(
         session.add(ai_conv)
 
         await session.commit()
-        logger.info(MESSAGE_CONVERSATION_SAVED.format(user_id=user_id))
+        logger.info(
+            get_log_text("message.message_conversation_saved").format(user_id=user_id)
+        )
         return True
 
     except Exception:
-        logger.exception(MESSAGE_CONVERSATION_SAVE_ERROR.format(user_id=user_id))
+        logger.exception(
+            get_log_text("message.message_conversation_save_error").format(
+                user_id=user_id
+            )
+        )
         await session.rollback()
         return False

@@ -14,19 +14,7 @@ from app.constants.errors import (
 )
 from app.database import get_session
 from app.lexicon.ai_prompts import create_system_message
-from app.lexicon.gettext import get_text
-from app.log_lexicon.message import (
-    MESSAGE_AI_GENERATING,
-    MESSAGE_AI_RESPONSE,
-    MESSAGE_AI_RESPONSE_GENERATED,
-    MESSAGE_CONVERSATION_SAVE_ERROR,
-    MESSAGE_CONVERSATION_SAVED,
-    MESSAGE_ERROR,
-    MESSAGE_PROCESSING,
-    MESSAGE_RECEIVED,
-    MESSAGE_SENT,
-    MESSAGE_USER_LIMIT_EXCEEDED,
-)
+from app.lexicon.gettext import get_log_text, get_text
 from app.models.conversation import Conversation, ConversationStatus
 from app.models.user import User
 from app.services.ai_manager import AIProviderError, get_ai_manager
@@ -87,7 +75,7 @@ async def generate_ai_response(
         response_time = (datetime.now(UTC) - start_time).total_seconds()
 
         logger.info(
-            MESSAGE_AI_RESPONSE.format(
+            get_log_text("message.message_ai_response").format(
                 provider=response.provider,
                 chars=len(response.content),
                 tokens=response.tokens_used,
@@ -139,7 +127,7 @@ async def generate_ai_response(
 
     except Exception:
         logger.exception(
-            MESSAGE_ERROR.format(
+            get_log_text("message.message_error").format(
                 user_id="unknown", error="Неожиданная ошибка при генерации AI ответа"
             )
         )
@@ -157,7 +145,7 @@ async def handle_text_message(message: Message) -> None:
     user = None  # Initialize user variable
     try:
         logger.info(
-            MESSAGE_RECEIVED.format(
+            get_log_text("message.message_received").format(
                 username=message.from_user.username or f"ID:{message.from_user.id}",
                 chars=len(message.text[:50]),
             )
@@ -173,7 +161,11 @@ async def handle_text_message(message: Message) -> None:
         # Проверяем лимиты
         if not user.can_send_message():
             await message.answer(get_text("errors.daily_limit_exceeded"))
-            logger.info(MESSAGE_USER_LIMIT_EXCEEDED.format(user_id=user.id))
+            logger.info(
+                get_log_text("message.message_user_limit_exceeded").format(
+                    user_id=user.id
+                )
+            )
             return
 
         # Проверяем длину сообщения
@@ -188,7 +180,7 @@ async def handle_text_message(message: Message) -> None:
         )
 
         # Генерируем ответ от AI
-        logger.info(MESSAGE_AI_GENERATING)
+        logger.info(get_log_text("message.message_ai_generating"))
         (
             ai_response,
             tokens_used,
@@ -196,7 +188,9 @@ async def handle_text_message(message: Message) -> None:
             response_time,
         ) = await generate_ai_response(user, message.text)
         logger.info(
-            MESSAGE_AI_RESPONSE_GENERATED.format(response=ai_response[:50] + "...")
+            get_log_text("message.message_ai_response_generated").format(
+                response=ai_response[:50] + "..."
+            )
         )
 
         # Сохраняем диалог
@@ -213,7 +207,7 @@ async def handle_text_message(message: Message) -> None:
 
             if success:
                 logger.info(
-                    MESSAGE_CONVERSATION_SAVED.format(
+                    get_log_text("message.message_conversation_saved").format(
                         user_id=user.id,
                         chars=len(ai_response),
                         tokens=tokens_used,
@@ -222,7 +216,7 @@ async def handle_text_message(message: Message) -> None:
                 )
             else:
                 logger.error(
-                    MESSAGE_CONVERSATION_SAVE_ERROR.format(
+                    get_log_text("message.message_conversation_save_error").format(
                         user_id=user.id,
                         error="Failed to save conversation",
                     )
@@ -233,7 +227,7 @@ async def handle_text_message(message: Message) -> None:
 
         # Логируем успешную отправку
         logger.info(
-            MESSAGE_SENT.format(
+            get_log_text("message.message_sent").format(
                 username=message.from_user.username or f"ID:{message.from_user.id}",
                 chars=len(ai_response),
                 tokens=tokens_used,
@@ -243,7 +237,7 @@ async def handle_text_message(message: Message) -> None:
 
         # Обновляем статистику пользователя
         user.increment_message_count()
-        logger.info(MESSAGE_PROCESSING.format(user_id=user.id))
+        logger.info(get_log_text("message.message_processing").format(user_id=user.id))
 
     except Exception as e:
         user_id = (
@@ -251,6 +245,8 @@ async def handle_text_message(message: Message) -> None:
             if user
             else (message.from_user.id if message.from_user else "unknown")
         )
-        logger.error(MESSAGE_ERROR.format(user_id=user_id, error=e))
+        logger.error(
+            get_log_text("message.message_error").format(user_id=user_id, error=e)
+        )
         # Отправляем пользователю сообщение об ошибке
         await message.answer(get_text("errors.general_error"))

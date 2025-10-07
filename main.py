@@ -21,38 +21,7 @@ from loguru import logger
 from app.config import get_config
 from app.database import close_db, init_db
 from app.handlers import ROUTERS
-from app.log_lexicon.main import (
-    BOT_AI_MANAGER_CLOSE_TIMEOUT,
-    BOT_AI_MANAGER_CLOSED,
-    BOT_COMMANDS_SET,
-    BOT_CRITICAL_ERROR,
-    BOT_DB_CLOSE_TIMEOUT,
-    BOT_DB_CLOSED,
-    BOT_DB_INITIALIZING,
-    BOT_ERROR_IN_POLLING,
-    BOT_ERROR_IN_RUN_POLLING,
-    BOT_ERROR_STOPPING_POLLING,
-    BOT_INITIALIZED,
-    BOT_KEYBOARD_INTERRUPT,
-    BOT_POLLING_NOT_STARTED,
-    BOT_POLLING_STARTED,
-    BOT_POLLING_STOP_TIMEOUT,
-    BOT_POLLING_STOPPED,
-    BOT_PROGRAM_FINISHED,
-    BOT_REGISTERED_ROUTERS,
-    BOT_SESSION_CLOSE_TIMEOUT,
-    BOT_SESSION_CLOSED,
-    BOT_SHUTDOWN_COMPLETED,
-    BOT_SHUTDOWN_ERROR,
-    BOT_SHUTDOWN_INITIATED,
-    BOT_SHUTDOWN_STARTED,
-    BOT_SIGNAL_RECEIVED,
-    BOT_STARTED,
-    BOT_STARTING,
-    BOT_USER_INTERRUPTED,
-    BOT_WEBHOOK_SET,
-    BOT_WEBHOOK_STARTED,
-)
+from app.lexicon.gettext import get_log_text
 from app.services.ai_manager import close_ai_manager
 from app.utils.logging import setup_logging
 
@@ -95,7 +64,9 @@ class AIAssistantBot:
         for router in ROUTERS:
             dp.include_router(router)
 
-        logger.info(BOT_REGISTERED_ROUTERS.format(count=len(ROUTERS)))
+        logger.info(
+            get_log_text("main.bot_registered_routers").format(count=len(ROUTERS))
+        )
 
     async def setup_bot_commands(self) -> None:
         """Настройка команд бота для меню."""
@@ -111,15 +82,15 @@ class AIAssistantBot:
         ]
 
         await self.bot.set_my_commands(commands)
-        logger.info(BOT_COMMANDS_SET)
+        logger.info(get_log_text("main.bot_commands_set"))
 
     async def startup(self) -> None:
         """Инициализация бота и подключений."""
         try:
-            logger.info(BOT_STARTING)
+            logger.info(get_log_text("main.bot_starting"))
 
             # Инициализация базы данных
-            logger.info(BOT_DB_INITIALIZING)
+            logger.info(get_log_text("main.bot_db_initializing"))
             await init_db()
 
             # Создание бота и диспетчера
@@ -129,7 +100,7 @@ class AIAssistantBot:
             # Получение информации о боте
             bot_info = await self.bot.get_me()
             logger.info(
-                BOT_STARTED.format(
+                get_log_text("main.bot_started").format(
                     username=bot_info.username, full_name=bot_info.full_name
                 )
             )
@@ -137,57 +108,61 @@ class AIAssistantBot:
             # Настройка команд
             await self.setup_bot_commands()
 
-            logger.success(BOT_INITIALIZED)
+            logger.success(get_log_text("main.bot_initialized"))
 
         except Exception as e:
-            logger.error(BOT_SHUTDOWN_ERROR.format(error=e))
+            logger.error(get_log_text("main.bot_shutdown_error").format(error=e))
             raise
 
     async def shutdown(self) -> None:
         """Корректное завершение работы бота."""
-        logger.info(BOT_SHUTDOWN_STARTED)
+        logger.info(get_log_text("main.bot_shutdown_started"))
 
         try:
             # Остановка диспетчера с таймаутом
             if self.dp:
                 try:
                     await asyncio.wait_for(self.dp.stop_polling(), timeout=10.0)
-                    logger.info(BOT_POLLING_STOPPED)
+                    logger.info(get_log_text("main.bot_polling_stopped"))
                 except TimeoutError:
-                    logger.warning(BOT_POLLING_STOP_TIMEOUT)
+                    logger.warning(get_log_text("main.bot_polling_stop_timeout"))
                 except RuntimeError as e:
                     # Handle case when polling was not started
                     if "polling is not started" in str(e).lower():
-                        logger.info(BOT_POLLING_NOT_STARTED)
+                        logger.info(get_log_text("main.bot_polling_not_started"))
                     else:
-                        logger.warning(BOT_ERROR_STOPPING_POLLING.format(error=e))
+                        logger.warning(
+                            get_log_text("main.bot_error_stopping_polling").format(
+                                error=e
+                            )
+                        )
 
             # Закрытие сессии бота с таймаутом
             if self.bot:
                 try:
                     await asyncio.wait_for(self.bot.session.close(), timeout=5.0)
-                    logger.info(BOT_SESSION_CLOSED)
+                    logger.info(get_log_text("main.bot_session_closed"))
                 except TimeoutError:
-                    logger.warning(BOT_SESSION_CLOSE_TIMEOUT)
+                    logger.warning(get_log_text("main.bot_session_close_timeout"))
 
             # Закрытие подключения к БД с таймаутом
             try:
                 await asyncio.wait_for(close_db(), timeout=5.0)
-                logger.info(BOT_DB_CLOSED)
+                logger.info(get_log_text("main.bot_db_closed"))
             except TimeoutError:
-                logger.warning(BOT_DB_CLOSE_TIMEOUT)
+                logger.warning(get_log_text("main.bot_db_close_timeout"))
 
             # Закрытие AI менеджера с таймаутом
             try:
                 await asyncio.wait_for(close_ai_manager(), timeout=5.0)
-                logger.info(BOT_AI_MANAGER_CLOSED)
+                logger.info(get_log_text("main.bot_ai_manager_closed"))
             except TimeoutError:
-                logger.warning(BOT_AI_MANAGER_CLOSE_TIMEOUT)
+                logger.warning(get_log_text("main.bot_ai_manager_close_timeout"))
 
-            logger.success(BOT_SHUTDOWN_COMPLETED)
+            logger.success(get_log_text("main.bot_shutdown_completed"))
 
         except Exception as e:
-            logger.error(BOT_SHUTDOWN_ERROR.format(error=e))
+            logger.error(get_log_text("main.bot_shutdown_error").format(error=e))
 
     def setup_signal_handlers(self) -> None:
         """Настройка обработчиков сигналов для корректного завершения."""
@@ -201,7 +176,7 @@ class AIAssistantBot:
 
     def _signal_handler(self, signum, frame) -> None:  # noqa: ANN001
         """Обработчик сигналов завершения."""
-        logger.info(BOT_SIGNAL_RECEIVED.format(signal=signum))
+        logger.info(get_log_text("main.bot_signal_received").format(signal=signum))
         self._shutdown_event.set()
 
     async def run_polling(self) -> None:
@@ -210,7 +185,7 @@ class AIAssistantBot:
             msg = "Бот или диспетчер не инициализированы"
             raise RuntimeError(msg)
 
-        logger.info(BOT_POLLING_STARTED)
+        logger.info(get_log_text("main.bot_polling_started"))
 
         try:
             # Создаем задачу для polling
@@ -242,11 +217,13 @@ class AIAssistantBot:
                 try:
                     await polling_task
                 except Exception as e:
-                    logger.error(BOT_ERROR_IN_POLLING.format(error=e))
+                    logger.error(
+                        get_log_text("main.bot_error_in_polling").format(error=e)
+                    )
                     raise
 
         except Exception as e:
-            logger.error(BOT_ERROR_IN_RUN_POLLING.format(error=e))
+            logger.error(get_log_text("main.bot_error_in_run_polling").format(error=e))
             raise
 
     async def run_webhook(self) -> None:
@@ -259,7 +236,11 @@ class AIAssistantBot:
             msg = "Бот или диспетчер не инициализированы"
             raise RuntimeError(msg)
 
-        logger.info(BOT_WEBHOOK_STARTED.format(url=self.config.telegram.webhook_url))
+        logger.info(
+            get_log_text("main.bot_webhook_started").format(
+                url=self.config.telegram.webhook_url
+            )
+        )
 
         # Настройка webhook
         await self.bot.set_webhook(
@@ -269,7 +250,7 @@ class AIAssistantBot:
             drop_pending_updates=True,
         )
 
-        logger.info(BOT_WEBHOOK_SET)
+        logger.info(get_log_text("main.bot_webhook_set"))
 
     async def run(self) -> None:
         """Главный метод запуска бота."""
@@ -288,12 +269,12 @@ class AIAssistantBot:
                 # В режиме webhook нужно поддерживать приложение активным
                 await self._shutdown_event.wait()
 
-            logger.info(BOT_SHUTDOWN_INITIATED)
+            logger.info(get_log_text("main.bot_shutdown_initiated"))
 
         except KeyboardInterrupt:
-            logger.info(BOT_KEYBOARD_INTERRUPT)
+            logger.info(get_log_text("main.bot_keyboard_interrupt"))
         except Exception as e:
-            logger.error(BOT_CRITICAL_ERROR.format(error=e))
+            logger.error(get_log_text("main.bot_critical_error").format(error=e))
             raise
         finally:
             await self.shutdown()
@@ -335,15 +316,15 @@ async def main() -> None:
         await bot_app.run()
 
     except KeyboardInterrupt:
-        logger.info(BOT_USER_INTERRUPTED)
+        logger.info(get_log_text("main.bot_user_interrupted"))
     except Exception as e:
-        logger.error(BOT_CRITICAL_ERROR.format(error=e))
+        logger.error(get_log_text("main.bot_critical_error").format(error=e))
         if bot_app:
             with suppress(Exception):
                 await bot_app.shutdown()
         sys.exit(1)
     finally:
-        logger.info(BOT_PROGRAM_FINISHED)
+        logger.info(get_log_text("main.bot_program_finished"))
 
 
 if __name__ == "__main__":

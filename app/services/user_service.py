@@ -13,7 +13,7 @@ from loguru import logger
 from sqlalchemy import select
 
 from app.database import get_session
-from app.log_lexicon.message import MESSAGE_USER_LIMIT_EXCEEDED
+from app.lexicon.gettext import get_log_text
 from app.models.user import User
 
 

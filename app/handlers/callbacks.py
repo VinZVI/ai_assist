@@ -15,11 +15,7 @@ from sqlalchemy import select
 from app.config import get_config
 from app.database import get_session
 from app.keyboards import create_main_menu_keyboard
-from app.lexicon.gettext import get_text
-from app.log_lexicon.callbacks import (
-    CALLBACK_MAIN_MENU_ERROR,
-    CALLBACK_MAIN_MENU_FALLBACK_ERROR,
-)
+from app.lexicon.gettext import get_log_text, get_text
 from app.models import User
 
 # Создаем роутер для обработчиков callback-запросов
@@ -63,7 +59,9 @@ async def show_main_menu(callback: CallbackQuery) -> None:
             # Just answer the callback without doing anything
             await callback.answer()
         else:
-            logger.error(CALLBACK_MAIN_MENU_ERROR.format(error=e))
+            logger.error(
+                get_log_text("callbacks.callback_main_menu_error").format(error=e)
+            )
             # Try to send a new message if editing fails
             try:
                 await callback.message.answer(
@@ -74,7 +72,9 @@ async def show_main_menu(callback: CallbackQuery) -> None:
                 await callback.answer()
             except Exception as fallback_error:
                 logger.error(
-                    CALLBACK_MAIN_MENU_FALLBACK_ERROR.format(error=fallback_error)
+                    get_log_text("callbacks.callback_main_menu_fallback_error").format(
+                        error=fallback_error
+                    )
                 )
                 await callback.answer(get_text("errors.general_error"))
 
