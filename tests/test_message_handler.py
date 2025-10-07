@@ -8,7 +8,7 @@ import pytest
 from aiogram.types import Chat, Message, User
 
 from app.handlers.message import handle_text_message
-from app.lexicon.message import PROCESSING_ERROR, USER_REGISTRATION_ERROR
+from app.lexicon.gettext import get_text
 from app.models.user import User as UserModel
 
 
@@ -34,7 +34,7 @@ async def test_handle_text_message_with_user() -> None:
     user = MagicMock(spec=UserModel)
     user.id = 12345
     user.can_send_message.return_value = True
-    user.increment_message_count = MagicMock()
+    user.increment_message_count = AsyncMock()
 
     with patch("app.handlers.message.get_or_update_user") as mock_get_user:
         mock_get_user.return_value = user
@@ -49,18 +49,21 @@ async def test_handle_text_message_with_user() -> None:
                 0.1,
             )
 
-            with patch("app.handlers.message.save_conversation") as mock_save_conv:
-                mock_save_conv.return_value = True
+            # Mock session context manager properly
+            mock_session = AsyncMock()
+            mock_session.add = MagicMock()
+            mock_session.commit = AsyncMock()
+            mock_session.rollback = AsyncMock()
 
-                # Mock session context manager
-                mock_session_ctx = MagicMock()
-                mock_session = AsyncMock()
-                mock_session_ctx.__aenter__.return_value = mock_session
+            with patch("app.handlers.message.get_session") as mock_get_session:
+                mock_get_session.return_value.__aenter__.return_value = mock_session
 
+                # Mock the get_recent_conversation_history function
                 with patch(
-                    "app.handlers.message.get_session",
-                    return_value=mock_session_ctx,
-                ):
+                    "app.services.conversation_service.get_recent_conversation_history"
+                ) as mock_get_history:
+                    mock_get_history.return_value = []
+
                     # Test successful execution
                     await handle_text_message(message)
 
@@ -68,6 +71,9 @@ async def test_handle_text_message_with_user() -> None:
                     message.answer.assert_called_with(
                         "Test response", parse_mode="Markdown"
                     )
+
+                    # Verify that increment_message_count was called
+                    user.increment_message_count.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -83,7 +89,7 @@ async def test_handle_text_message_without_user() -> None:
     await handle_text_message(message)
 
     # Verify that the error is handled gracefully
-    message.answer.assert_called_with(PROCESSING_ERROR)
+    message.answer.assert_called_with(get_text("errors.general_error"))
 
 
 @pytest.mark.asyncio
@@ -104,4 +110,4 @@ async def test_handle_text_message_exception_handling() -> None:
         await handle_text_message(message)
 
         # Verify that the error is handled gracefully
-        message.answer.assert_called_with(PROCESSING_ERROR)
+        message.answer.assert_called_with(get_text("errors.general_error"))

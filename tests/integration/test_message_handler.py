@@ -420,7 +420,8 @@ class TestGenerateAiResponse:
                     # Assert
                     assert len(result) == 4
                     assert (
-                        "Извините, у меня временные технические трудности" in result[0]
+                        "🤖 Возникла проблема с генерацией ответа. Попробуйте повторить сообщение."
+                        in result[0]
                     )
                     assert result[1] == 0
                     assert result[2] == "fallback"
@@ -465,7 +466,7 @@ class TestGenerateAiResponse:
                     # Assert
                     assert len(result) == 4
                     assert (
-                        "Произошла непредвиденная ошибка при генерации ответа"
+                        "💥 Неожиданная ошибка при генерации ответа. Попробуйте позже."
                         in result[0]
                     )
                     assert result[1] == 0
@@ -509,6 +510,16 @@ class TestHandleTextMessage:
             is_premium=False,
         )
 
+        # Mock session context manager for user service
+        mock_session_ctx_user = MagicMock()
+        mock_session_user = AsyncMock()
+        mock_session_ctx_user.__aenter__.return_value = mock_session_user
+
+        # Mock session context manager for conversation service
+        mock_session_ctx_conv = MagicMock()
+        mock_session_conv = AsyncMock()
+        mock_session_ctx_conv.__aenter__.return_value = mock_session_conv
+
         with patch("app.handlers.message.get_or_update_user") as mock_get_user:
             mock_get_user.return_value = mock_user
 
@@ -525,23 +536,23 @@ class TestHandleTextMessage:
                 with patch("app.handlers.message.save_conversation") as mock_save_conv:
                     mock_save_conv.return_value = True
 
-                    # Mock session context manager
-                    mock_session_ctx = MagicMock()
-                    mock_session = AsyncMock()
-                    mock_session_ctx.__aenter__.return_value = mock_session
-
+                    # Mock session context managers for both user service and conversation service
                     with patch(
-                        "app.handlers.message.get_session",
-                        return_value=mock_session_ctx,
+                        "app.services.user_service.get_session",
+                        return_value=mock_session_ctx_user,
                     ):
-                        # Act
-                        await handle_text_message(mock_telegram_message)
+                        with patch(
+                            "app.handlers.message.get_session",
+                            return_value=mock_session_ctx_conv,
+                        ):
+                            # Act
+                            await handle_text_message(mock_telegram_message)
 
-                        # Assert
-                        mock_get_user.assert_called_once_with(mock_telegram_message)
-                        mock_generate_response.assert_called_once()
-                        mock_save_conv.assert_called_once()
-                        mock_telegram_message.answer.assert_called_once()
+                            # Assert
+                            mock_get_user.assert_called_once_with(mock_telegram_message)
+                            mock_generate_response.assert_called_once()
+                            mock_save_conv.assert_called_once()
+                            mock_telegram_message.answer.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_handle_text_message_no_user_data(
@@ -697,6 +708,16 @@ class TestMessageHandlerIntegration:
             is_premium=False,
         )
 
+        # Mock session context manager for user service
+        mock_session_ctx_user = MagicMock()
+        mock_session_user = AsyncMock()
+        mock_session_ctx_user.__aenter__.return_value = mock_session_user
+
+        # Mock session context manager for conversation service
+        mock_session_ctx_conv = MagicMock()
+        mock_session_conv = AsyncMock()
+        mock_session_ctx_conv.__aenter__.return_value = mock_session_conv
+
         with patch("app.handlers.message.get_or_update_user") as mock_get_user:
             mock_get_user.return_value = mock_user
 
@@ -713,21 +734,21 @@ class TestMessageHandlerIntegration:
                 with patch("app.handlers.message.save_conversation") as mock_save_conv:
                     mock_save_conv.return_value = True
 
-                    # Mock session context manager
-                    mock_session_ctx = MagicMock()
-                    mock_session = AsyncMock()
-                    mock_session_ctx.__aenter__.return_value = mock_session
-
+                    # Mock session context managers for both user service and conversation service
                     with patch(
-                        "app.handlers.message.get_session",
-                        return_value=mock_session_ctx,
+                        "app.services.user_service.get_session",
+                        return_value=mock_session_ctx_user,
                     ):
-                        # Act
-                        await handle_text_message(mock_telegram_message)
+                        with patch(
+                            "app.handlers.message.get_session",
+                            return_value=mock_session_ctx_conv,
+                        ):
+                            # Act
+                            await handle_text_message(mock_telegram_message)
 
-                        # Assert
-                        # All components should be called
-                        mock_get_user.assert_called_once()
-                        mock_generate_response.assert_called_once()
-                        mock_save_conv.assert_called_once()
-                        mock_telegram_message.answer.assert_called_once()
+                            # Assert
+                            # All components should be called
+                            mock_get_user.assert_called_once()
+                            mock_generate_response.assert_called_once()
+                            mock_save_conv.assert_called_once()
+                            mock_telegram_message.answer.assert_called_once()

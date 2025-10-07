@@ -15,12 +15,7 @@ from sqlalchemy import select
 from app.config import get_config
 from app.database import get_session
 from app.keyboards import create_main_menu_keyboard
-from app.lexicon.callbacks import (
-    MAIN_MENU_ERROR,
-    MAIN_MENU_FALLBACK_ERROR,
-    MAIN_MENU_TEXT,
-    PLACEHOLDER_MESSAGE,
-)
+from app.lexicon.gettext import get_text
 from app.log_lexicon.callbacks import (
     CALLBACK_MAIN_MENU_ERROR,
     CALLBACK_MAIN_MENU_FALLBACK_ERROR,
@@ -37,7 +32,7 @@ async def show_main_menu(callback: CallbackQuery) -> None:
     try:
         # Check if the message content and reply markup are actually different
         # before attempting to edit to prevent "message is not modified" error
-        new_text = MAIN_MENU_TEXT
+        new_text = get_text("callbacks.main_menu_title")
         new_keyboard = create_main_menu_keyboard()
 
         # Only edit if message exists and content/markup are different
@@ -72,7 +67,7 @@ async def show_main_menu(callback: CallbackQuery) -> None:
             # Try to send a new message if editing fails
             try:
                 await callback.message.answer(
-                    MAIN_MENU_TEXT,
+                    get_text("callbacks.main_menu_title"),
                     reply_markup=create_main_menu_keyboard(),
                     parse_mode="Markdown",
                 )
@@ -81,7 +76,7 @@ async def show_main_menu(callback: CallbackQuery) -> None:
                 logger.error(
                     CALLBACK_MAIN_MENU_FALLBACK_ERROR.format(error=fallback_error)
                 )
-                await callback.answer(MAIN_MENU_ERROR)
+                await callback.answer(get_text("errors.general_error"))
 
 
 # Заглушки для остальных callback'ов
@@ -105,7 +100,7 @@ async def show_main_menu(callback: CallbackQuery) -> None:
 )
 async def placeholder_callback(callback: CallbackQuery) -> None:
     """Заглушка для еще не реализованных функций."""
-    await callback.answer(PLACEHOLDER_MESSAGE)
+    await callback.answer(get_text("callbacks.placeholder_message"))
 
 
 # Экспорт роутера

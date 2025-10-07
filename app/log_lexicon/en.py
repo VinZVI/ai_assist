@@ -32,7 +32,7 @@ LOG_LEXICON_EN = {
         "bot_program_finished": "🏁 Program finished",
     },
     "start": {
-        "start_command_received": "📥 Received /start command from {user_info}",
+        "start_command_received": "📥 Received /start command from user {user_id}",
         "start_user_created": "🆕 Created new user ID:{user_id} (@{username})",
         "start_user_info_updated": "🔄 Updated user info for ID:{user_id}",
         "start_command_processed": "✅ /start command processed for user ID:{user_id}",
@@ -93,7 +93,7 @@ LOG_LEXICON_EN = {
         "ai_manager_selecting_provider": "🔄 Selecting provider for request...",
         "ai_manager_provider_selected": "✅ Selected provider {provider}",
         "ai_manager_fallback_triggered": "🔁 Fallback triggered to provider {provider}",
-        "ai_manager_response_cached": "キャッシング AI response...",
+        "ai_manager_response_cached": "Caching AI response...",
         "ai_manager_cache_hit": "✅ AI response cache hit",
         "ai_manager_cache_miss": "❌ AI response cache miss",
     },

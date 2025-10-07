@@ -8,7 +8,10 @@ import pytest
 from aiogram.types import CallbackQuery, Message
 
 from app.handlers.callbacks import callback_router
-from app.lexicon.callbacks import MAIN_MENU_TEXT
+from app.lexicon.gettext import get_text
+
+# Get the main menu text using the new lexicon system
+MAIN_MENU_TEXT = get_text("callbacks.main_menu_title")
 
 
 @pytest.mark.asyncio

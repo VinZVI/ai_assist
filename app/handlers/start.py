@@ -17,23 +17,7 @@ from sqlalchemy.exc import IntegrityError
 from app.config import AppConfig, get_config
 from app.database import get_session
 from app.keyboards import create_main_menu_keyboard
-from app.lexicon.start import (
-    COMMANDS_INFO,
-    FIRST_MESSAGE_TEXT,
-    FIRST_MESSAGE_TITLE,
-    FUNCTIONALITY_ITEMS,
-    FUNCTIONALITY_TITLE,
-    LIMITS_FREE,
-    LIMITS_TITLE,
-    LIMITS_USED,
-    PREMIUM_ACTIVE,
-    PREMIUM_INFO,
-    PREMIUM_INFO_TITLE,
-    REGISTRATION_ERROR,
-    UNEXPECTED_ERROR,
-    WELCOME_INTRO,
-    WELCOME_TITLE,
-)
+from app.lexicon.gettext import get_text
 from app.log_lexicon.start import (
     START_COMMAND_ERROR,
     START_COMMAND_PROCESSED,
@@ -160,39 +144,42 @@ def format_welcome_message(user: User, config: AppConfig) -> str:
         str: Отформатированное приветственное сообщение
     """
     display_name = user.get_display_name()
+    lang_code = user.language_code or "ru"
 
     # Базовое приветствие
     welcome_text = f"""
-🤖 <b>{WELCOME_TITLE.format(display_name=display_name)}</b>
+🤖 <b>{get_text("start.welcome_title", lang_code, display_name=display_name)}</b>
 
-{WELCOME_INTRO}
+{get_text("start.welcome_intro", lang_code)}
 
-<b>{FUNCTIONALITY_TITLE}</b>
+<b>{get_text("start.functionality_title", lang_code)}</b>
 """
-    for item in FUNCTIONALITY_ITEMS:
+    for item in get_text("start.functionality_items", lang_code):
         welcome_text += f"• {item}\n"
 
     welcome_text += f"""
-<b>{LIMITS_TITLE}</b>
-• {LIMITS_FREE.format(free_limit=config.user_limits.free_messages_limit)}
-• {LIMITS_USED.format(used=user.daily_message_count, total=config.user_limits.free_messages_limit)}
+<b>{get_text("start.limits_title", lang_code)}</b>
+• {get_text("start.limits_free", lang_code, free_limit=config.user_limits.free_messages_limit)}
+• {get_text("start.limits_used", lang_code, used=user.daily_message_count, total=config.user_limits.free_messages_limit)}
 """
 
     # Дополнительная информация для премиум пользователей
     if user.is_premium_active():
-        welcome_text += f"\n{PREMIUM_ACTIVE}"
+        welcome_text += f"\n{get_text('start.premium_active', lang_code)}"
     else:
         welcome_text += f"""
-<b>{PREMIUM_INFO_TITLE}</b>
+<b>{get_text("start.premium_info_title", lang_code)}</b>
 {
-            PREMIUM_INFO.format(
+            get_text(
+                "start.premium_info",
+                lang_code,
                 price=config.user_limits.premium_price,
                 days=config.user_limits.premium_duration_days,
             )
         }
 """
 
-    welcome_text += f"\n\n{COMMANDS_INFO}"
+    welcome_text += f"\n\n{get_text('start.commands_info', lang_code)}"
 
     return welcome_text
 
@@ -213,55 +200,41 @@ async def handle_start_command(message: Message) -> None:
         config = get_config()
 
         # Логируем попытку старта
-        user_info = (
-            f"@{message.from_user.username}"
-            if message.from_user.username
-            else f"ID:{message.from_user.id}"
-        )
-        logger.info(START_COMMAND_RECEIVED.format(user_info=user_info))
+        logger.info(START_COMMAND_RECEIVED.format(user_id=message.from_user.id))
 
-        # Получаем или создаем пользователя в БД
+        # Получаем или создаем пользователя
         user = await get_or_create_user(message.from_user)
-
-        if user is None:
-            # Если не удалось создать/получить пользователя
-            await message.answer(
-                REGISTRATION_ERROR,
-                parse_mode="HTML",
-            )
+        if not user:
+            logger.error(START_COMMAND_ERROR.format(user_id=message.from_user.id))
+            await message.answer(get_text("errors.user_registration_error"))
             return
 
-        # Формируем и отправляем приветственное сообщение
+        # Формируем приветственное сообщение
         welcome_message = format_welcome_message(user, config)
 
-        await message.answer(
+        # Отправляем приветственное сообщение с клавиатурой
+        sent_message = await message.answer(
             welcome_message,
-            parse_mode="HTML",
             reply_markup=create_main_menu_keyboard(),
-            disable_web_page_preview=True,
+            parse_mode="HTML",
         )
 
-        # Дополнительное сообщение для новых пользователей
-        if user.total_messages == 0:
-            await message.answer(
-                f"{FIRST_MESSAGE_TITLE}\n\n{FIRST_MESSAGE_TEXT}",
-                parse_mode="HTML",
+        logger.info(
+            START_COMMAND_PROCESSED.format(
+                user_id=message.from_user.id,
+                message_id=sent_message.message_id,
             )
-
-        logger.info(START_COMMAND_PROCESSED.format(user_id=message.from_user.id))
+        )
 
     except Exception as e:
-        logger.error(START_COMMAND_ERROR.format(user_id=message.from_user.id, error=e))
-
-        # Отправляем пользователю сообщение об ошибке
+        logger.error(
+            START_UNEXPECTED_ERROR.format(user_id=message.from_user.id, error=e)
+        )
         try:
-            await message.answer(
-                UNEXPECTED_ERROR,
-                parse_mode="HTML",
-            )
+            await message.answer(get_text("errors.general_error"))
         except Exception as send_error:
-            logger.error(START_ERROR_SENDING_MESSAGE.format(error=send_error))
-
-
-# Экспорт роутера для регистрации в основном приложении
-__all__ = ["start_router"]
+            logger.error(
+                START_ERROR_SENDING_MESSAGE.format(
+                    error=send_error,
+                )
+            )

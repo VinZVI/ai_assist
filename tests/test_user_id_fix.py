@@ -8,7 +8,7 @@ import pytest
 from aiogram.types import Chat, Message, User
 
 from app.handlers.message import handle_text_message
-from app.lexicon.message import PROCESSING_ERROR
+from app.lexicon.gettext import get_text
 from app.models.user import User as UserModel
 
 
@@ -52,7 +52,7 @@ async def test_handle_text_message_user_id_error() -> None:
             # Test that the error is handled gracefully
             await handle_text_message(message)
             # Verify that the error is handled gracefully
-            message.answer.assert_called_with(PROCESSING_ERROR)
+            message.answer.assert_called_with(get_text("errors.general_error"))
 
 
 @pytest.mark.asyncio
@@ -68,4 +68,4 @@ async def test_handle_text_message_with_none_from_user() -> None:
     await handle_text_message(message)
 
     # Verify that the error is handled gracefully
-    message.answer.assert_called_with(PROCESSING_ERROR)
+    message.answer.assert_called_with(get_text("errors.general_error"))

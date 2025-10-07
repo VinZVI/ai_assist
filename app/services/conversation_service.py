@@ -123,7 +123,7 @@ async def save_conversation(
         logger.info(MESSAGE_CONVERSATION_SAVED.format(user_id=user_id))
         return True
 
-    except Exception as e:
-        logger.exception(MESSAGE_CONVERSATION_SAVE_ERROR.format(error=e))
+    except Exception:
+        logger.exception(MESSAGE_CONVERSATION_SAVE_ERROR.format(user_id=user_id))
         await session.rollback()
         return False
