@@ -45,6 +45,7 @@ async def get_or_create_user(telegram_user: TgUser) -> User | None:
 
             if existing_user:
                 # Обновляем информацию о пользователе если что-то изменилось
+                # ВАЖНО: Не обновляем language_code, чтобы сохранить выбор пользователя
                 user_updated = False
 
                 if existing_user.username != telegram_user.username:
@@ -57,10 +58,6 @@ async def get_or_create_user(telegram_user: TgUser) -> User | None:
 
                 if existing_user.last_name != telegram_user.last_name:
                     existing_user.last_name = telegram_user.last_name
-                    user_updated = True
-
-                if existing_user.language_code != telegram_user.language_code:
-                    existing_user.language_code = telegram_user.language_code
                     user_updated = True
 
                 # Обновляем время последней активности

@@ -63,7 +63,7 @@ async def handle_language_command(message: Message) -> None:
                 f"{get_text('language.current_language', current_language, language=get_text('language.available_languages.' + current_language, current_language))}\n\n"
                 f"{get_text('language.select_language', current_language)}",
                 reply_markup=keyboard,
-                parse_mode="HTML"
+                parse_mode="HTML",
             )
 
             logger.info(
@@ -92,22 +92,20 @@ def create_language_keyboard(current_language: str) -> InlineKeyboardMarkup:
         InlineKeyboardMarkup: Клавиатура с кнопками выбора языка
     """
     # Получаем доступные языки
-    languages = {
-        "ru": "🇷🇺 Русский",
-        "en": "🇺🇸 English"
-    }
+    languages = {"ru": "🇷🇺 Русский", "en": "🇺🇸 English"}
 
     buttons = []
     for lang_code, lang_name in languages.items():
         # Добавляем эмодзи отметки для текущего языка
         button_text = f"✅ {lang_name}" if lang_code == current_language else lang_name
 
-        buttons.append([
-            InlineKeyboardButton(
-                text=button_text,
-                callback_data=f"select_language:{lang_code}"
-            )
-        ])
+        buttons.append(
+            [
+                InlineKeyboardButton(
+                    text=button_text, callback_data=f"select_language:{lang_code}"
+                )
+            ]
+        )
 
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
@@ -142,6 +140,7 @@ async def handle_language_selection(callback: CallbackQuery) -> None:
 
         # Проверяем, что сообщение доступно для редактирования (не InaccessibleMessage)
         from aiogram.types import InaccessibleMessage
+
         if isinstance(callback.message, InaccessibleMessage):
             await callback.answer(get_text("errors.general_error"))
             return
@@ -160,17 +159,23 @@ async def handle_language_selection(callback: CallbackQuery) -> None:
                 return
 
             # Обновляем язык пользователя
-            update_stmt = update(User).where(User.telegram_id == callback.from_user.id).values(language_code=lang_code)
+            update_stmt = (
+                update(User)
+                .where(User.telegram_id == callback.from_user.id)
+                .values(language_code=lang_code)
+            )
             await session.execute(update_stmt)
             await session.commit()
 
             # Получаем название языка
-            language_name = get_text(f"language.available_languages.{lang_code}", lang_code)
+            language_name = get_text(
+                f"language.available_languages.{lang_code}", lang_code
+            )
 
             # Отправляем подтверждение
             await callback.message.edit_text(
                 f"✅ {get_text('language.language_changed', lang_code, language=language_name)}",
-                parse_mode="HTML"
+                parse_mode="HTML",
             )
 
             await callback.answer()

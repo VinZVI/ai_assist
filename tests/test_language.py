@@ -29,7 +29,7 @@ async def test_handle_language_command_success() -> None:
         username="testuser",
         first_name="Test",
         last_name="User",
-        language_code="ru"
+        language_code="ru",
     )
 
     # Mock database session
@@ -42,7 +42,9 @@ async def test_handle_language_command_success() -> None:
         # Mock the session methods
         mock_session = session_context.__aenter__.return_value
         mock_session.execute = AsyncMock()
-        mock_session.execute.return_value.scalar_one_or_none = MagicMock(return_value=mock_user)
+        mock_session.execute.return_value.scalar_one_or_none = MagicMock(
+            return_value=mock_user
+        )
 
         mock_get_session.return_value = session_context
 
@@ -54,7 +56,9 @@ async def test_handle_language_command_success() -> None:
                 language_command_handler = handler.callback
                 break
 
-        assert language_command_handler is not None, "handle_language_command handler not found"
+        assert language_command_handler is not None, (
+            "handle_language_command handler not found"
+        )
 
         # Test successful execution
         await language_command_handler(message)
@@ -64,7 +68,9 @@ async def test_handle_language_command_success() -> None:
         # Check that the answer contains the language title
         call_args = message.answer.call_args[0]
         assert "🌐" in call_args[0]  # Should contain the globe emoji
-        assert "Выбор языка" in call_args[0] or "Language Selection" in call_args[0]  # Should contain title
+        assert (
+            "Выбор языка" in call_args[0] or "Language Selection" in call_args[0]
+        )  # Should contain title
 
 
 @pytest.mark.asyncio
@@ -86,7 +92,7 @@ async def test_handle_language_selection_success() -> None:
         username="testuser",
         first_name="Test",
         last_name="User",
-        language_code="ru"
+        language_code="ru",
     )
 
     # Mock database session
@@ -99,7 +105,9 @@ async def test_handle_language_selection_success() -> None:
         # Mock the session methods
         mock_session = session_context.__aenter__.return_value
         mock_session.execute = AsyncMock()
-        mock_session.execute.return_value.scalar_one_or_none = MagicMock(return_value=mock_user)
+        mock_session.execute.return_value.scalar_one_or_none = MagicMock(
+            return_value=mock_user
+        )
         mock_session.commit = AsyncMock()
 
         mock_get_session.return_value = session_context
@@ -112,7 +120,9 @@ async def test_handle_language_selection_success() -> None:
                 language_selection_handler = handler.callback
                 break
 
-        assert language_selection_handler is not None, "handle_language_selection handler not found"
+        assert language_selection_handler is not None, (
+            "handle_language_selection handler not found"
+        )
 
         # Test successful execution
         await language_selection_handler(callback)

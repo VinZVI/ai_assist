@@ -90,9 +90,6 @@ LEXICON_RU = {
         "current_language": "Текущий язык: {language}",
         "select_language": "Пожалуйста, выберите язык:",
         "language_changed": "✅ Язык успешно изменен на {language}",
-        "available_languages": {
-            "ru": "🇷🇺 Русский",
-            "en": "🇺🇸 English"
-        }
+        "available_languages": {"ru": "🇷🇺 Русский", "en": "🇺🇸 English"},
     },
 }
