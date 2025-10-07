@@ -164,4 +164,10 @@ LOG_LEXICON_RU = {
         "callback_main_menu_error": "💥 Ошибка показа главного меню: {error}",
         "callback_main_menu_fallback_error": "💥 Резервная ошибка показа главного меню: {error}",
     },
+    "language": {
+        "language_command_processed": "🌐 Получена команда /language от пользователя ID:{user_id}",
+        "language_command_error": "💥 Ошибка обработки /language для пользователя ID:{user_id}: {error}",
+        "language_changed_success": "✅ Язык пользователя ID:{user_id} успешно изменен на {language}",
+        "language_selection_error": "💥 Ошибка выбора языка для пользователя ID:{user_id}: {error}",
+    },
 }

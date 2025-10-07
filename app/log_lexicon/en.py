@@ -164,4 +164,10 @@ LOG_LEXICON_EN = {
         "callback_main_menu_error": "💥 Error showing main menu: {error}",
         "callback_main_menu_fallback_error": "💥 Fallback error showing main menu: {error}",
     },
+    "language": {
+        "language_command_processed": "🌐 Received /language command from user ID:{user_id}",
+        "language_command_error": "💥 Error processing /language for user ID:{user_id}: {error}",
+        "language_changed_success": "✅ User ID:{user_id} language successfully changed to {language}",
+        "language_selection_error": "💥 Error selecting language for user ID:{user_id}: {error}",
+    },
 }

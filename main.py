@@ -73,13 +73,16 @@ class AIAssistantBot:
         if not self.bot:
             return
 
-        commands = [
-            BotCommand(command="start", description="🚀 Начать работу с ботом"),
-            BotCommand(command="help", description="❓ Справка по командам"),
-            BotCommand(command="profile", description="👤 Мой профиль"),
-            BotCommand(command="limits", description="📊 Мои лимиты сообщений"),
-            BotCommand(command="premium", description="⭐ Премиум доступ"),
-        ]
+        # Get command descriptions from lexicon (using Russian as default)
+        from app.lexicon.ru import LEXICON_RU
+        help_commands = LEXICON_RU["help"]["commands"]
+
+        # Convert lexicon commands to BotCommand objects
+        commands = []
+        for command, description in help_commands:
+            # Remove the leading slash from command name for BotCommand
+            command_name = command.lstrip('/')
+            commands.append(BotCommand(command=command_name, description=description))
 
         await self.bot.set_my_commands(commands)
         logger.info(get_log_text("main.bot_commands_set"))

@@ -63,6 +63,7 @@ ai_assist/
 │   ├── handlers/              # Обработчики команд
 │   │   ├── __init__.py
 │   │   ├── start.py          # /start команда
+│   │   ├── language.py       # /language команда
 │   │   ├── message.py        # Обработка сообщений
 │   │   ├── callbacks.py      # Обработка callback-запросов
 │   │   └── health.py         # Healthcheck endpoint
@@ -269,6 +270,7 @@ alembic downgrade -1
 - `app/lexicon/start.py` - сообщения для обработчика команды /start
 - `app/lexicon/message.py` - сообщения для обработчика текстовых сообщений
 - `app/lexicon/callbacks.py` - сообщения для обработчика callback-запросов
+- `app/lexicon/language.py` - сообщения для обработчика команды выбора языка
 
 ### 5.2 Константы
 
@@ -283,6 +285,7 @@ alembic downgrade -1
 
 - `app/log_lexicon/en.py` - английский лог-лексикон (словарная структура)
 - `app/log_lexicon/ru.py` - русский лог-лексикон (словарная структура)
+- `app/log_lexicon/language.py` - сообщения для логирования функциональности выбора языка
 
 Старые файлы (`app/log_lexicon/main.py`, `app/log_lexicon/start.py`, `app/log_lexicon/message.py`, `app/log_lexicon/callbacks.py`, `app/log_lexicon/database.py`, `app/log_lexicon/config.py`) были удалены в рамках рефакторинга системы лог-лексиконов.
 

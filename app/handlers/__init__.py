@@ -8,12 +8,14 @@
 
 from .callbacks import callback_router
 from .health import health_router
+from .language import language_router
 from .message import message_router
 from .start import start_router
 
 # Список всех роутеров для регистрации
 ROUTERS = [
     start_router,  # Обработчик команды /start
+    language_router,  # Обработчик команды /language
     callback_router,  # Обработчик callback запросов
     message_router,  # Обработчик текстовых сообщений
     health_router,  # Обработчик healthcheck
@@ -23,6 +25,7 @@ __all__ = [
     "ROUTERS",
     "callback_router",
     "health_router",
+    "language_router",
     "message_router",
     "start_router",
 ]

@@ -59,6 +59,7 @@ LEXICON_EN = {
             ("/profile", "👤 My profile"),
             ("/limits", "📊 My message limits"),
             ("/premium", "⭐ Premium access"),
+            ("/language", "🌐 Language selection"),
         ],
     },
     "profile": {
@@ -83,5 +84,15 @@ LEXICON_EN = {
             "✅ Access to extended features",
         ],
         "already_active": "⭐ Your Premium is already active until {premium_until}!",
+    },
+    "language": {
+        "title": "🌐 Language Selection",
+        "current_language": "Current language: {language}",
+        "select_language": "Please select a language:",
+        "language_changed": "✅ Language successfully changed to {language}",
+        "available_languages": {
+            "ru": "🇷🇺 Русский",
+            "en": "🇺🇸 English"
+        }
     },
 }
