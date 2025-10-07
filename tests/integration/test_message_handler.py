@@ -32,6 +32,7 @@ from app.models.conversation import Conversation, ConversationStatus, MessageRol
 from app.models.user import User
 from app.services.ai_manager import AIProviderError
 from app.services.ai_providers.base import AIResponse, ConversationMessage
+from app.services.user_service import get_or_update_user
 
 
 class TestGetOrUpdateUser:
@@ -91,10 +92,10 @@ class TestGetOrUpdateUser:
         mock_session.commit = AsyncMock()
         mock_session.refresh = AsyncMock()
 
-        with patch("app.models.user.get_session", return_value=mock_session_ctx):
+        with patch(
+            "app.services.user_service.get_session", return_value=mock_session_ctx
+        ):
             # Act
-            from app.models.user import get_or_update_user
-
             result = await get_or_update_user(mock_message)
 
             # Assert
@@ -125,10 +126,10 @@ class TestGetOrUpdateUser:
 
         mock_session.refresh = mock_refresh
 
-        with patch("app.models.user.get_session", return_value=mock_session_ctx):
+        with patch(
+            "app.services.user_service.get_session", return_value=mock_session_ctx
+        ):
             # Act
-            from app.models.user import get_or_update_user
-
             result = await get_or_update_user(mock_message)
 
             # Assert
@@ -144,8 +145,6 @@ class TestGetOrUpdateUser:
         message.from_user = None
 
         # Act
-        from app.models.user import get_or_update_user
-
         result = await get_or_update_user(message)
 
         # Assert
@@ -159,11 +158,11 @@ class TestGetOrUpdateUser:
         mock_session_ctx.__aenter__ = AsyncMock(side_effect=Exception("Database error"))
         mock_session_ctx.__aexit__ = AsyncMock(return_value=None)
 
-        with patch("app.models.user.get_session", return_value=mock_session_ctx):
-            with patch("app.models.user.logger"):
+        with patch(
+            "app.services.user_service.get_session", return_value=mock_session_ctx
+        ):
+            with patch("app.services.user_service.logger"):
                 # Act
-                from app.models.user import get_or_update_user
-
                 result = await get_or_update_user(mock_message)
 
                 # Assert
@@ -465,7 +464,10 @@ class TestGenerateAiResponse:
 
                     # Assert
                     assert len(result) == 4
-                    assert "Произошла неожиданная ошибка" in result[0]
+                    assert (
+                        "Произошла непредвиденная ошибка при генерации ответа"
+                        in result[0]
+                    )
                     assert result[1] == 0
                     assert result[2] == "error"
                     assert result[3] == 0.0

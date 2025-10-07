@@ -39,6 +39,7 @@ from app.constants.errors import (
     AI_QUOTA_ERROR as AI_QUOTA_ERROR_CONST,
 )
 from app.database import get_session
+from app.lexicon.ai_prompts import create_system_message
 from app.lexicon.message import (
     AI_ALL_PROVIDERS_DOWN,
     AI_GENERAL_ERROR,
@@ -62,141 +63,17 @@ from app.log_lexicon.message import (
     MESSAGE_USER_LIMIT_EXCEEDED,
 )
 from app.models.conversation import Conversation, ConversationStatus
-from app.models.user import User, get_or_update_user
+from app.models.user import User
 from app.services.ai_manager import AIProviderError, get_ai_manager
 from app.services.ai_providers.base import ConversationMessage
+from app.services.conversation_service import (
+    get_recent_conversation_history,
+    save_conversation,
+)
+from app.services.user_service import get_or_update_user
 
 # Создаем роутер для обработчиков сообщений
 message_router = Router()
-
-
-async def get_recent_conversation_history(
-    session: AsyncSession,
-    user_id: int,
-    limit: int = 10,
-) -> list[ConversationMessage]:
-    """Получение истории последних сообщений пользователя."""
-    try:
-        from sqlalchemy import desc, select
-
-        from app.models.conversation import ConversationStatus
-
-        # Получаем последние завершенные сообщения
-        stmt = (
-            select(Conversation)
-            .where(
-                (Conversation.user_id == user_id)
-                & (Conversation.status == ConversationStatus.COMPLETED),
-            )
-            .order_by(desc(Conversation.created_at))
-            .limit(limit)
-        )
-
-        result = await session.execute(stmt)
-        conversations = result.scalars().all()
-
-        # Преобразуем в ConversationMessage
-        messages = []
-        for conv in reversed(conversations):  # Обращаем порядок для хронологии
-            # Добавляем сообщение пользователя
-            if conv.message_text:
-                messages.append(
-                    ConversationMessage(
-                        role="user",
-                        content=conv.message_text,
-                        timestamp=conv.created_at,
-                    ),
-                )
-
-            # Добавляем ответ ассистента
-            if conv.response_text:
-                messages.append(
-                    ConversationMessage(
-                        role="assistant",
-                        content=conv.response_text,
-                        timestamp=conv.processed_at or conv.created_at,
-                    ),
-                )
-
-        return messages[-limit:] if len(messages) > limit else messages
-
-    except Exception as e:
-        logger.error(CONVERSATION_HISTORY_ERROR.format(error=e))
-        return []
-
-
-def create_system_message() -> ConversationMessage:
-    """Создание системного сообщения для AI."""
-    return ConversationMessage(
-        role="system",
-        content=(
-            "Ты - эмпатичный AI-помощник и компаньон. "
-            "Твоя задача - предоставлять эмоциональную поддержку и понимание. "
-            "Отвечай доброжелательно, поддерживающе и с пониманием. "
-            "Задавай уточняющие вопросы, чтобы лучше понять чувства "
-            "и потребности пользователя. "
-            "Избегай давать медицинские или юридические советы. "
-            "Если пользователь находится в кризисной ситуации, "
-            "мягко предложи обратиться к специалисту."
-        ),
-    )
-
-
-async def save_conversation(
-    session: AsyncSession,
-    user_id: int,
-    user_message: str,
-    ai_response: str,
-    ai_model: str,
-    tokens_used: int,
-    response_time: float,
-) -> bool:
-    """
-    Сохранение диалога в базе данных.
-
-    Args:
-        session: Сессия базы данных
-        user_id: ID пользователя
-        user_message: Сообщение пользователя
-        ai_response: Ответ AI
-        ai_model: Модель AI
-        tokens_used: Количество использованных токенов
-        response_time: Время ответа в секундах
-
-    Returns:
-        bool: True если успешно сохранено, False в случае ошибки
-    """
-    try:
-        # Создаем запись сообщения пользователя
-        user_conv = Conversation(
-            user_id=user_id,
-            message_text=user_message,
-            role="user",
-            status=ConversationStatus.COMPLETED,
-        )
-        session.add(user_conv)
-
-        # Создаем запись ответа AI
-        ai_conv = Conversation(
-            user_id=user_id,
-            message_text=user_message,
-            response_text=ai_response,
-            role="assistant",
-            status=ConversationStatus.COMPLETED,
-            ai_model=ai_model,
-            tokens_used=tokens_used,
-            response_time_ms=int(response_time * 1000),
-        )
-        session.add(ai_conv)
-
-        await session.commit()
-        logger.info(MESSAGE_CONVERSATION_SAVED.format(user_id=user_id))
-        return True
-
-    except Exception as e:
-        logger.exception(MESSAGE_CONVERSATION_SAVE_ERROR.format(error=e))
-        await session.rollback()
-        return False
 
 
 async def generate_ai_response(

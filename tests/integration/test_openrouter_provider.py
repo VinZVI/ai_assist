@@ -94,7 +94,7 @@ class TestOpenRouterAPIRequests:
             "id": "chatcmpl-test",
             "object": "chat.completion",
             "created": 1234567890,
-            "model": "anthropic/claude-3-haiku",
+            "model": "deepseek/deepseek-chat-v3.1:free",
             "choices": [
                 {
                     "index": 0,
@@ -117,7 +117,7 @@ class TestOpenRouterAPIRequests:
 
             assert isinstance(response, AIResponse)
             assert response.content == "Привет! У меня всё отлично, спасибо!"
-            assert response.model == "anthropic/claude-3-haiku"
+            assert response.model == "deepseek/deepseek-chat-v3.1:free"
             assert response.provider == "openrouter"
             assert response.tokens_used == 35
             assert response.cached is False
@@ -355,11 +355,9 @@ class TestOpenRouterResponseParsing:
         with patch("httpx.AsyncClient.post", return_value=mock_response):
             response = await provider.generate_response(mock_conversation_messages)
 
-            assert response.content == "Минимальный ответ"
-            assert (
-                response.tokens_used == 2
-            )  # len("Минимальный ответ".split()) * 1.3 ≈ 2
-            assert response.model == "anthropic/claude-3-haiku"  # From config
+        assert response.content == "Минимальный ответ"
+        assert response.tokens_used == 2  # len("Минимальный ответ".split()) * 1.3 ≈ 2
+        assert response.model == "deepseek/deepseek-chat-v3.1:free"  # From config
 
     @pytest.mark.asyncio
     async def test_empty_content_handling(self, provider: OpenRouterProvider) -> None:

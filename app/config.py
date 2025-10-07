@@ -12,7 +12,7 @@ from loguru import logger
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
 
-from app.constants import ConfigErrorMessages, ConfigMagicValues
+from app.constants.config import ConfigErrorMessages, ConfigMagicValues
 from app.log_lexicon.config import CONFIG_LOADED_SUCCESS
 
 

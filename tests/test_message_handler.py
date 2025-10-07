@@ -8,7 +8,7 @@ import pytest
 from aiogram.types import Chat, Message, User
 
 from app.handlers.message import handle_text_message
-from app.lexicon.message import PROCESSING_ERROR
+from app.lexicon.message import PROCESSING_ERROR, USER_REGISTRATION_ERROR
 from app.models.user import User as UserModel
 
 
@@ -34,18 +34,33 @@ async def test_handle_text_message_with_user() -> None:
     user = MagicMock(spec=UserModel)
     user.id = 12345
     user.can_send_message.return_value = True
-    user.personality_id = None
     user.increment_message_count = MagicMock()
 
-    with patch("app.handlers.message.get_or_update_user", return_value=user):
-        with patch(
-            "app.handlers.message.generate_ai_response",
-            return_value=("Test response", 10, "test-model", 0.1),
-        ):
-            with patch("app.handlers.message.save_conversation", return_value=True):
-                with patch("app.handlers.message.get_session") as mock_session:
-                    mock_session.return_value.__aenter__.return_value = MagicMock()
+    with patch("app.handlers.message.get_or_update_user") as mock_get_user:
+        mock_get_user.return_value = user
 
+        with patch(
+            "app.handlers.message.generate_ai_response"
+        ) as mock_generate_response:
+            mock_generate_response.return_value = (
+                "Test response",
+                10,
+                "test-model",
+                0.1,
+            )
+
+            with patch("app.handlers.message.save_conversation") as mock_save_conv:
+                mock_save_conv.return_value = True
+
+                # Mock session context manager
+                mock_session_ctx = MagicMock()
+                mock_session = AsyncMock()
+                mock_session_ctx.__aenter__.return_value = mock_session
+
+                with patch(
+                    "app.handlers.message.get_session",
+                    return_value=mock_session_ctx,
+                ):
                     # Test successful execution
                     await handle_text_message(message)
 

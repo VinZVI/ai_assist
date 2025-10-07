@@ -6,7 +6,7 @@
 """
 
 from collections.abc import AsyncGenerator
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
 import pytest
@@ -120,12 +120,15 @@ class TestUserModel:
 
     def test_can_send_message_method(self) -> None:
         """Тест метода can_send_message."""
+        # Use a fixed date for consistent testing
+        fixed_date = date(2025, 10, 7)
+
         # Премиум пользователь
         premium_user = User(
             telegram_id=1,
             is_premium=True,
             daily_message_count=100,
-            last_message_date=datetime.now(UTC).date(),
+            last_message_date=fixed_date,
         )
         assert premium_user.can_send_message() is True
 
@@ -134,7 +137,7 @@ class TestUserModel:
             telegram_id=2,
             is_premium=False,
             daily_message_count=5,
-            last_message_date=datetime.now(UTC).date(),
+            last_message_date=fixed_date,
         )
         assert regular_user.can_send_message() is True
 
@@ -143,7 +146,7 @@ class TestUserModel:
             telegram_id=3,
             is_premium=False,
             daily_message_count=20,
-            last_message_date=datetime.now(UTC).date(),
+            last_message_date=fixed_date,
         )
         assert limited_user.can_send_message() is False
 

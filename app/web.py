@@ -15,7 +15,8 @@ from fastapi.responses import JSONResponse
 from loguru import logger
 
 from app.config import get_config
-from app.database import close_db, init_db
+from app.database import check_connection, close_db, init_db
+from app.services.ai_manager import get_ai_manager
 
 
 @asynccontextmanager
@@ -64,18 +65,59 @@ async def health_check() -> JSONResponse:
         if not config:
             return JSONResponse(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                content={"status": "error", "message": "Конфигурация не загружена"},
+                content={
+                    "status": "error",
+                    "message": "Конфигурация не загружена",
+                    "components": {
+                        "config": "error",
+                        "database": "unknown",
+                        "ai_providers": "unknown",
+                    },
+                },
             )
+
+        # Проверяем подключение к базе данных
+        db_status = await check_connection()
+        db_status_str = "healthy" if db_status else "unhealthy"
+
+        # Проверяем AI провайдеры
+        ai_manager = get_ai_manager()
+        ai_health = await ai_manager.health_check()
+        ai_status = ai_health["manager_status"]
+
+        # Формируем общий статус
+        overall_status = "healthy"
+        if not db_status or ai_status != "healthy":
+            overall_status = "degraded"
 
         return JSONResponse(
             status_code=status.HTTP_200_OK,
-            content={"status": "ok", "message": "Приложение работает нормально"},
+            content={
+                "status": overall_status,
+                "message": "Приложение работает нормально",
+                "components": {
+                    "config": "healthy",
+                    "database": db_status_str,
+                    "ai_providers": ai_status,
+                },
+                "details": {
+                    "ai_providers": ai_health["providers"],
+                },
+            },
         )
     except Exception as e:
         logger.error(f"Health check failed: {e}")
         return JSONResponse(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            content={"status": "error", "message": f"Ошибка healthcheck: {e}"},
+            content={
+                "status": "error",
+                "message": f"Ошибка healthcheck: {e}",
+                "components": {
+                    "config": "unknown",
+                    "database": "unknown",
+                    "ai_providers": "unknown",
+                },
+            },
         )
 
 

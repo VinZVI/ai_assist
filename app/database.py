@@ -360,15 +360,3 @@ __all__ = [
     "get_session_factory",
     "init_db",
 ]
-
-
-class TestDatabaseConnection:
-    """Тестирование подключения к базе данных."""
-
-    def test_database_url_building(self) -> None:
-        """Тест построения URL БД."""
-        # This is a placeholder test method
-
-    def test_user_limits_validation(self) -> None:
-        """Тест валидации UserLimitsConfig."""
-        # This is a placeholder test method
