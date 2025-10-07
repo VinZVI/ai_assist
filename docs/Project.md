@@ -65,60 +65,63 @@ ai_assist/
 │   │   ├── start.py          # /start команда
 │   │   ├── message.py        # Обработка сообщений
 │   │   ├── callbacks.py      # Обработка callback-запросов
-│   │   ├── payment.py        # Обработка платежей
-│   │   └── admin.py          # Админские команды
+│   │   └── health.py         # Healthcheck endpoint
 │   ├── services/              # Бизнес-логика
 │   │   ├── __init__.py
 │   │   ├── ai_manager.py     # Менеджер AI провайдеров
-│   │   ├── ai_service.py     # Устаревший файл
-│   │   ├── ai_providers/     # Провайдеры AI
-│   │   │   ├── __init__.py
-│   │   │   ├── base.py       # Базовый класс провайдера
-│   │   │   ├── deepseek.py   # DeepSeek провайдер
-│   │   │   └── openrouter.py # OpenRouter провайдер
-│   │   └── user_service.py   # Логика пользователей
+│   │   ├── conversation_service.py # Сервис работы с диалогами
+│   │   ├── user_service.py   # Логика пользователей
+│   │   └── ai_providers/     # Провайдеры AI
+│   │       ├── __init__.py
+│   │       ├── base.py       # Базовый класс провайдера
+│   │       ├── deepseek.py   # DeepSeek провайдер
+│   │       └── openrouter.py # OpenRouter провайдер
 │   ├── utils/                 # Утилиты
 │   │   ├── __init__.py
-│   │   ├── validators.py     # Валидация данных
-│   │   ├── helpers.py        # Вспомогательные функции
 │   │   └── logging.py        # Система логирования
 │   ├── keyboards/             # Клавиатуры
-│   │   ├── __init__.py
-│   │   └── inline.py         # Inline клавиатуры
+│   │   └── __init__.py       # Inline клавиатуры
 │   ├── constants/             # Константы (модульная структура)
 │   │   ├── __init__.py
 │   │   ├── config.py         # Константы конфигурации
 │   │   └── errors.py         # Константы ошибок
 │   ├── lexicon/               # Лексиконы (модульная структура)
 │   │   ├── __init__.py
-│   │   ├── start.py          # Лексикон для /start
-│   │   ├── message.py        # Лексикон для сообщений
-│   │   ├── callbacks.py      # Лексикон для callback-запросов
-│   │   ├── keyboards.py      # Лексикон для клавиатур
-│   │   ├── ai_providers.py   # Лексикон для AI провайдеров
-│   │   └── utils.py          # Лексикон для утилит
-│   ├── log_lexicon/           # Лог-лексиконы (модульная структура)
-│   │   ├── __init__.py
-│   │   ├── start.py          # Лог-лексикон для /start
-│   │   ├── message.py        # Лог-лексикон для сообщений
-│   │   ├── callbacks.py      # Лог-лексикон для callback-запросов
-│   │   ├── keyboards.py      # Лог-лексикон для клавиатур
-│   │   ├── ai_providers.py   # Лог-лексикон для AI провайдеров
-│   │   └── utils.py          # Лог-лексикон для утилит
-│   ├── constants.py           # Устаревший файл констант
-│   ├── lexicon.py            # Устаревший файл лексикона
-│   └── log_lexicon.py        # Устаревший файл лог-лексикона
+│   │   ├── gettext.py        # Функции локализации
+│   │   ├── ru.py             # Русский лексикон
+│   │   └── en.py             # Английский лексикон
+│   └── log_lexicon/           # Лог-лексиконы (модульная структура)
+│       ├── __init__.py
+│       ├── main.py           # Лог-лексикон для главного модуля
+│       ├── start.py          # Лог-лексикон для /start
+│       ├── message.py        # Лог-лексикон для сообщений
+│       ├── callbacks.py      # Лог-лексикон для callback-запросов
+│       ├── database.py       # Лог-лексикон для базы данных
+│       ├── config.py         # Лог-лексикон для конфигурации
+│       ├── ai_providers.py   # Лог-лексикон для AI провайдеров
+│       └── ai_manager.py     # Лог-лексикон для AI менеджера
 ├── tests/                      # Тесты приложения
 │   ├── __init__.py            # Инициализация пакета тестов
 │   ├── conftest.py           # Конфигурация pytest
-│   ├── test_config.py        # Тесты конфигурации
-│   └── test_*.py             # Дополнительные тесты
+│   ├── fixtures/             # Фикстуры для тестов
+│   ├── unit/                 # Модульные тесты
+│   └── integration/          # Интеграционные тесты
+├── scripts/                    # Скрипты диагностики
+│   ├── __init__.py
+│   ├── checks/               # Скрипты проверки
+│   └── diagnostics/          # Диагностические скрипты
 ├── docs/                      # Документация
 │   ├── Project.md            # Описание проекта (этот файл)
 │   ├── Tasktracker.md        # Отслеживание задач
 │   ├── Diary.md              # Дневник разработки
+│   ├── Testing.md            # Документация по тестированию
+│   ├── Deployment.md         # Документация по деплою
+│   ├── Docker.md             # Документация по Docker
 │   ├── qa.md                 # Вопросы и ответы
 │   └── changelog.md          # Журнал изменений
+├── alembic/                    # Миграции базы данных
+├── logs/                       # Логи приложения
+├── .github/                    # GitHub Actions workflows
 ├── pyproject.toml            # Конфигурация проекта и зависимости
 ├── pytest.ini               # Конфигурация тестирования
 ├── .env.example              # Пример переменных окружения
@@ -298,27 +301,14 @@ alembic downgrade -1
 tests/
 ├── __init__.py
 ├── conftest.py              # Конфигурация pytest
-├── unit/                    # Модульные тесты
-│   ├── __init__.py
-│   ├── test_config.py      # Тесты конфигурации
-│   ├── test_models.py      # Тесты моделей
-│   └── test_base_ai_provider.py  # Тесты базового AI провайдера
-├── integration/             # Интеграционные тесты
-│   ├── __init__.py
-│   ├── test_database.py    # Тесты базы данных
-│   ├── test_ai_service.py  # Тесты AI сервиса
-│   ├── test_deepseek_provider.py  # Тесты DeepSeek провайдера
-│   ├── test_openrouter_provider.py  # Тесты OpenRouter провайдера
-│   ├── test_ai_manager.py  # Тесты AI менеджера
-│   └── test_message_handler.py  # Тесты обработчика сообщений
-└── fixtures/                # Фикстуры для тестов
-    ├── __init__.py
-    └── test_data.json      # Тестовые данные
+├── fixtures/             # Фикстуры для тестов
+├── unit/                 # Модульные тесты
+└── integration/          # Интеграционные тесты
 ```
 
 ### 6.2 Команды тестирования
 
-```bash
+```
 # Запуск всех тестов
 pytest
 

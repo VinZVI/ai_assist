@@ -29,8 +29,12 @@ from app.log_lexicon.main import (
     BOT_DB_CLOSE_TIMEOUT,
     BOT_DB_CLOSED,
     BOT_DB_INITIALIZING,
+    BOT_ERROR_IN_POLLING,
+    BOT_ERROR_IN_RUN_POLLING,
+    BOT_ERROR_STOPPING_POLLING,
     BOT_INITIALIZED,
     BOT_KEYBOARD_INTERRUPT,
+    BOT_POLLING_NOT_STARTED,
     BOT_POLLING_STARTED,
     BOT_POLLING_STOP_TIMEOUT,
     BOT_POLLING_STOPPED,
@@ -40,6 +44,7 @@ from app.log_lexicon.main import (
     BOT_SESSION_CLOSED,
     BOT_SHUTDOWN_COMPLETED,
     BOT_SHUTDOWN_ERROR,
+    BOT_SHUTDOWN_INITIATED,
     BOT_SHUTDOWN_STARTED,
     BOT_SIGNAL_RECEIVED,
     BOT_STARTED,
@@ -153,9 +158,9 @@ class AIAssistantBot:
                 except RuntimeError as e:
                     # Handle case when polling was not started
                     if "polling is not started" in str(e).lower():
-                        logger.info("Polling was not started, skipping stop_polling")
+                        logger.info(BOT_POLLING_NOT_STARTED)
                     else:
-                        logger.warning(f"Error stopping polling: {e}")
+                        logger.warning(BOT_ERROR_STOPPING_POLLING.format(error=e))
 
             # Закрытие сессии бота с таймаутом
             if self.bot:
@@ -237,11 +242,11 @@ class AIAssistantBot:
                 try:
                     await polling_task
                 except Exception as e:
-                    logger.error(f"💥 Ошибка в polling: {e}")
+                    logger.error(BOT_ERROR_IN_POLLING.format(error=e))
                     raise
 
         except Exception as e:
-            logger.error(f"💥 Ошибка в run_polling: {e}")
+            logger.error(BOT_ERROR_IN_RUN_POLLING.format(error=e))
             raise
 
     async def run_webhook(self) -> None:
@@ -283,7 +288,7 @@ class AIAssistantBot:
                 # В режиме webhook нужно поддерживать приложение активным
                 await self._shutdown_event.wait()
 
-            logger.info("🛑 Начинаю корректное завершение работы...")
+            logger.info(BOT_SHUTDOWN_INITIATED)
 
         except KeyboardInterrupt:
             logger.info(BOT_KEYBOARD_INTERRUPT)

@@ -138,7 +138,11 @@ async def generate_ai_response(
         )
 
     except Exception:
-        logger.exception("💥 Неожиданная ошибка при генерации AI ответа")
+        logger.exception(
+            MESSAGE_ERROR.format(
+                user_id="unknown", error="Неожиданная ошибка при генерации AI ответа"
+            )
+        )
         return (
             get_text("errors.ai_unexpected_error"),
             0,
