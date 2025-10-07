@@ -50,6 +50,26 @@ LOG_LEXICON_RU = {
         "start_unexpected_error": "💥 Неожиданная ошибка для пользователя ID:{user_id}: {error}",
         "start_error_sending_message": "💥 Ошибка отправки сообщения: {error}",
     },
+    "help": {
+        "help_command_processed": "✅ Команда /help обработана для пользователя ID:{user_id}",
+        "help_command_error": "💥 Ошибка обработки /help для пользователя ID:{user_id}: {error}",
+        "help_error_sending_message": "💥 Ошибка отправки сообщения справки: {error}",
+    },
+    "profile": {
+        "profile_command_processed": "✅ Команда /profile обработана для пользователя ID:{user_id}",
+        "profile_command_error": "💥 Ошибка обработки /profile для пользователя ID:{user_id}: {error}",
+        "profile_error_sending_message": "💥 Ошибка отправки сообщения профиля: {error}",
+    },
+    "limits": {
+        "limits_command_processed": "✅ Команда /limits обработана для пользователя ID:{user_id}",
+        "limits_command_error": "💥 Ошибка обработки /limits для пользователя ID:{user_id}: {error}",
+        "limits_error_sending_message": "💥 Ошибка отправки сообщения лимитов: {error}",
+    },
+    "premium": {
+        "premium_command_processed": "✅ Команда /premium обработана для пользователя ID:{user_id}",
+        "premium_command_error": "💥 Ошибка обработки /premium для пользователя ID:{user_id}: {error}",
+        "premium_error_sending_message": "💥 Ошибка отправки сообщения премиума: {error}",
+    },
     "message": {
         "message_received": "📥 Получено сообщение от @{username}: {chars} символов...",
         "message_processing": "🔄 Обработка сообщения пользователя ID:{user_id}",

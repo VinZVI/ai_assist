@@ -50,6 +50,26 @@ LOG_LEXICON_EN = {
         "start_unexpected_error": "💥 Unexpected error for user ID:{user_id}: {error}",
         "start_error_sending_message": "💥 Error sending message: {error}",
     },
+    "help": {
+        "help_command_processed": "✅ /help command processed for user ID:{user_id}",
+        "help_command_error": "💥 Error processing /help for user ID:{user_id}: {error}",
+        "help_error_sending_message": "💥 Error sending help message: {error}",
+    },
+    "profile": {
+        "profile_command_processed": "✅ /profile command processed for user ID:{user_id}",
+        "profile_command_error": "💥 Error processing /profile for user ID:{user_id}: {error}",
+        "profile_error_sending_message": "💥 Error sending profile message: {error}",
+    },
+    "limits": {
+        "limits_command_processed": "✅ /limits command processed for user ID:{user_id}",
+        "limits_command_error": "💥 Error processing /limits for user ID:{user_id}: {error}",
+        "limits_error_sending_message": "💥 Error sending limits message: {error}",
+    },
+    "premium": {
+        "premium_command_processed": "✅ /premium command processed for user ID:{user_id}",
+        "premium_command_error": "💥 Error processing /premium for user ID:{user_id}: {error}",
+        "premium_error_sending_message": "💥 Error sending premium message: {error}",
+    },
     "message": {
         "message_received": "📥 Received message from @{username}: {chars} characters...",
         "message_processing": "🔄 Processing message from user ID:{user_id}",
