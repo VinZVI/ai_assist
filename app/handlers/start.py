@@ -216,7 +216,7 @@ async def handle_start_command(message: Message) -> None:
         # Отправляем приветственное сообщение с клавиатурой
         sent_message = await message.answer(
             welcome_message,
-            reply_markup=create_main_menu_keyboard(),
+            reply_markup=create_main_menu_keyboard(user.language_code or "ru"),
             parse_mode="HTML",
         )
 

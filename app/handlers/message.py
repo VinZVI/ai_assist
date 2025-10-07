@@ -1,3 +1,11 @@
+"""
+@file: handlers/message.py
+@description: Обработчик входящих сообщений от пользователей
+@dependencies: aiogram, sqlalchemy, loguru
+@created: 2025-09-07
+@updated: 2025-10-07
+"""
+
 from datetime import UTC, datetime
 
 from aiogram import F, Router
@@ -90,6 +98,9 @@ async def generate_ai_response(
         provider = getattr(e, "provider", "unknown")
         logger.error(AI_PROVIDER_ERROR.format(provider=provider, error=error_msg))
 
+        # Определяем язык пользователя для сообщений об ошибках
+        user_lang = user.language_code or "ru"
+
         # Проверяем на ошибки с балансом/квотой
         if any(
             keyword in error_msg.lower()
@@ -102,7 +113,7 @@ async def generate_ai_response(
             ]
         ):
             return (
-                get_text("errors.ai_quota_error", "ru", provider=provider),
+                get_text("errors.ai_quota_error", user_lang, provider=provider),
                 0,
                 "quota_error",
                 0.0,
@@ -111,7 +122,7 @@ async def generate_ai_response(
         # Проверяем критические ошибки (все провайдеры недоступны)
         if "все ai провайдеры недоступны" in error_msg.lower():
             return (
-                get_text("errors.ai_all_providers_down"),
+                get_text("errors.ai_all_providers_down", user_lang),
                 0,
                 "all_providers_down",
                 0.0,
@@ -119,7 +130,7 @@ async def generate_ai_response(
 
         # Возвращаем общий fallback ответ
         return (
-            get_text("errors.ai_general_error"),
+            get_text("errors.ai_general_error", user_lang),
             0,
             "fallback",
             0.0,
@@ -131,8 +142,10 @@ async def generate_ai_response(
                 user_id="unknown", error="Неожиданная ошибка при генерации AI ответа"
             )
         )
+        # Определяем язык пользователя для сообщений об ошибках
+        user_lang = user.language_code or "ru"
         return (
-            get_text("errors.ai_unexpected_error"),
+            get_text("errors.ai_unexpected_error", user_lang),
             0,
             "error",
             0.0,
@@ -144,23 +157,30 @@ async def handle_text_message(message: Message) -> None:
     """Обработка входящих текстовых сообщений от пользователей."""
     user = None  # Initialize user variable
     try:
-        logger.info(
-            get_log_text("message.message_received").format(
-                username=message.from_user.username or f"ID:{message.from_user.id}",
-                chars=len(message.text[:50]),
+        # Определяем язык пользователя для логирования
+        user_lang = "ru"  # Default language for logging
+        if message.from_user:
+            logger.info(
+                get_log_text("message.message_received").format(
+                    username=message.from_user.username or f"ID:{message.from_user.id}",
+                    chars=len(message.text[:50]),
+                )
+                + f"... ({message.text[:50]})"
             )
-            + f"... ({message.text[:50]})"
-        )
 
         # Проверяем наличие пользователя
         user = await get_or_update_user(message)
         if not user:
-            await message.answer(get_text("errors.user_registration_error"))
+            # Используем язык по умолчанию для сообщения об ошибке если пользователь не найден
+            await message.answer(get_text("errors.user_registration_error", "ru"))
             return
+
+        # Устанавливаем язык пользователя
+        user_lang = user.language_code or "ru"
 
         # Проверяем лимиты
         if not user.can_send_message():
-            await message.answer(get_text("errors.daily_limit_exceeded"))
+            await message.answer(get_text("errors.daily_limit_exceeded", user_lang))
             logger.info(
                 get_log_text("message.message_user_limit_exceeded").format(
                     user_id=user.id
@@ -170,7 +190,7 @@ async def handle_text_message(message: Message) -> None:
 
         # Проверяем длину сообщения
         if len(message.text) > 4000:
-            await message.answer(get_text("errors.message_too_long"))
+            await message.answer(get_text("errors.message_too_long", user_lang))
             return
 
         # Отправляем статус "печатает"
@@ -248,5 +268,6 @@ async def handle_text_message(message: Message) -> None:
         logger.error(
             get_log_text("message.message_error").format(user_id=user_id, error=e)
         )
-        # Отправляем пользователю сообщение об ошибке
-        await message.answer(get_text("errors.general_error"))
+        # Отправляем пользователю сообщение об ошибке на его языке
+        user_lang = user.language_code if user else "ru"
+        await message.answer(get_text("errors.general_error", user_lang))

@@ -1,10 +1,3 @@
-"""
-@file: user_service.py
-@description: Сервис для работы с пользователями
-@dependencies: sqlalchemy, loguru, app.models.user
-@created: 2025-10-07
-"""
-
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
@@ -38,7 +31,7 @@ async def get_or_update_user(message: Message) -> User | None:
             user = result.scalar_one_or_none()
 
             if user:
-                # Обновляем информацию о пользователе
+                # Обновляем информацию о пользователе, но НЕ обновляем language_code
                 user.username = message.from_user.username
                 user.first_name = message.from_user.first_name
                 user.last_name = message.from_user.last_name

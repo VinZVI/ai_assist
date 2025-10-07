@@ -16,6 +16,7 @@ from aiogram.types import (
 from loguru import logger
 
 from app.database import get_session
+from app.keyboards import create_language_keyboard
 from app.lexicon.gettext import get_log_text, get_text
 from app.models import User
 
@@ -48,7 +49,7 @@ async def handle_language_command(message: Message) -> None:
             user = result.scalar_one_or_none()
 
             if not user:
-                await message.answer(get_text("errors.user_registration_error"))
+                await message.answer(get_text("errors.user_registration_error", "ru"))
                 return
 
             # Получаем текущий язык пользователя
@@ -78,36 +79,8 @@ async def handle_language_command(message: Message) -> None:
                 user_id=message.from_user.id, error=e
             )
         )
-        await message.answer(get_text("errors.general_error"))
-
-
-def create_language_keyboard(current_language: str) -> InlineKeyboardMarkup:
-    """
-    Создание клавиатуры для выбора языка.
-
-    Args:
-        current_language: Текущий язык пользователя
-
-    Returns:
-        InlineKeyboardMarkup: Клавиатура с кнопками выбора языка
-    """
-    # Получаем доступные языки
-    languages = {"ru": "🇷🇺 Русский", "en": "🇺🇸 English"}
-
-    buttons = []
-    for lang_code, lang_name in languages.items():
-        # Добавляем эмодзи отметки для текущего языка
-        button_text = f"✅ {lang_name}" if lang_code == current_language else lang_name
-
-        buttons.append(
-            [
-                InlineKeyboardButton(
-                    text=button_text, callback_data=f"select_language:{lang_code}"
-                )
-            ]
-        )
-
-    return InlineKeyboardMarkup(inline_keyboard=buttons)
+        # Использем русский язык по умолчанию для сообщения об ошибке
+        await message.answer(get_text("errors.general_error", "ru"))
 
 
 @language_router.callback_query(F.data.startswith("select_language:"))
@@ -120,7 +93,7 @@ async def handle_language_selection(callback: CallbackQuery) -> None:
     """
     # Проверяем, что у callback есть data и from_user
     if not callback.data or not callback.from_user:
-        await callback.answer(get_text("errors.general_error"))
+        await callback.answer(get_text("errors.general_error", "ru"))
         return
 
     try:
@@ -130,19 +103,19 @@ async def handle_language_selection(callback: CallbackQuery) -> None:
         # Проверяем, что язык поддерживается
         supported_languages = ["ru", "en"]
         if lang_code not in supported_languages:
-            await callback.answer(get_text("errors.general_error"))
+            await callback.answer(get_text("errors.general_error", "ru"))
             return
 
         # Проверяем, что у callback есть message и оно доступно
         if not callback.message:
-            await callback.answer(get_text("errors.general_error"))
+            await callback.answer(get_text("errors.general_error", "ru"))
             return
 
         # Проверяем, что сообщение доступно для редактирования (не InaccessibleMessage)
         from aiogram.types import InaccessibleMessage
 
         if isinstance(callback.message, InaccessibleMessage):
-            await callback.answer(get_text("errors.general_error"))
+            await callback.answer(get_text("errors.general_error", "ru"))
             return
 
         # Обновляем язык пользователя в базе данных
@@ -155,7 +128,7 @@ async def handle_language_selection(callback: CallbackQuery) -> None:
             user = result.scalar_one_or_none()
 
             if not user:
-                await callback.answer(get_text("errors.user_registration_error"))
+                await callback.answer(get_text("errors.user_registration_error", "ru"))
                 return
 
             # Обновляем язык пользователя
@@ -192,4 +165,4 @@ async def handle_language_selection(callback: CallbackQuery) -> None:
                 user_id=callback.from_user.id, error=e
             )
         )
-        await callback.answer(get_text("errors.general_error"))
+        await callback.answer(get_text("errors.general_error", "ru"))
