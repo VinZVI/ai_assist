@@ -71,21 +71,43 @@ class AIAssistantBot:
     async def setup_bot_commands(self) -> None:
         """Настройка команд бота для меню."""
         if not self.bot:
+            logger.warning("Bot is not initialized, skipping command setup")
             return
 
-        # Get command descriptions from lexicon (using Russian as default)
-        from app.lexicon.ru import LEXICON_RU
-        help_commands = LEXICON_RU["help"]["commands"]
+        try:
+            # Get command descriptions from lexicon (using Russian as default)
+            from app.lexicon.ru import LEXICON_RU
 
-        # Convert lexicon commands to BotCommand objects
-        commands = []
-        for command, description in help_commands:
-            # Remove the leading slash from command name for BotCommand
-            command_name = command.lstrip('/')
-            commands.append(BotCommand(command=command_name, description=description))
+            help_commands = LEXICON_RU["help"]["commands"]
 
-        await self.bot.set_my_commands(commands)
-        logger.info(get_log_text("main.bot_commands_set"))
+            # Convert lexicon commands to BotCommand objects
+            commands = []
+            for command, description in help_commands:
+                # Remove the leading slash from command name for BotCommand
+                command_name = command.lstrip("/")
+                commands.append(
+                    BotCommand(command=command_name, description=description)
+                )
+
+            logger.info(f"Setting up {len(commands)} bot commands")
+            for cmd in commands:
+                logger.debug(f"Command: {cmd.command} - {cmd.description}")
+
+            await self.bot.set_my_commands(commands)
+            logger.success(get_log_text("main.bot_commands_set"))
+
+            # Verify commands were set
+            try:
+                set_commands = await self.bot.get_my_commands()
+                logger.info(f"Successfully set {len(set_commands)} commands")
+                for cmd in set_commands:
+                    logger.debug(f"Set command: {cmd.command} - {cmd.description}")
+            except Exception as verify_error:
+                logger.warning(f"Could not verify set commands: {verify_error}")
+
+        except Exception as e:
+            logger.error(f"Failed to set bot commands: {e}")
+            raise
 
     async def startup(self) -> None:
         """Инициализация бота и подключений."""
