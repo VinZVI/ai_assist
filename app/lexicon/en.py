@@ -1,0 +1,87 @@
+"""
+@file: en.py
+@description: English lexicon for user messages
+@created: 2025-10-07
+"""
+
+# English lexicon for user messages
+LEXICON_EN = {
+    "start": {
+        "welcome_title": "Welcome to AI-Companion, {display_name}!",
+        "welcome_intro": "I'm your personal assistant and companion, ready to provide emotional support and help anytime.",
+        "functionality_title": "🧠 Key Features:",
+        "functionality_items": [
+            "💬 Empathetic conversations on any topic",
+            "👤 Personalized approach to each dialogue",
+            "📊 Track your message limits",
+            "⭐ Premium access for unlimited communication",
+        ],
+        "limits_title": "📊 Your Limits:",
+        "limits_free": "Free messages: {free_limit} per day",
+        "limits_used": "Used today: {used}/{total}",
+        "premium_active": "⭐ Premium is active - unlimited communication!",
+        "premium_info_title": "💎 Premium Access:",
+        "premium_info": "For just {price} Telegram Stars you get unlimited communication for {days} days!",
+        "commands_info": "Use /help for command reference",
+        "first_message_title": "👋 Welcome!",
+        "first_message_text": "Nice to meet you! I'm here to support you in any situation. Just write me something, and I'll respond with understanding and empathy.",
+    },
+    "callbacks": {
+        "main_menu_title": "🏠 **Main Menu**",
+        "placeholder_message": "🚧 This feature is under development...",
+    },
+    "keyboards": {
+        "main_menu_start_chat": "💬 Start Dialogue",
+        "main_menu_profile": "👤 My Profile",
+        "main_menu_limits": "📊 Limits",
+        "main_menu_premium": "⭐ Premium",
+        "main_menu_help": "❓ Help",
+    },
+    "errors": {
+        "general_error": "❌ An error occurred. Please try again later.",
+        "processing_error": "❌ Error processing message. Please try again later.",
+        "user_registration_error": "❌ Error registering user. Please try again later.",
+        "daily_limit_exceeded": "🚫 Daily message limit reached. Purchase Premium for unlimited communication!",
+        "message_too_long": "📝 Message is too long. Please shorten it.",
+        "ai_quota_error": "💳 AI provider {provider} quota exceeded. Please try again later or purchase Premium.",
+        "ai_general_error": "🤖 Problem generating response. Please try repeating your message.",
+        "ai_unexpected_error": "💥 Unexpected error generating response. Please try again later.",
+        "ai_all_providers_down": "📡 All AI providers are temporarily unavailable. Please try again later.",
+    },
+    "system_prompts": {
+        "default_ai_prompt": "You are an empathetic AI assistant and companion. Your task is to provide emotional support and understanding. Respond kindly, supportively, and with understanding. Ask clarifying questions to better understand the user's feelings and needs. Avoid giving medical or legal advice. If the user is in a crisis situation, gently suggest seeking help from a specialist."
+    },
+    "help": {
+        "title": "❓ Bot Command Help",
+        "commands": [
+            ("/start", "🚀 Start working with the bot"),
+            ("/help", "❓ Help with commands"),
+            ("/profile", "👤 My profile"),
+            ("/limits", "📊 My message limits"),
+            ("/premium", "⭐ Premium access"),
+        ],
+    },
+    "profile": {
+        "title": "👤 Your Profile",
+        "info": "Name: {first_name} {last_name}\nUsername: @{username}\nID: {telegram_id}\nStatus: {status}\nTotal messages: {total_messages}\nLast activity: {last_activity}",
+    },
+    "limits": {
+        "title": "📊 Your Message Limits",
+        "status_free": "Status: Free user",
+        "status_premium": "Status: ⭐ Premium active until {premium_until}",
+        "daily_limit": "Daily limit: {used}/{total} messages",
+        "total_messages": "Total messages: {count}",
+    },
+    "premium": {
+        "title": "⭐ Premium Access",
+        "description": "Premium subscription unlocks unlimited communication with the AI assistant!",
+        "price": "Price: {price} Telegram Stars",
+        "duration": "Duration: {days} days",
+        "benefits": [
+            "✅ Unlimited number of messages",
+            "✅ Priority request processing",
+            "✅ Access to extended features",
+        ],
+        "already_active": "⭐ Your Premium is already active until {premium_until}!",
+    },
+}
