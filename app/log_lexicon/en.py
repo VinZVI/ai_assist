@@ -80,6 +80,7 @@ LOG_LEXICON_EN = {
         "message_conversation_saved": "💾 Conversation saved for user ID:{user_id}",
         "message_conversation_save_error": "💥 Error saving conversation for user ID:{user_id}",
         "message_sent": "✈️ Sent to @{username}: {chars} characters, {tokens} tokens, {duration} sec",
+        "message_processed": "🔄 Message processing completed for user ID:{user_id}: {chars} characters, {tokens} tokens, model {model}, {duration} sec",
         "message_error": "💥 Error processing message from user ID:{user_id}: {error}",
     },
     "callbacks": {

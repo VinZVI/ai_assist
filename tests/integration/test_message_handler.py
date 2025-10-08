@@ -21,11 +21,13 @@ from aiogram.types import Chat, Message
 from aiogram.types import User as TelegramUser
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import AppConfig
 from app.handlers.message import (
     create_system_message,
     generate_ai_response,
     get_recent_conversation_history,
     handle_text_message,
+    sanitize_telegram_message,  # Add the import for our new function
     save_conversation,
 )
 from app.models.conversation import Conversation, ConversationStatus, MessageRole
@@ -496,7 +498,7 @@ class TestHandleTextMessage:
 
     @pytest.mark.asyncio
     async def test_handle_text_message_success(
-        self, mock_telegram_message: MagicMock
+        self, mock_telegram_message: MagicMock, mock_config: AppConfig
     ) -> None:
         """Тест успешной обработки текстового сообщения."""
         # Arrange
@@ -545,14 +547,20 @@ class TestHandleTextMessage:
                             "app.handlers.message.get_session",
                             return_value=mock_session_ctx_conv,
                         ):
-                            # Act
-                            await handle_text_message(mock_telegram_message)
+                            with patch(
+                                "app.handlers.message.get_config",
+                                return_value=mock_config,
+                            ):
+                                # Act
+                                await handle_text_message(mock_telegram_message)
 
-                            # Assert
-                            mock_get_user.assert_called_once_with(mock_telegram_message)
-                            mock_generate_response.assert_called_once()
-                            mock_save_conv.assert_called_once()
-                            mock_telegram_message.answer.assert_called_once()
+                                # Assert
+                                mock_get_user.assert_called_once_with(
+                                    mock_telegram_message
+                                )
+                                mock_generate_response.assert_called_once()
+                                mock_save_conv.assert_called_once()
+                                mock_telegram_message.answer.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_handle_text_message_no_user_data(
@@ -673,6 +681,80 @@ class TestHandleTextMessage:
             # Assert
             mock_telegram_message.answer.assert_called_once()
 
+    @pytest.mark.asyncio
+    async def test_handle_text_message_with_special_characters_in_ai_response(
+        self, mock_telegram_message: MagicMock, mock_config: AppConfig
+    ) -> None:
+        """Тест обработки сообщения с ответом AI, содержащим специальные символы."""
+        # Arrange
+        mock_user = User(
+            id=1,
+            telegram_id=123456,
+            username="testuser",
+            first_name="Test",
+            last_name="User",
+            daily_message_count=5,
+            is_premium=False,
+        )
+
+        # Mock session context manager for user service
+        mock_session_ctx_user = MagicMock()
+        mock_session_user = AsyncMock()
+        mock_session_ctx_user.__aenter__.return_value = mock_session_user
+
+        # Mock session context manager for conversation service
+        mock_session_ctx_conv = MagicMock()
+        mock_session_conv = AsyncMock()
+        mock_session_ctx_conv.__aenter__.return_value = mock_session_conv
+
+        # Create an AI response with special characters that would cause Telegram parsing errors
+        ai_response_with_special_chars = "Это ответ AI с ｜begin▁of▁sentence｜специальными символами｜end▁of▁sentence｜ которые вызывают ошибку в Telegram."
+
+        with patch("app.handlers.message.get_or_update_user") as mock_get_user:
+            mock_get_user.return_value = mock_user
+
+            with patch(
+                "app.handlers.message.generate_ai_response"
+            ) as mock_generate_response:
+                mock_generate_response.return_value = (
+                    ai_response_with_special_chars,
+                    10,
+                    "test-model",
+                    0.5,
+                )
+
+                with patch("app.handlers.message.save_conversation") as mock_save_conv:
+                    mock_save_conv.return_value = True
+
+                    # Mock session context managers for both user service and conversation service
+                    with patch(
+                        "app.services.user_service.get_session",
+                        return_value=mock_session_ctx_user,
+                    ):
+                        with patch(
+                            "app.handlers.message.get_session",
+                            return_value=mock_session_ctx_conv,
+                        ):
+                            with patch(
+                                "app.handlers.message.get_config",
+                                return_value=mock_config,
+                            ):
+                                # Act
+                                await handle_text_message(mock_telegram_message)
+
+                                # Assert
+                                mock_get_user.assert_called_once_with(
+                                    mock_telegram_message
+                                )
+                                mock_generate_response.assert_called_once()
+                                mock_save_conv.assert_called_once()
+                                # Check that the answer was called with the sanitized response
+                                # The special characters should be removed
+                                mock_telegram_message.answer.assert_called_once()
+                                call_args = mock_telegram_message.answer.call_args[0][0]
+                                assert "｜begin▁of▁sentence｜" not in call_args
+                                assert "｜end▁of▁sentence｜" not in call_args
+
 
 class TestMessageHandlerIntegration:
     """Интеграционные тесты обработчика сообщений."""
@@ -695,7 +777,9 @@ class TestMessageHandlerIntegration:
         return message
 
     @pytest.mark.asyncio
-    async def test_full_message_flow(self, mock_telegram_message: MagicMock) -> None:
+    async def test_full_message_flow(
+        self, mock_telegram_message: MagicMock, mock_config: AppConfig
+    ) -> None:
         """Тест полного цикла обработки сообщения."""
         # Arrange
         mock_user = User(
@@ -743,12 +827,72 @@ class TestMessageHandlerIntegration:
                             "app.handlers.message.get_session",
                             return_value=mock_session_ctx_conv,
                         ):
-                            # Act
-                            await handle_text_message(mock_telegram_message)
+                            with patch(
+                                "app.handlers.message.get_config",
+                                return_value=mock_config,
+                            ):
+                                # Act
+                                await handle_text_message(mock_telegram_message)
 
-                            # Assert
-                            # All components should be called
-                            mock_get_user.assert_called_once()
-                            mock_generate_response.assert_called_once()
-                            mock_save_conv.assert_called_once()
-                            mock_telegram_message.answer.assert_called_once()
+                                # Assert
+                                # All components should be called
+                                mock_get_user.assert_called_once()
+                                mock_generate_response.assert_called_once()
+                                mock_save_conv.assert_called_once()
+                                mock_telegram_message.answer.assert_called_once()
+
+
+class TestMessageSanitization:
+    """Тесты функции санитизации сообщений."""
+
+    def test_sanitize_telegram_message_removes_special_tags(self) -> None:
+        """Тест удаления специальных тегов из сообщения."""
+        # Arrange
+        text_with_tags = "Hello ｜begin▁of▁sentence｜world｜end▁of▁sentence｜!"
+
+        # Act
+        sanitized = sanitize_telegram_message(text_with_tags)
+
+        # Assert
+        assert sanitized == "Hello world!"
+
+    def test_sanitize_telegram_message_replaces_non_breaking_spaces(self) -> None:
+        """Тест замены неразрывных пробелов."""
+        # Arrange
+        text_with_nbsp = "Hello\u00a0world\u2007test\u202fend"
+
+        # Act
+        sanitized = sanitize_telegram_message(text_with_nbsp)
+
+        # Assert
+        assert sanitized == "Hello world test end"
+
+    def test_sanitize_telegram_message_truncates_long_messages(self) -> None:
+        """Тест обрезки слишком длинных сообщений."""
+        # Arrange
+        long_text = "A" * 5000
+
+        # Act
+        sanitized = sanitize_telegram_message(long_text)
+
+        # Assert
+        assert len(sanitized) == 4096
+        assert sanitized.endswith("...")
+
+    def test_sanitize_telegram_message_real_world_example(self) -> None:
+        """Тест санитизации реального примера с ошибкой Telegram."""
+        # Arrange
+        # This is based on the actual error we saw in the logs
+        ai_response_with_special_tags = "Это пример ответа с ｜begin▁of▁sentence｜специальными тегами｜end▁of▁sentence｜ которые вызывают ошибку в Telegram."
+
+        # Act
+        sanitized = sanitize_telegram_message(ai_response_with_special_tags)
+
+        # Assert
+        # The special tags should be removed
+        assert "｜begin▁of▁sentence｜" not in sanitized
+        assert "｜end▁of▁sentence｜" not in sanitized
+        # The rest of the text should remain
+        assert "Это пример ответа с" in sanitized
+        assert "специальными тегами" in sanitized
+        assert "которые вызывают ошибку в Telegram." in sanitized

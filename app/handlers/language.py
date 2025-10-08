@@ -79,7 +79,7 @@ async def handle_language_command(message: Message) -> None:
                 user_id=message.from_user.id, error=e
             )
         )
-        # Использем русский язык по умолчанию для сообщения об ошибке
+        # Используем русский язык по умолчанию для сообщения об ошибке
         await message.answer(get_text("errors.general_error", "ru"))
 
 
@@ -145,7 +145,7 @@ async def handle_language_selection(callback: CallbackQuery) -> None:
                 f"language.available_languages.{lang_code}", lang_code
             )
 
-            # Отправляем подтверждение
+            # Отправляем подтверждение на выбранном языке
             await callback.message.edit_text(
                 f"✅ {get_text('language.language_changed', lang_code, language=language_name)}",
                 parse_mode="HTML",

@@ -89,6 +89,9 @@ def mock_config() -> AppConfig:
     config.ai_provider.enable_fallback = True
     config.ai_provider.max_retries_per_provider = 3
 
+    # Conversation configuration - enable saving for tests
+    config.conversation.enable_saving = True
+
     return config
 
 

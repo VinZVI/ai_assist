@@ -59,8 +59,9 @@ async def generate_ai_response(
                 limit=6,  # Последние 3 обмена
             )
 
-        # Формируем сообщения для AI
-        messages = [create_system_message()]
+        # Формируем сообщения для AI с учетом языка пользователя
+        user_language = user.language_code or "ru"
+        messages = [create_system_message(user_language)]
 
         # Добавляем историю
         messages.extend(conversation_history)
@@ -200,74 +201,114 @@ async def handle_text_message(message: Message) -> None:
         )
 
         # Генерируем ответ от AI
-        logger.info(get_log_text("message.message_ai_generating"))
         (
             ai_response,
             tokens_used,
             model_name,
             response_time,
         ) = await generate_ai_response(user, message.text)
-        logger.info(
-            get_log_text("message.message_ai_response_generated").format(
-                response=ai_response[:50] + "..."
-            )
-        )
 
-        # Сохраняем диалог
-        async with get_session() as session:
-            success = await save_conversation(
-                session=session,
+        # Санитизируем ответ AI для безопасной отправки в Telegram
+        sanitized_response = sanitize_telegram_message(ai_response)
+
+        # Отправляем ответ пользователю
+        await message.answer(sanitized_response)
+
+        # Сохраняем диалог в базе данных если это разрешено в конфигурации
+        config = get_config()
+        if config.conversation.enable_saving:
+            async with get_session() as session:
+                success = await save_conversation(
+                    session=session,
+                    user_id=user.id,
+                    user_message=message.text,
+                    ai_response=ai_response,
+                    ai_model=model_name,
+                    tokens_used=tokens_used,
+                    response_time=response_time,
+                )
+
+                if success:
+                    logger.info(
+                        get_log_text("message.message_conversation_saved").format(
+                            user_id=user.id
+                        )
+                    )
+                else:
+                    logger.error(
+                        get_log_text("message.message_conversation_save_error").format(
+                            user_id=user.id
+                        )
+                    )
+
+        # Обновляем счетчик сообщений пользователя если это разрешено в конфигурации
+        if config.conversation.enable_saving:
+            async with get_session() as session:
+                from sqlalchemy import update
+
+                stmt = (
+                    update(User)
+                    .where(User.id == user.id)
+                    .values(
+                        daily_message_count=User.daily_message_count + 1,
+                        last_message_date=datetime.now(UTC).date(),
+                    )
+                )
+                await session.execute(stmt)
+                await session.commit()
+
+        # Логируем обработку сообщения независимо от того, сохраняется ли диалог
+        logger.info(
+            get_log_text("message.message_processed").format(
                 user_id=user.id,
-                user_message=message.text,
-                ai_response=ai_response,
-                ai_model=model_name,
-                tokens_used=tokens_used,
-                response_time=response_time,
-            )
-
-            if success:
-                logger.info(
-                    get_log_text("message.message_conversation_saved").format(
-                        user_id=user.id,
-                        chars=len(ai_response),
-                        tokens=tokens_used,
-                        model=model_name,
-                    )
-                )
-            else:
-                logger.error(
-                    get_log_text("message.message_conversation_save_error").format(
-                        user_id=user.id,
-                        error="Failed to save conversation",
-                    )
-                )
-
-        # Отправляем ответ пользователю с Markdown форматированием
-        await message.answer(ai_response, parse_mode="Markdown")
-
-        # Логируем успешную отправку
-        logger.info(
-            get_log_text("message.message_sent").format(
-                username=message.from_user.username or f"ID:{message.from_user.id}",
                 chars=len(ai_response),
                 tokens=tokens_used,
+                model=model_name,
                 duration=f"{response_time:.2f}",
             )
         )
 
-        # Обновляем статистику пользователя
-        user.increment_message_count()
-        logger.info(get_log_text("message.message_processing").format(user_id=user.id))
-
     except Exception as e:
-        user_id = (
-            user.id
-            if user
-            else (message.from_user.id if message.from_user else "unknown")
+        logger.exception(
+            get_log_text("message.message_error").format(
+                user_id=user.id if user else "unknown", error=str(e)
+            )
         )
-        logger.error(
-            get_log_text("message.message_error").format(user_id=user_id, error=e)
-        )
-        # Отправляем пользователю сообщение об ошибке на его языке
-        user_lang = user.language_code if user else "ru"
-        await message.answer(get_text("errors.general_error", user_lang))
+
+        # Определяем язык пользователя для сообщения об ошибке
+        error_lang = user.language_code if user and user.language_code else "ru"
+
+        # Отправляем пользователю сообщение об ошибке
+        try:
+            await message.answer(get_text("errors.general_error", error_lang))
+        except Exception:
+            # Если не удалось отправить сообщение на языке пользователя, отправляем на русском
+            await message.answer(get_text("errors.general_error", "ru"))
+
+
+def sanitize_telegram_message(text: str) -> str:
+    """
+    Санитизирует текст для безопасной отправки в Telegram.
+
+    Args:
+        text: Текст для санитизации
+
+    Returns:
+        str: Санитизированный текст
+    """
+    # Удаляем или заменяем специальные теги, которые могут вызвать ошибки парсинга
+    # Удаляем специальные маркеры начала/конца предложения
+    text = text.replace("｜begin▁of▁sentence｜", "")
+    text = text.replace("｜end▁of▁sentence｜", "")
+
+    # Удаляем другие потенциально проблемные специальные символы
+    # Заменяем неразрывные пробелы на обычные пробелы
+    text = text.replace("\u00a0", " ")  # Неразрывный пробел
+    text = text.replace("\u2007", " ")  # Неразрывный пробел в числовой форме
+    text = text.replace("\u202f", " ")  # Узкий неразрывный пробел
+
+    # Ограничиваем длину сообщения до 4096 символов (лимит Telegram)
+    if len(text) > 4096:
+        text = text[:4093] + "..."
+
+    return text

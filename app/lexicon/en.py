@@ -1,9 +1,3 @@
-"""
-@file: en.py
-@description: English lexicon for user messages
-@created: 2025-10-07
-"""
-
 # English lexicon for user messages
 LEXICON_EN = {
     "start": {
@@ -28,7 +22,10 @@ LEXICON_EN = {
     },
     "callbacks": {
         "main_menu_title": "🏠 **Main Menu**",
+        "settings_menu_title": "⚙️ **Settings**",
+        "premium_info_title": "⭐ **Premium Access**",
         "placeholder_message": "🚧 This feature is under development...",
+        "premium_purchase_initiated": "💳 Premium purchase initiated for {price} Telegram Stars. Follow the instructions in the next message.",
     },
     "keyboards": {
         "main_menu_start_chat": "💬 Start Dialogue",
@@ -36,6 +33,7 @@ LEXICON_EN = {
         "main_menu_limits": "📊 Limits",
         "main_menu_premium": "⭐ Premium",
         "main_menu_help": "❓ Help",
+        "premium_buy": "💳 Buy premium for {price}₽",
         "premium_features": "📜 What Premium Offers?",
         "premium_faq": "❓ Frequently Asked Questions",
         "back_to_menu": "🔙 Back to Menu",

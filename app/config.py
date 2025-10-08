@@ -204,6 +204,16 @@ class CacheConfig(BaseSettings):
     model_config = {"extra": "ignore", "env_file": ".env", "env_file_encoding": "utf-8"}
 
 
+class ConversationConfig(BaseSettings):
+    """Конфигурация диалогов."""
+
+    enable_saving: bool = Field(
+        default=False, validation_alias="CONVERSATION_ENABLE_SAVING"
+    )
+
+    model_config = {"extra": "ignore", "env_file": ".env", "env_file_encoding": "utf-8"}
+
+
 class AdminConfig(BaseSettings):
     """Конфигурация администраторов."""
 
@@ -247,6 +257,7 @@ class AppConfig(BaseSettings):
     ai_provider: AIProviderConfig = Field(default_factory=AIProviderConfig)
     user_limits: UserLimitsConfig = Field(default_factory=UserLimitsConfig)
     cache: CacheConfig = Field(default_factory=CacheConfig)
+    conversation: ConversationConfig = Field(default_factory=ConversationConfig)
 
     # Дополнительные настройки
     debug: bool = Field(default=False, validation_alias="DEBUG")

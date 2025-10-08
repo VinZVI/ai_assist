@@ -56,7 +56,7 @@ def create_premium_keyboard(
     # Информация о премиум
     builder.row(
         InlineKeyboardButton(
-            text=f"💳 Купить премиум за {premium_price}₽",
+            text=get_text("keyboards.premium_buy", lang_code, price=premium_price),
             callback_data=f"buy_premium:{premium_price}",
         ),
     )
@@ -177,7 +177,7 @@ def create_language_keyboard(lang_code: str = "ru") -> InlineKeyboardMarkup:
 
     builder.row(
         InlineKeyboardButton(
-            text=get_text("keyboards.settings", lang_code), callback_data="settings"
+            text=get_text("keyboards.back", lang_code), callback_data="settings"
         ),
     )
 
@@ -216,83 +216,11 @@ def create_help_keyboard(lang_code: str = "ru") -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
-def create_confirmation_keyboard(
-    action: str, lang_code: str = "ru"
-) -> InlineKeyboardMarkup:
-    """Клавиатура подтверждения действия."""
-    builder = InlineKeyboardBuilder()
-
-    builder.row(
-        InlineKeyboardButton(
-            text=get_text("keyboards.confirm_yes", lang_code),
-            callback_data=f"confirm_{action}",
-        ),
-        InlineKeyboardButton(
-            text=get_text("keyboards.confirm_no", lang_code),
-            callback_data=f"cancel_{action}",
-        ),
-    )
-
-    return builder.as_markup()
-
-
-def create_payment_keyboard(
-    premium_price: int, lang_code: str = "ru"
-) -> InlineKeyboardMarkup:
-    """Клавиатура для оплаты премиума."""
-    builder = InlineKeyboardBuilder()
-
-    # Кнопка оплаты через Telegram Stars
-    builder.row(
-        InlineKeyboardButton(
-            text=f"⭐ Оплатить {premium_price} Telegram Stars",
-            callback_data=f"pay_stars:{premium_price}",
-        ),
-    )
-
-    # Альтернативные способы оплаты (если есть)
-    builder.row(
-        InlineKeyboardButton(
-            text=get_text("keyboards.other_payment_methods", lang_code),
-            callback_data="other_payment_methods",
-        ),
-    )
-
-    builder.row(
-        InlineKeyboardButton(
-            text=get_text("keyboards.back", lang_code), callback_data="premium_info"
-        ),
-        InlineKeyboardButton(
-            text=get_text("keyboards.cancel", lang_code), callback_data="main_menu"
-        ),
-    )
-
-    return builder.as_markup()
-
-
-def create_back_button(
-    callback_data: str = "main_menu", lang_code: str = "ru"
-) -> InlineKeyboardMarkup:
-    """Простая кнопка Назад."""
-    builder = InlineKeyboardBuilder()
-
-    builder.row(
-        InlineKeyboardButton(
-            text=get_text("keyboards.back", lang_code), callback_data=callback_data
-        ),
-    )
-
-    return builder.as_markup()
-
-
-# Экспорт всех функций
+# Экспорт функций
 __all__ = [
-    "create_back_button",
-    "create_confirmation_keyboard",
     "create_help_keyboard",
     "create_language_keyboard",
     "create_main_menu_keyboard",
-    "create_payment_keyboard",
     "create_premium_features_keyboard",
     "create_premium_keyboard",
     "create_settings_keyboard",
