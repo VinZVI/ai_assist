@@ -392,13 +392,12 @@ python -c "from app.handlers import ROUTERS; print(f'Роутеры: {len(ROUTER
 
 ### 📋 Технические детали
 
-**Созданные компоненты:**
-- `app/services/ai_service.py` (421 строк) - полная реализация AI сервиса
+**Созданные компоненты:**\ 
 - Обновлено 8 конфигурационных классов для Pydantic v2
 - Исправлена строка подключения к базе данных
 
 **Архитектурные решения:**
-- Singleton pattern для AI сервиса через `get_ai_service()`
+- Singleton pattern для AI менеджера через `get_ai_manager()`
 - Контекстный менеджер для HTTP клиента
 - Структурированные ошибки с наследованием
 - Поддержка timeout, connection limits, pool management
@@ -433,7 +432,7 @@ python -c "from app.config import get_config; print('✅ Config OK')"
 python -c "import asyncio; from app.database import init_db, check_connection; asyncio.run(init_db()); asyncio.run(check_connection())"
 
 # Проверка AI сервиса
-python -c "import asyncio; from app.services import get_ai_service; s=get_ai_service(); print('✅ AI Service OK')"
+python -c "import asyncio; from app.services.ai_manager import get_ai_manager; m=get_ai_manager(); print('✅ AI Manager OK')"
 ```
 
 ---

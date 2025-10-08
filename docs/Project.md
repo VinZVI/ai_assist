@@ -73,7 +73,7 @@ ai_assist/
 │   │   └── health.py         # Healthcheck endpoint
 │   ├── services/              # Бизнес-логика
 │   │   ├── __init__.py
-│   │   ├── ai_manager.py     # Менеджер AI провайдеров
+│   │   ├── ai_manager.py     # Менеджер AI провайдеров (единственный AI сервис)
 │   │   ├── conversation_service.py # Сервис работы с диалогами
 │   │   ├── user_service.py   # Логика пользователей
 │   │   └── ai_providers/     # Провайдеры AI
@@ -132,13 +132,13 @@ ai_assist/
 
 ### 3.1 Архитектура AI сервиса с несколькими провайдерами
 
-**Система теперь поддерживает множественных AI провайдеров с автоматическим fallback:**
+**Система поддерживает множественных AI провайдеров с автоматическим fallback:**
 
 **Основные компоненты:**
 - `AIManager` - центральный менеджер для управления несколькими провайдерами
 - `BaseAIProvider` - абстрактный базовый класс для всех провайдеров
 - `DeepSeekProvider` - провайдер для DeepSeek API
-- ` `OpenRouterProvider` - провайдер для OpenRouter API
+- `OpenRouterProvider` - провайдер для OpenRouter API
 - `ResponseCache` - система кеширования ответов с поддержкой нескольких провайдеров
 - `ConversationMessage` - структура для сообщений диалога
 - `AIResponse` - структура ответа от AI

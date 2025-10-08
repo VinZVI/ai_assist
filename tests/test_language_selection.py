@@ -2,9 +2,10 @@
 Test for language selection functionality
 """
 
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 from aiogram.types import CallbackQuery, Message, User
-from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.handlers.language import language_router
 from app.models import User as UserModel
@@ -67,9 +68,9 @@ async def test_language_command_shows_keyboard() -> None:
         # Verify that the message was sent with the language keyboard
         call_args = message.answer.call_args
         assert call_args is not None
-        
+
         # Check that the keyboard contains the correct callback data
-        keyboard = call_args[1].get('reply_markup')
+        keyboard = call_args[1].get("reply_markup")
         assert keyboard is not None
         assert "select_language:ru" in str(keyboard)
         assert "select_language:en" in str(keyboard)
@@ -135,11 +136,11 @@ async def test_language_selection_callback() -> None:
         # Check that session.execute was called with an update statement
         execute_calls = mock_session.execute.call_args_list
         assert len(execute_calls) == 2  # One for select, one for update
-        
+
         # Verify that the message was updated with confirmation
         callback.message.edit_text.assert_called_once()
         callback.answer.assert_called_once()
-        
+
         # Check that the confirmation message is in the selected language (English)
         edit_call_args = callback.message.edit_text.call_args
         assert "Language successfully changed" in edit_call_args[0][0]
