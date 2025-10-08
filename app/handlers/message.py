@@ -211,7 +211,7 @@ async def handle_text_message(message: Message) -> None:
         # Санитизируем ответ AI для безопасной отправки в Telegram
         sanitized_response = sanitize_telegram_message(ai_response)
 
-        # Отправляем ответ пользователю
+        # Отправляем ответ пользователю без parse_mode чтобы избежать ошибок парсинга
         await message.answer(sanitized_response)
 
         # Сохраняем диалог в базе данных если это разрешено в конфигурации
@@ -300,13 +300,21 @@ def sanitize_telegram_message(text: str) -> str:
     # Удаляем специальные маркеры начала/конца предложения
     text = text.replace("｜begin▁of▁sentence｜", "")
     text = text.replace("｜end▁of▁sentence｜", "")
-
+    
     # Удаляем другие потенциально проблемные специальные символы
     # Заменяем неразрывные пробелы на обычные пробелы
     text = text.replace("\u00a0", " ")  # Неразрывный пробел
     text = text.replace("\u2007", " ")  # Неразрывный пробел в числовой форме
     text = text.replace("\u202f", " ")  # Узкий неразрывный пробел
-
+    
+    # Дополнительно удаляем другие специальные символы, которые могут вызвать проблемы
+    text = text.replace("｜", "|")  # Заменяем вертикальные линии
+    
+    # Удаляем другие специальные символы Unicode, которые могут вызвать проблемы
+    import re
+    # Удаляем control characters кроме \n, \r, \t
+    text = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]', '', text)
+    
     # Ограничиваем длину сообщения до 4096 символов (лимит Telegram)
     if len(text) > 4096:
         text = text[:4093] + "..."
