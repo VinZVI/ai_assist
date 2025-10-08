@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Diagnostic script to check API connectivity for both DeepSeek and OpenRouter
+Diagnostic script to check API connectivity for OpenRouter
 """
 
 import asyncio
@@ -14,41 +14,12 @@ project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 from app.config import get_config
-from app.services.ai_providers.deepseek import DeepSeekProvider
 from app.services.ai_providers.openrouter import OpenRouterProvider
-
-
-async def check_deepseek_api() -> bool | None:
-    """Check DeepSeek API connectivity."""
-    print("🔍 Checking DeepSeek API connectivity...")
-
-    try:
-        config = get_config()
-        print(f"  API Key configured: {config.deepseek.is_configured()}")
-        print(f"  Base URL: {config.deepseek.deepseek_base_url}")
-        print(f"  Model: {config.deepseek.deepseek_model}")
-
-        if not config.deepseek.is_configured():
-            print("  ❌ DeepSeek API key not configured properly")
-            return False
-
-        provider = DeepSeekProvider()
-        health = await provider.health_check()
-
-        if health["status"] == "healthy":
-            print("  ✅ DeepSeek API is accessible")
-            return True
-        print(f"  ❌ DeepSeek API error: {health.get('error', 'Unknown error')}")
-        return False
-
-    except Exception as e:
-        print(f"  ❌ DeepSeek API error: {e}")
-        return False
 
 
 async def check_openrouter_api() -> bool | None:
     """Check OpenRouter API connectivity."""
-    print("\n🔍 Checking OpenRouter API connectivity...")
+    print("🔍 Checking OpenRouter API connectivity...")
 
     try:
         config = get_config()
@@ -87,27 +58,20 @@ async def main() -> None:
         print(f"❌ Configuration error: {e}")
         return
 
-    # Check both APIs
-    deepseek_ok = await check_deepseek_api()
+    # Check OpenRouter API
     openrouter_ok = await check_openrouter_api()
 
     print("\n" + "=" * 50)
-    if deepseek_ok and openrouter_ok:
-        print("🎉 All APIs are working correctly!")
-    elif deepseek_ok or openrouter_ok:
-        print("⚠️  One API is working, but fallback may be needed")
+    if openrouter_ok:
+        print("🎉 OpenRouter API is working correctly!")
     else:
         print(
-            "💥 No APIs are accessible - check your API keys and network connectivity"
+            "💥 OpenRouter API is not accessible - check your API key and network connectivity"
         )
 
     print("\n💡 Recommendations:")
-    if not deepseek_ok:
-        print("  - Check your DeepSeek API key balance")
-        print("  - Verify the API key is correct in .env")
-    if not openrouter_ok:
-        print("  - Check your OpenRouter API key")
-        print("  - Verify the API key is correct in .env")
+    print("  - Check your OpenRouter API key")
+    print("  - Verify the API key is correct in .env")
 
 
 if __name__ == "__main__":

@@ -77,13 +77,6 @@ def mock_config() -> AppConfig:
     """Мок конфигурации для тестов."""
     config = MagicMock()
 
-    # DeepSeek конфигурация
-    config.deepseek.deepseek_api_key = "test-deepseek-key"
-    config.deepseek.deepseek_base_url = "https://api.deepseek.com"
-    config.deepseek.deepseek_model = "deepseek-chat"
-    config.deepseek.deepseek_temperature = 0.7
-    config.deepseek.deepseek_max_tokens = 1000
-
     # OpenRouter конфигурация
     config.openrouter.openrouter_api_key = "test-openrouter-key"
     config.openrouter.openrouter_base_url = "https://openrouter.ai/api/v1"
@@ -93,7 +86,6 @@ def mock_config() -> AppConfig:
 
     # AI провайдер настройки
     config.ai_provider.primary_provider = "openrouter"
-    config.ai_provider.fallback_provider = "deepseek"
     config.ai_provider.enable_fallback = True
     config.ai_provider.max_retries_per_provider = 3
 
@@ -145,19 +137,8 @@ def mock_openrouter_provider() -> AsyncMock:
 
 
 @pytest.fixture
-def mock_deepseek_provider() -> AsyncMock:
-    """Мок DeepSeek провайдера."""
-    provider = AsyncMock()
-    provider.name = "deepseek"
-    provider.is_configured.return_value = True
-    provider.is_available.return_value = True
-    return provider
-
-
-@pytest.fixture
 def mock_ai_manager(
     mock_openrouter_provider: AsyncMock,
-    mock_deepseek_provider: AsyncMock,
     mock_ai_response: AIResponse,
 ) -> AsyncMock:
     """Мок AI менеджера с настроенными провайдерами."""
@@ -166,7 +147,6 @@ def mock_ai_manager(
     # Настройка провайдеров
     manager.get_provider.side_effect = lambda name: {
         "openrouter": mock_openrouter_provider,
-        "deepseek": mock_deepseek_provider,
     }.get(name)
 
     # Настройка асинхронных методов
@@ -176,7 +156,6 @@ def mock_ai_manager(
         "manager_status": "healthy",
         "providers": {
             "openrouter": {"status": "healthy"},
-            "deepseek": {"status": "healthy"},
         },
     }
 
@@ -189,7 +168,6 @@ def mock_ai_manager(
             "fallback_used": 2,
             "provider_stats": {
                 "openrouter": {"requests": 60, "successes": 58},
-                "deepseek": {"requests": 40, "successes": 37},
             },
         },
     )

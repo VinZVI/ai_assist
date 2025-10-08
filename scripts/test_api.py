@@ -24,11 +24,6 @@ async def test_apis() -> None:
     config = get_config()
     print("✅ Configuration loaded successfully")
 
-    # Test DeepSeek configuration
-    print(f"🔑 DeepSeek API Key configured: {config.deepseek.is_configured()}")
-    print(f"🌐 DeepSeek Base URL: {config.deepseek.deepseek_base_url}")
-    print(f"🤖 DeepSeek Model: {config.deepseek.deepseek_model}")
-
     # Test OpenRouter configuration
     print(f"🔑 OpenRouter API Key configured: {config.openrouter.is_configured()}")
     print(f"🌐 OpenRouter Base URL: {config.openrouter.openrouter_base_url}")

@@ -4,7 +4,7 @@
 
 ### 1.1 Назначение системы
 
-Telegram-бот для предоставления эмоциональной поддержки и психологического комфорта пользователям с интеграцией DeepSeek API для генерации ответов на базе искусственного интеллекта.
+Telegram-бот для предоставления эмоциональной поддержки и психологического комфорта пользователям с интеграцией OpenRout API для генерации ответов на базе искусственного интеллекта.
 
 ### 1.2 Цели проекта
 
@@ -39,7 +39,7 @@ Dependency Management: uv
 
 **Бизнес-логика:**
 - Conversation Manager (управление диалогами)
-- AI Response Generator (интеграция с DeepSeek)
+- AI Response Generator (интеграция с OpenRouter)
 - User State Management (управление состояниями пользователей)
 - Payment Processing (обработка платежей)
 
@@ -79,7 +79,6 @@ ai_assist/
 │   │   └── ai_providers/     # Провайдеры AI
 │   │       ├── __init__.py
 │   │       ├── base.py       # Базовый класс провайдера
-│   │       ├── deepseek.py   # DeepSeek провайдер
 │   │       └── openrouter.py # OpenRouter провайдер
 │   ├── utils/                 # Утилиты
 │   │   ├── __init__.py
@@ -130,47 +129,37 @@ ai_assist/
 
 ## 3. AI сервис и интеграция
 
-### 3.1 Архитектура AI сервиса с несколькими провайдерами
+### 3.1 Архитектура AI сервиса с одним провайдером
 
-**Система поддерживает множественных AI провайдеров с автоматическим fallback:**
+**Система поддерживает одного AI провайдера с автоматическим fallback между моделями:**
 
 **Основные компоненты:**
-- `AIManager` - центральный менеджер для управления несколькими провайдерами
+- `AIManager` - центральный менеджер для управления провайдером
 - `BaseAIProvider` - абстрактный базовый класс для всех провайдеров
-- `DeepSeekProvider` - провайдер для DeepSeek API
 - `OpenRouterProvider` - провайдер для OpenRouter API
-- `ResponseCache` - система кеширования ответов с поддержкой нескольких провайдеров
+- `ResponseCache` - система кеширования ответов
 - `ConversationMessage` - структура для сообщений диалога
 - `AIResponse` - структура ответа от AI
 
 **Поддерживаемые провайдеры:**
-1. **DeepSeek API** - основной провайдер
-2. **OpenRouter API** - резервный провайдер с доступом к множественным моделям
+1. **OpenRouter API** - основной провайдер
 
 **Особенности реализации:**
-- Автоматический fallback между провайдерами
+- Автоматический fallback между моделями внутри провайдера
 - Асинхронная работа с httpx клиентом
 - Retry логика с экспоненциальной задержкой
 - Обработка различных типов ошибок (401, 402, 429, 5xx)
-- Кеширование ответов на основе MD5 хешей с учетом провайдера
-- Мониторинг состояния через `health_check()` для всех провайдеров
+- Кеширование ответов на основе MD5 хешей
+- Мониторинг состояния через `health_check()` для провайдера
 - Статистика использования и fallback событий
 
 ### 3.2 Конфигурация AI сервиса
 
 ```
-# Настройки DeepSeek API
-DEEPSEEK_API_KEY=your_api_key_here
-DEEPSEEK_BASE_URL=https://api.deepseek.com
-DEEPSEEK_MODEL=deepseek-chat
-DEEPSEEK_MAX_TOKENS=1000
-DEEPSEEK_TEMPERATURE=0.7
-DEEPSEEK_TIMEOUT=30
-
 # Настройки OpenRouter API
 OPENROUTER_API_KEY=your_openrouter_api_key_here
 OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
-OPENROUTER_MODEL=anthropic/claude-3-haiku
+OPENROUTER_MODEL='["openrouter/default-model", "openrouter/alternative-model"]'
 OPENROUTER_MAX_TOKENS=1000
 OPENROUTER_TEMPERATURE=0.8
 OPENROUTER_TIMEOUT=60
@@ -179,7 +168,6 @@ OPENROUTER_APP_NAME=AI-Assistant-Bot
 
 # Настройки AI менеджера
 AI_PRIMARY_PROVIDER=openrouter
-AI_FALLBACK_PROVIDER=deepseek
 AI_ENABLE_FALLBACK=true
 
 # Настройки кеширования
@@ -196,11 +184,11 @@ CACHE_TTL=3600
 - `APIQuotaExceededError` - превышение квоты/недостаток средств
 
 **Автоматическая Fallback стратегия:**
-1. Попытка обращения к основному провайдеру (настраивается в AI_PRIMARY_PROVIDER)
-2. При временных ошибках (сеть, rate limit) - автоматическое переключение на резервный провайдер
+1. Попытка обращения к первой модели в списке (настраивается в OPENROUTER_MODEL)
+2. При временных ошибках (сеть, rate limit) - автоматическое переключение на следующую модель
 3. При критических ошибках (аутентификация, квота) - остановка без fallback
 4. Логирование всех fallback событий для мониторинга
-5. Статистика успешности провайдеров
+5. Статистика успешности моделей
 
 ## 4. Система локализации и интернационализации
 

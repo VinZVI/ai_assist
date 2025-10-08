@@ -13,11 +13,6 @@ class ConfigErrorMessages:
     INVALID_BOT_TOKEN_FORMAT = "BOT_TOKEN must be set to a valid Telegram bot token"
     INVALID_BOT_TOKEN_STRUCTURE = "BOT_TOKEN must be in format 'number:hash'"
 
-    # DeepSeek
-    INVALID_DEEPSEEK_API_KEY = "DEEPSEEK_API_KEY must be set to a valid API key"
-    INVALID_DEEPSEEK_TEMPERATURE = "DEEPSEEK_TEMPERATURE must be between 0.0 and 2.0"
-    INVALID_DEEPSEEK_MAX_TOKENS = "DEEPSEEK_MAX_TOKENS must be between 1 and 4000"
-
     # OpenRouter
     INVALID_OPENROUTER_API_KEY = "OPENROUTER_API_KEY cannot be empty"
     INVALID_OPENROUTER_TEMPERATURE = (
@@ -57,7 +52,7 @@ class ConfigErrorMessages:
     SECRET_KEY_TOO_SHORT = "SECRET_KEY must be at least 32 characters long"
 
     # AI Provider
-    INVALID_AI_PROVIDER = "Provider must be one of: ['deepseek', 'openrouter']"
+    INVALID_AI_PROVIDER = "Provider must be one of: ['openrouter']"
     INVALID_AI_PROVIDER_RETRIES_FORMAT = (
         "AI_MAX_RETRIES_PER_PROVIDER must be between {min_retries} and {max_retries}"
     )
@@ -66,15 +61,6 @@ class ConfigErrorMessages:
 # Магические значения для конфигурации
 class ConfigMagicValues:
     """Магические значения, используемые в конфигурации."""
-
-    # DeepSeek
-    DEEPSEEK_DEFAULT_TEMPERATURE = 0.7
-    DEEPSEEK_DEFAULT_MAX_TOKENS = 1000
-    DEEPSEEK_DEFAULT_TIMEOUT = 30
-    DEEPSEEK_MIN_TEMPERATURE = 0.0
-    DEEPSEEK_MAX_TEMPERATURE = 2.0
-    DEEPSEEK_MIN_MAX_TOKENS = 1
-    DEEPSEEK_MAX_MAX_TOKENS_DEEPSEEK = 4000
 
     # Database
     DATABASE_DEFAULT_POOL_SIZE = 10
@@ -88,7 +74,7 @@ class ConfigMagicValues:
     OPENROUTER_MIN_TEMPERATURE = 0.0
     OPENROUTER_MAX_TEMPERATURE = 2.0
     OPENROUTER_MIN_MAX_TOKENS = 1
-    DEEPSEEK_MAX_MAX_TOKENS_OPENROUTER = 8000
+    OPENROUTER_MAX_MAX_TOKENS = 8000
 
     # User Limits
     DEFAULT_FREE_MESSAGES_LIMIT = 10

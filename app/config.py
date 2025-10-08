@@ -72,62 +72,6 @@ class TelegramConfig(BaseSettings):
         return v
 
 
-class DeepSeekConfig(BaseSettings):
-    """Конфигурация DeepSeek API."""
-
-    deepseek_api_key: str = Field(
-        default="your_deepseek_api_key_here", validation_alias="DEEPSEEK_API_KEY"
-    )
-    deepseek_base_url: str = Field(
-        default="https://api.deepseek.com", validation_alias="DEEPSEEK_BASE_URL"
-    )
-    deepseek_model: str = Field(
-        default="deepseek-chat", validation_alias="DEEPSEEK_MODEL"
-    )
-    deepseek_max_tokens: int = Field(
-        default=1000, validation_alias="DEEPSEEK_MAX_TOKENS"
-    )
-    deepseek_temperature: float = Field(
-        default=0.7, validation_alias="DEEPSEEK_TEMPERATURE"
-    )
-    deepseek_timeout: int = Field(default=30, validation_alias="DEEPSEEK_TIMEOUT")
-
-    model_config = {"extra": "ignore", "env_file": ".env", "env_file_encoding": "utf-8"}
-
-    @field_validator("deepseek_api_key")
-    @classmethod
-    def validate_api_key(cls, v: str) -> str:
-        """Валидация API ключа DeepSeek."""
-        # Проверяем, что ключ не пустой и не placeholder
-        if v in {"", "your_deepseek_api_key_here"} or v is None:
-            raise ValueError(ConfigErrorMessages.INVALID_DEEPSEEK_API_KEY)
-        return v
-
-    def is_configured(self) -> bool:
-        """Проверка, настроен ли DeepSeek."""
-        return self.deepseek_api_key not in ["your_deepseek_api_key_here", "", None]
-
-    @field_validator("deepseek_temperature")
-    @classmethod
-    def validate_temperature(cls, v: float) -> float:
-        """Валидация температуры генерации."""
-        min_temp = ConfigMagicValues.DEEPSEEK_MIN_TEMPERATURE
-        max_temp = ConfigMagicValues.DEEPSEEK_MAX_TEMPERATURE
-        if not min_temp <= v <= max_temp:
-            raise ValueError(ConfigErrorMessages.INVALID_DEEPSEEK_TEMPERATURE)
-        return v
-
-    @field_validator("deepseek_max_tokens")
-    @classmethod
-    def validate_max_tokens(cls, v: int) -> int:
-        """Валидация максимального количества токенов."""
-        min_tokens = ConfigMagicValues.DEEPSEEK_MIN_MAX_TOKENS
-        max_tokens = ConfigMagicValues.DEEPSEEK_MAX_MAX_TOKENS_DEEPSEEK
-        if v < min_tokens or v > max_tokens:
-            raise ValueError(ConfigErrorMessages.INVALID_DEEPSEEK_MAX_TOKENS)
-        return v
-
-
 class OpenRouterConfig(BaseSettings):
     """Конфигурация OpenRouter API."""
 
@@ -137,8 +81,8 @@ class OpenRouterConfig(BaseSettings):
     openrouter_base_url: str = Field(
         default="https://openrouter.ai/api/v1", validation_alias="OPENROUTER_BASE_URL"
     )
-    openrouter_model: str = Field(
-        default="deepseek/deepseek-chat-v3.1:free", validation_alias="OPENROUTER_MODEL"
+    openrouter_models: list[str] = Field(
+        default=["openrouter/default-model"], validation_alias="OPENROUTER_MODEL"
     )
     openrouter_max_tokens: int = Field(
         default=1000, validation_alias="OPENROUTER_MAX_TOKENS"
@@ -165,6 +109,27 @@ class OpenRouterConfig(BaseSettings):
             raise ValueError(ConfigErrorMessages.INVALID_OPENROUTER_API_KEY)
         return v
 
+    @field_validator("openrouter_models", mode="before")
+    @classmethod
+    def validate_models(cls, v: str | list[str]) -> list[str]:
+        """Валидация списка моделей OpenRouter."""
+        if isinstance(v, str):
+            # Try to parse as JSON array
+            import json
+
+            try:
+                parsed = json.loads(
+                    v.replace("'", '"')
+                )  # Replace single quotes with double
+                if isinstance(parsed, list):
+                    return parsed
+            except json.JSONDecodeError:
+                # If JSON parsing fails, treat as single model
+                return [v.strip().strip('"')]
+        elif isinstance(v, list):
+            return v
+        return ["openrouter/default-model"]
+
     def is_configured(self) -> bool:
         """Проверка, настроен ли OpenRouter."""
         return self.openrouter_api_key != "your_openrouter_api_key_here"
@@ -184,7 +149,7 @@ class OpenRouterConfig(BaseSettings):
     def validate_max_tokens(cls, v: int) -> int:
         """Валидация максимального количества токенов."""
         min_tokens = ConfigMagicValues.OPENROUTER_MIN_MAX_TOKENS
-        max_tokens = ConfigMagicValues.DEEPSEEK_MAX_MAX_TOKENS_OPENROUTER
+        max_tokens = ConfigMagicValues.OPENROUTER_MAX_MAX_TOKENS
         if v < min_tokens or v > max_tokens:  # OpenRouter поддерживает больше токенов
             raise ValueError(ConfigErrorMessages.INVALID_OPENROUTER_MAX_TOKENS)
         return v
@@ -195,9 +160,6 @@ class AIProviderConfig(BaseSettings):
 
     primary_provider: str = Field(
         default="openrouter", validation_alias="AI_PRIMARY_PROVIDER"
-    )
-    fallback_provider: str = Field(
-        default="deepseek", validation_alias="AI_FALLBACK_PROVIDER"
     )
     enable_fallback: bool = Field(default=True, validation_alias="AI_ENABLE_FALLBACK")
 
@@ -281,7 +243,6 @@ class AppConfig(BaseSettings):
     # Компоненты конфигурации
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
     telegram: TelegramConfig = Field(default_factory=TelegramConfig)
-    deepseek: DeepSeekConfig = Field(default_factory=DeepSeekConfig)
     openrouter: OpenRouterConfig = Field(default_factory=OpenRouterConfig)
     ai_provider: AIProviderConfig = Field(default_factory=AIProviderConfig)
     user_limits: UserLimitsConfig = Field(default_factory=UserLimitsConfig)
@@ -342,7 +303,6 @@ __all__ = [
     "CacheConfig",
     "ConfigManager",
     "DatabaseConfig",
-    "DeepSeekConfig",
     "OpenRouterConfig",
     "TelegramConfig",
     "UserLimitsConfig",

@@ -33,10 +33,37 @@ class OpenRouterProvider(BaseAIProvider):
         self._client: httpx.AsyncClient | None = None
         self._max_retries = 3
         self._retry_delay = 1.0
+        self._current_model_index = 0
 
     @property
     def provider_name(self) -> str:
         return "openrouter"
+
+    @property
+    def current_model(self) -> str:
+        """Get the currently selected model."""
+        if not self.config.openrouter_models:
+            return "openrouter/default-model"
+        return self.config.openrouter_models[self._current_model_index]
+
+    def _get_next_model(self) -> str | None:
+        """Get the next model in the list for fallback, or None if no more models."""
+        if not self.config.openrouter_models:
+            return None
+
+        next_index = (self._current_model_index + 1) % len(
+            self.config.openrouter_models
+        )
+        if next_index == 0:
+            # We've cycled through all models
+            return None
+
+        self._current_model_index = next_index
+        return self.config.openrouter_models[self._current_model_index]
+
+    def reset_model_index(self) -> None:
+        """Reset the model index to the first model."""
+        self._current_model_index = 0
 
     async def _get_client(self) -> httpx.AsyncClient:
         """Получение HTTP клиента с настройками для OpenRouter."""
@@ -84,12 +111,13 @@ class OpenRouterProvider(BaseAIProvider):
         messages: list[dict[str, str]],
         temperature: float,
         max_tokens: int,
+        model: str,
     ) -> dict[str, Any]:
         """Выполнение запроса к OpenRouter API с retry логикой."""
         client = await self._get_client()
 
         payload = {
-            "model": self.config.openrouter_model,
+            "model": model,
             "messages": messages,
             "temperature": temperature,
             "max_tokens": max_tokens,
@@ -252,86 +280,114 @@ class OpenRouterProvider(BaseAIProvider):
             msg = "max_tokens должно быть от 1 до 8000"
             raise ValueError(msg)
 
-        try:
-            # Подготавливаем сообщения
-            prepared_messages = self._prepare_messages(messages)
+        # Reset model index at the beginning of each request
+        self.reset_model_index()
 
-            # Выполняем запрос
-            start_time = asyncio.get_event_loop().time()
-            data = await self._make_api_request(
-                prepared_messages,
-                temperature,
-                max_tokens,
-            )
-            response_time = self._calculate_response_time(start_time)
+        # Try each model in order until one works
+        last_exception = None
+        while True:
+            current_model = self.current_model
+            try:
+                # Подготавливаем сообщения
+                prepared_messages = self._prepare_messages(messages)
 
-            # Извлекаем ответ
-            if "choices" not in data or not data["choices"]:
-                msg = "Некорректный формат ответа от OpenRouter API"
-                raise APIConnectionError(
-                    msg,
-                    self.provider_name,
-                    "invalid_response",
+                # Выполняем запрос
+                start_time = asyncio.get_event_loop().time()
+                data = await self._make_api_request(
+                    prepared_messages,
+                    temperature,
+                    max_tokens,
+                    current_model,
+                )
+                response_time = self._calculate_response_time(start_time)
+
+                # Извлекаем ответ
+                if "choices" not in data or not data["choices"]:
+                    msg = "Некорректный формат ответа от OpenRouter API"
+                    raise APIConnectionError(
+                        msg,
+                        self.provider_name,
+                        "invalid_response",
+                    )
+
+                choice = data["choices"][0]
+                content = choice.get("message", {}).get("content", "")
+
+                if not content:
+                    msg = "Пустой ответ от OpenRouter API"
+                    raise APIConnectionError(
+                        msg,
+                        self.provider_name,
+                        "empty_response",
+                    )
+
+                # Подсчитываем токены
+                tokens_used = data.get("usage", {}).get(
+                    "total_tokens",
+                    len(content.split()) * 1.3,
                 )
 
-            choice = data["choices"][0]
-            content = choice.get("message", {}).get("content", "")
+                # Метаданные
+                metadata = {
+                    "model_used": data.get("model", current_model),
+                    "finish_reason": choice.get("finish_reason"),
+                    "usage": data.get("usage", {}),
+                }
 
-            if not content:
-                msg = "Пустой ответ от OpenRouter API"
-                raise APIConnectionError(
-                    msg,
-                    self.provider_name,
-                    "empty_response",
+                # Создаем объект ответа
+                ai_response = AIResponse(
+                    content=content.strip(),
+                    model=current_model,
+                    tokens_used=int(tokens_used),
+                    response_time=response_time,
+                    provider=self.provider_name,
+                    cached=False,
+                    metadata=metadata,
                 )
 
-            # Подсчитываем токены
-            tokens_used = data.get("usage", {}).get(
-                "total_tokens",
-                len(content.split()) * 1.3,
-            )
+                logger.info(
+                    f"🤖 OpenRouter ответ: {len(content)} символов, "
+                    f"{tokens_used} токенов, {response_time:.2f}с используя модель {current_model}",
+                )
+                return ai_response
 
-            # Метаданные
-            metadata = {
-                "model_used": data.get("model", self.config.openrouter_model),
-                "finish_reason": choice.get("finish_reason"),
-                "usage": data.get("usage", {}),
-            }
-
-            # Создаем объект ответа
-            ai_response = AIResponse(
-                content=content.strip(),
-                model=self.config.openrouter_model,
-                tokens_used=int(tokens_used),
-                response_time=response_time,
-                provider=self.provider_name,
-                cached=False,
-                metadata=metadata,
-            )
-
-            logger.info(
-                f"🤖 OpenRouter ответ: {len(content)} символов, "
-                f"{tokens_used} токенов, {response_time:.2f}с",
-            )
-            return ai_response
-
-        except Exception as e:
-            if isinstance(
-                e,
-                APIConnectionError
-                | APIRateLimitError
-                | APIAuthenticationError
-                | APIQuotaExceededError,
-            ):
+            except (
+                APIAuthenticationError,
+                APIQuotaExceededError,
+            ) as e:
+                # These are fatal errors, don't try other models
+                logger.error(f"💥 Фатальная ошибка OpenRouter: {e}")
                 raise
 
-            logger.exception("💥 Неожиданная ошибка при генерации ответа OpenRouter")
-            msg = f"Неожиданная ошибка OpenRouter: {e!s}"
+            except (
+                APIConnectionError,
+                APIRateLimitError,
+            ) as e:
+                # These are retryable errors, try the next model if available
+                logger.warning(f"⚠️ Ошибка модели {current_model}: {e}")
+                last_exception = e
+
+                # Try to get the next model
+                next_model = self._get_next_model()
+                if next_model is None:
+                    # No more models to try
+                    logger.error("💥 Все модели OpenRouter недоступны")
+                    raise APIConnectionError(
+                        f"Все модели OpenRouter недоступны: {last_exception!s}",
+                        self.provider_name,
+                    ) from last_exception
+
+                logger.info(f"🔄 Переключаемся на резервную модель: {next_model}")
+                continue
+
+        # If we get here, something went wrong
+        unknown_error_message = "Неизвестная ошибка моделей OpenRouter"
+        if last_exception:
             raise APIConnectionError(
-                msg,
+                f"Все модели OpenRouter недоступны: {last_exception!s}",
                 self.provider_name,
-                "unexpected_error",
-            )
+            ) from last_exception
+        raise APIConnectionError(unknown_error_message, self.provider_name)
 
     async def health_check(self) -> dict[str, Any]:
         """Проверка здоровья OpenRouter API."""
@@ -354,7 +410,7 @@ class OpenRouterProvider(BaseAIProvider):
             return {
                 "status": "healthy",
                 "provider": self.provider_name,
-                "model": self.config.openrouter_model,
+                "model": self.current_model,
                 "response_time": response_time,
                 "tokens_used": response.tokens_used,
             }
@@ -364,7 +420,7 @@ class OpenRouterProvider(BaseAIProvider):
                 "status": "unhealthy",
                 "error": str(e),
                 "provider": self.provider_name,
-                "model": self.config.openrouter_model,
+                "model": self.current_model,
             }
 
 

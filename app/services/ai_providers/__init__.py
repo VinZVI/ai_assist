@@ -1,7 +1,7 @@
 """
 @file: ai_providers/__init__.py
 @description: Модуль провайдеров AI с поддержкой множественных API
-@dependencies: .base, .deepseek, .openrouter
+@dependencies: .base, .openrouter
 @created: 2025-09-20
 """
 
@@ -15,7 +15,6 @@ from .base import (
     BaseAIProvider,
     ConversationMessage,
 )
-from .deepseek import DeepSeekProvider
 from .openrouter import OpenRouterProvider
 
 # Экспорт всех классов провайдеров
@@ -30,6 +29,5 @@ __all__ = [
     "BaseAIProvider",
     "ConversationMessage",
     # Провайдеры
-    "DeepSeekProvider",
     "OpenRouterProvider",
 ]
