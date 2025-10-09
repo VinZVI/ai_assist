@@ -26,7 +26,12 @@ def create_system_message(language: str = "ru") -> ConversationMessage:
             "and needs. "
             "Avoid giving medical or legal advice. "
             "If the user is in a crisis situation, "
-            "gently suggest seeking help from a specialist."
+            "gently suggest seeking help from a specialist. "
+            "Important formatting guidelines: "
+            "1. Keep your responses under 4096 characters. "
+            "2. Avoid special characters like ｜, ▁, and control characters. "
+            "3. Do not use markdown or any formatting syntax. "
+            "4. Use only plain text without any special markup."
         )
     else:  # Default to Russian
         content = (
@@ -37,7 +42,12 @@ def create_system_message(language: str = "ru") -> ConversationMessage:
             "и потребности пользователя. "
             "Избегай давать медицинские или юридические советы. "
             "Если пользователь находится в кризисной ситуации, "
-            "мягко предложи обратиться к специалисту."
+            "мягко предложи обратиться к специалисту. "
+            "Важные правила форматирования: "
+            "1. Делай ответы короче 4096 символов. "
+            "2. Избегай специальных символов, таких как ｜, ▁ и управляющих символов. "
+            "3. Не используй markdown или другие синтаксисы форматирования. "
+            "4. Используй только обычный текст без специальной разметки."
         )
 
     return ConversationMessage(
