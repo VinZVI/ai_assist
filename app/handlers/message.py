@@ -3,7 +3,7 @@
 @description: Обработчик входящих сообщений от пользователей
 @dependencies: aiogram, sqlalchemy, loguru
 @created: 2025-09-07
-@updated: 2025-10-07
+@updated: 2025-10-09
 """
 
 from datetime import UTC, datetime
@@ -154,40 +154,11 @@ async def generate_ai_response(
 
 
 @message_router.message(F.text)
-async def handle_text_message(message: Message) -> None:
+async def handle_text_message(message: Message, user: User) -> None:
     """Обработка входящих текстовых сообщений от пользователей."""
-    user = None  # Initialize user variable
     try:
-        # Определяем язык пользователя для логирования
-        user_lang = "ru"  # Default language for logging
-        if message.from_user:
-            logger.info(
-                get_log_text("message.message_received").format(
-                    username=message.from_user.username or f"ID:{message.from_user.id}",
-                    chars=len(message.text[:50]),
-                )
-                + f"... ({message.text[:50]})"
-            )
-
-        # Проверяем наличие пользователя
-        user = await get_or_update_user(message)
-        if not user:
-            # Используем язык по умолчанию для сообщения об ошибке если пользователь не найден
-            await message.answer(get_text("errors.user_registration_error", "ru"))
-            return
-
         # Устанавливаем язык пользователя
         user_lang = user.language_code or "ru"
-
-        # Проверяем лимиты
-        if not user.can_send_message():
-            await message.answer(get_text("errors.daily_limit_exceeded", user_lang))
-            logger.info(
-                get_log_text("message.message_user_limit_exceeded").format(
-                    user_id=user.id
-                )
-            )
-            return
 
         # Проверяем длину сообщения
         if len(message.text) > 4000:
@@ -270,13 +241,11 @@ async def handle_text_message(message: Message) -> None:
 
     except Exception as e:
         logger.exception(
-            get_log_text("message.message_error").format(
-                user_id=user.id if user else "unknown", error=str(e)
-            )
+            get_log_text("message.message_error").format(user_id=user.id, error=str(e))
         )
 
         # Определяем язык пользователя для сообщения об ошибке
-        error_lang = user.language_code if user and user.language_code else "ru"
+        error_lang = user.language_code if user.language_code else "ru"
 
         # Отправляем пользователю сообщение об ошибке
         try:

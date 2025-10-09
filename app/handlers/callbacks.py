@@ -3,6 +3,7 @@
 @description: Обработчики callback-запросов для Telegram бота
 @dependencies: aiogram, sqlalchemy, loguru
 @created: 2025-09-12
+@updated: 2025-10-09
 """
 
 from datetime import datetime
@@ -28,18 +29,11 @@ callback_router = Router(name="callbacks")
 
 
 @callback_router.callback_query(F.data == "main_menu")
-async def show_main_menu(callback: CallbackQuery) -> None:
+async def show_main_menu(callback: CallbackQuery, user: User) -> None:
     """Показать главное меню."""
     try:
         # Get user's language preference
-        user_lang = "ru"  # Default language
-        if callback.from_user:
-            async with get_session() as session:
-                stmt = select(User).where(User.telegram_id == callback.from_user.id)
-                result = await session.execute(stmt)
-                user = result.scalar_one_or_none()
-                if user and user.language_code:
-                    user_lang = user.language_code
+        user_lang = user.language_code or "ru"
 
         # Check if the message content and reply markup are actually different
         # before attempting to edit to prevent "message is not modified" error
@@ -79,18 +73,6 @@ async def show_main_menu(callback: CallbackQuery) -> None:
             )
             # Try to send a new message if editing fails
             try:
-                # Get user's language for error message
-                user_lang = "ru"  # Default language
-                if callback.from_user:
-                    async with get_session() as session:
-                        stmt = select(User).where(
-                            User.telegram_id == callback.from_user.id
-                        )
-                        result = await session.execute(stmt)
-                        user = result.scalar_one_or_none()
-                        if user and user.language_code:
-                            user_lang = user.language_code
-
                 await callback.message.answer(
                     get_text("callbacks.main_menu_title", user_lang),
                     reply_markup=create_main_menu_keyboard(user_lang),
@@ -103,33 +85,15 @@ async def show_main_menu(callback: CallbackQuery) -> None:
                         error=fallback_error
                     )
                 )
-                # Get user's language for error message
-                user_lang = "ru"  # Default language
-                if callback.from_user:
-                    async with get_session() as session:
-                        stmt = select(User).where(
-                            User.telegram_id == callback.from_user.id
-                        )
-                        result = await session.execute(stmt)
-                        user = result.scalar_one_or_none()
-                        if user and user.language_code:
-                            user_lang = user.language_code
                 await callback.answer(get_text("errors.general_error", user_lang))
 
 
 @callback_router.callback_query(F.data == "start_chat")
-async def start_chat(callback: CallbackQuery) -> None:
+async def start_chat(callback: CallbackQuery, user: User) -> None:
     """Начать диалог."""
     try:
         # Get user's language preference
-        user_lang = "ru"  # Default language
-        if callback.from_user:
-            async with get_session() as session:
-                stmt = select(User).where(User.telegram_id == callback.from_user.id)
-                result = await session.execute(stmt)
-                user = result.scalar_one_or_none()
-                if user and user.language_code:
-                    user_lang = user.language_code
+        user_lang = user.language_code or "ru"
 
         # Send a welcome message to start the chat
         await callback.message.answer(
@@ -139,31 +103,16 @@ async def start_chat(callback: CallbackQuery) -> None:
         await callback.answer()
     except Exception as e:
         logger.error(get_log_text("callbacks.callback_error").format(error=e))
-        # Get user's language for error message
-        user_lang = "ru"  # Default language
-        if callback.from_user:
-            async with get_session() as session:
-                stmt = select(User).where(User.telegram_id == callback.from_user.id)
-                result = await session.execute(stmt)
-                user = result.scalar_one_or_none()
-                if user and user.language_code:
-                    user_lang = user.language_code
+        user_lang = user.language_code or "ru"
         await callback.answer(get_text("errors.general_error", user_lang))
 
 
 @callback_router.callback_query(F.data == "my_stats")
-async def show_user_stats(callback: CallbackQuery) -> None:
+async def show_user_stats(callback: CallbackQuery, user: User) -> None:
     """Показать статистику пользователя."""
     try:
         # Get user's language preference
-        user_lang = "ru"  # Default language
-        if callback.from_user:
-            async with get_session() as session:
-                stmt = select(User).where(User.telegram_id == callback.from_user.id)
-                result = await session.execute(stmt)
-                user = result.scalar_one_or_none()
-                if user and user.language_code:
-                    user_lang = user.language_code
+        user_lang = user.language_code or "ru"
 
         from app.keyboards import create_stats_keyboard
 
@@ -189,31 +138,16 @@ async def show_user_stats(callback: CallbackQuery) -> None:
         await callback.answer()
     except Exception as e:
         logger.error(get_log_text("callbacks.callback_error").format(error=e))
-        # Get user's language for error message
-        user_lang = "ru"  # Default language
-        if callback.from_user:
-            async with get_session() as session:
-                stmt = select(User).where(User.telegram_id == callback.from_user.id)
-                result = await session.execute(stmt)
-                user = result.scalar_one_or_none()
-                if user and user.language_code:
-                    user_lang = user.language_code
+        user_lang = user.language_code or "ru"
         await callback.answer(get_text("errors.general_error", user_lang))
 
 
 @callback_router.callback_query(F.data == "help")
-async def show_help(callback: CallbackQuery) -> None:
+async def show_help(callback: CallbackQuery, user: User) -> None:
     """Показать помощь."""
     try:
         # Get user's language preference
-        user_lang = "ru"  # Default language
-        if callback.from_user:
-            async with get_session() as session:
-                stmt = select(User).where(User.telegram_id == callback.from_user.id)
-                result = await session.execute(stmt)
-                user = result.scalar_one_or_none()
-                if user and user.language_code:
-                    user_lang = user.language_code
+        user_lang = user.language_code or "ru"
 
         from app.keyboards import create_help_keyboard
 
@@ -239,15 +173,7 @@ async def show_help(callback: CallbackQuery) -> None:
         await callback.answer()
     except Exception as e:
         logger.error(get_log_text("callbacks.callback_error").format(error=e))
-        # Get user's language for error message
-        user_lang = "ru"  # Default language
-        if callback.from_user:
-            async with get_session() as session:
-                stmt = select(User).where(User.telegram_id == callback.from_user.id)
-                result = await session.execute(stmt)
-                user = result.scalar_one_or_none()
-                if user and user.language_code:
-                    user_lang = user.language_code
+        user_lang = user.language_code or "ru"
         await callback.answer(get_text("errors.general_error", user_lang))
 
 
@@ -268,34 +194,18 @@ async def show_help(callback: CallbackQuery) -> None:
         ],
     ),
 )
-async def placeholder_callback(callback: CallbackQuery) -> None:
+async def placeholder_callback(callback: CallbackQuery, user: User) -> None:
     """Заглушка для еще не реализованных функций."""
-    # Get user's language preference
-    user_lang = "ru"  # Default language
-    if callback.from_user:
-        async with get_session() as session:
-            stmt = select(User).where(User.telegram_id == callback.from_user.id)
-            result = await session.execute(stmt)
-            user = result.scalar_one_or_none()
-            if user and user.language_code:
-                user_lang = user.language_code
-
+    user_lang = user.language_code or "ru"
     await callback.answer(get_text("callbacks.placeholder_message", user_lang))
 
 
 @callback_router.callback_query(F.data == "settings")
-async def show_settings_menu(callback: CallbackQuery) -> None:
+async def show_settings_menu(callback: CallbackQuery, user: User) -> None:
     """Показать меню настроек."""
     try:
         # Get user's language preference
-        user_lang = "ru"  # Default language
-        if callback.from_user:
-            async with get_session() as session:
-                stmt = select(User).where(User.telegram_id == callback.from_user.id)
-                result = await session.execute(stmt)
-                user = result.scalar_one_or_none()
-                if user and user.language_code:
-                    user_lang = user.language_code
+        user_lang = user.language_code or "ru"
 
         from app.keyboards import create_settings_keyboard
 
@@ -317,31 +227,16 @@ async def show_settings_menu(callback: CallbackQuery) -> None:
         await callback.answer()
     except Exception as e:
         logger.error(get_log_text("callbacks.callback_error").format(error=e))
-        # Get user's language for error message
-        user_lang = "ru"  # Default language
-        if callback.from_user:
-            async with get_session() as session:
-                stmt = select(User).where(User.telegram_id == callback.from_user.id)
-                result = await session.execute(stmt)
-                user = result.scalar_one_or_none()
-                if user and user.language_code:
-                    user_lang = user.language_code
+        user_lang = user.language_code or "ru"
         await callback.answer(get_text("errors.general_error", user_lang))
 
 
 @callback_router.callback_query(F.data == "settings_language")
-async def show_language_settings(callback: CallbackQuery) -> None:
+async def show_language_settings(callback: CallbackQuery, user: User) -> None:
     """Показать настройки языка."""
     try:
         # Get user's language preference
-        user_lang = "ru"  # Default language
-        if callback.from_user:
-            async with get_session() as session:
-                stmt = select(User).where(User.telegram_id == callback.from_user.id)
-                result = await session.execute(stmt)
-                user = result.scalar_one_or_none()
-                if user and user.language_code:
-                    user_lang = user.language_code
+        user_lang = user.language_code or "ru"
 
         from app.keyboards import create_language_keyboard
 
@@ -363,31 +258,16 @@ async def show_language_settings(callback: CallbackQuery) -> None:
         await callback.answer()
     except Exception as e:
         logger.error(get_log_text("callbacks.callback_error").format(error=e))
-        # Get user's language for error message
-        user_lang = "ru"  # Default language
-        if callback.from_user:
-            async with get_session() as session:
-                stmt = select(User).where(User.telegram_id == callback.from_user.id)
-                result = await session.execute(stmt)
-                user = result.scalar_one_or_none()
-                if user and user.language_code:
-                    user_lang = user.language_code
+        user_lang = user.language_code or "ru"
         await callback.answer(get_text("errors.general_error", user_lang))
 
 
 @callback_router.callback_query(F.data == "premium_info")
-async def show_premium_info(callback: CallbackQuery) -> None:
+async def show_premium_info(callback: CallbackQuery, user: User) -> None:
     """Показать информацию о премиуме."""
     try:
         # Get user's language preference
-        user_lang = "ru"  # Default language
-        if callback.from_user:
-            async with get_session() as session:
-                stmt = select(User).where(User.telegram_id == callback.from_user.id)
-                result = await session.execute(stmt)
-                user = result.scalar_one_or_none()
-                if user and user.language_code:
-                    user_lang = user.language_code
+        user_lang = user.language_code or "ru"
 
         from app.keyboards import create_premium_keyboard
 
@@ -413,31 +293,16 @@ async def show_premium_info(callback: CallbackQuery) -> None:
         await callback.answer()
     except Exception as e:
         logger.error(get_log_text("callbacks.callback_error").format(error=e))
-        # Get user's language for error message
-        user_lang = "ru"  # Default language
-        if callback.from_user:
-            async with get_session() as session:
-                stmt = select(User).where(User.telegram_id == callback.from_user.id)
-                result = await session.execute(stmt)
-                user = result.scalar_one_or_none()
-                if user and user.language_code:
-                    user_lang = user.language_code
+        user_lang = user.language_code or "ru"
         await callback.answer(get_text("errors.general_error", user_lang))
 
 
 @callback_router.callback_query(F.data.startswith("buy_premium:"))
-async def handle_premium_purchase(callback: CallbackQuery) -> None:
+async def handle_premium_purchase(callback: CallbackQuery, user: User) -> None:
     """Обработать покупку премиум-доступа."""
     try:
         # Get user's language preference
-        user_lang = "ru"  # Default language
-        if callback.from_user:
-            async with get_session() as session:
-                stmt = select(User).where(User.telegram_id == callback.from_user.id)
-                result = await session.execute(stmt)
-                user = result.scalar_one_or_none()
-                if user and user.language_code:
-                    user_lang = user.language_code
+        user_lang = user.language_code or "ru"
 
         # Extract premium price from callback data
         try:
@@ -455,15 +320,7 @@ async def handle_premium_purchase(callback: CallbackQuery) -> None:
 
     except Exception as e:
         logger.error(get_log_text("callbacks.callback_error").format(error=e))
-        # Get user's language for error message
-        user_lang = "ru"  # Default language
-        if callback.from_user:
-            async with get_session() as session:
-                stmt = select(User).where(User.telegram_id == callback.from_user.id)
-                result = await session.execute(stmt)
-                user = result.scalar_one_or_none()
-                if user and user.language_code:
-                    user_lang = user.language_code
+        user_lang = user.language_code or "ru"
         await callback.answer(get_text("errors.general_error", user_lang))
 
 

@@ -22,12 +22,12 @@ class TestDatabaseSecurity:
         import re
 
         # Valid names
-        assert re.match(r'^[a-zA-Z0-9_]+$', 'valid_name')
-        assert re.match(r'^[a-zA-Z0-9_]+$', 'valid_name_123')
-        assert re.match(r'^[a-zA-Z0-9_]+$', 'ValidName')
+        assert re.match(r"^[a-zA-Z0-9_]+$", "valid_name")
+        assert re.match(r"^[a-zA-Z0-9_]+$", "valid_name_123")
+        assert re.match(r"^[a-zA-Z0-9_]+$", "ValidName")
 
         # Invalid names
-        assert not re.match(r'^[a-zA-Z0-9_]+$', 'invalid-name')
-        assert not re.match(r'^[a-zA-Z0-9_]+$', 'invalid name')
-        assert not re.match(r'^[a-zA-Z0-9_]+$', 'invalid;name')
-        assert not re.match(r'^[a-zA-Z0-9_]+$', "invalid'name")
+        assert not re.match(r"^[a-zA-Z0-9_]+$", "invalid-name")
+        assert not re.match(r"^[a-zA-Z0-9_]+$", "invalid name")
+        assert not re.match(r"^[a-zA-Z0-9_]+$", "invalid;name")
+        assert not re.match(r"^[a-zA-Z0-9_]+$", "invalid'name")

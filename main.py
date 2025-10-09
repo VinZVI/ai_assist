@@ -51,13 +51,41 @@ class AIAssistantBot:
         """Создание диспетчера с middleware и обработчиками."""
         dp = Dispatcher()
 
-        # Регистрация middleware будет здесь
-        # self.register_middleware(dp)
+        # Регистрация middleware
+        self.register_middleware(dp)
 
         # Регистрация обработчиков
         self.register_handlers(dp)
 
         return dp
+
+    def register_middleware(self, dp: Dispatcher) -> None:
+        """Регистрация middleware."""
+        from app.middleware import (
+            AuthMiddleware,
+            LoggingMiddleware,
+            MetricsMiddleware,
+            RateLimitMiddleware,
+        )
+
+        # Регистрация middleware в правильном порядке
+        # 1. Логирование (первым для записи всех событий)
+        dp.message.middleware(LoggingMiddleware())
+        dp.callback_query.middleware(LoggingMiddleware())
+
+        # 2. Аутентификация (для получения пользователя)
+        dp.message.middleware(AuthMiddleware())
+        dp.callback_query.middleware(AuthMiddleware())
+
+        # 3. Ограничение частоты запросов (после аутентификации)
+        dp.message.middleware(RateLimitMiddleware())
+        dp.callback_query.middleware(RateLimitMiddleware())
+
+        # 4. Сбор метрик (последним для сбора полной информации)
+        dp.message.middleware(MetricsMiddleware())
+        dp.callback_query.middleware(MetricsMiddleware())
+
+        logger.info(get_log_text("main.bot_registered_middleware"))
 
     def register_handlers(self, dp: Dispatcher) -> None:
         """Регистрация всех обработчиков."""

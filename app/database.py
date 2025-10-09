@@ -132,8 +132,9 @@ async def create_database_if_not_exists() -> None:
 
     # Валидация имени БД для предотвращения SQL-инъекции
     import re
+
     invalid_database_name_error = "Invalid database name"
-    if not re.match(r'^[a-zA-Z0-9_]+$', database_name):
+    if not re.match(r"^[a-zA-Z0-9_]+$", database_name):
         raise ValueError(invalid_database_name_error)
 
     logger.info(
