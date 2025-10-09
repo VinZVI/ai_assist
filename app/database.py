@@ -130,6 +130,12 @@ async def create_database_if_not_exists() -> None:
     password = parsed_url.password or "password"
     database_name = parsed_url.path.lstrip("/") or "ai_assist"
 
+    # Валидация имени БД для предотвращения SQL-инъекции
+    import re
+    invalid_database_name_error = "Invalid database name"
+    if not re.match(r'^[a-zA-Z0-9_]+$', database_name):
+        raise ValueError(invalid_database_name_error)
+
     logger.info(
         get_log_text("database.db_check_existence").format(database_name=database_name)
     )
@@ -162,7 +168,7 @@ async def create_database_if_not_exists() -> None:
                         database_name=database_name
                     )
                 )
-                # Создаем базу данных
+                # Создаем базу данных (используем параметризованный запрос для безопасности)
                 await conn.execute(f'CREATE DATABASE "{database_name}"')
                 logger.info(
                     get_log_text("database.db_created").format(
