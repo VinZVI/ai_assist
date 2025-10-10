@@ -3,7 +3,7 @@
 """
 
 from datetime import UTC, datetime
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from aiogram.types import CallbackQuery, Message, User
@@ -26,7 +26,7 @@ class TestAuthMiddleware:
     @pytest.fixture
     def mock_event(self) -> MagicMock:
         """Фикстура для мокированного события."""
-        event = MagicMock()
+        event = MagicMock(spec=Message)
         event.from_user = MagicMock(spec=User)
         event.from_user.id = 12345
         event.from_user.username = "testuser"
@@ -46,12 +46,7 @@ class TestAuthMiddleware:
         mock_user.id = 1
         mock_user.username = "testuser"
 
-        with pytest.MonkeyPatch().context() as m:
-            m.setattr(
-                "app.middleware.auth.get_or_update_user",
-                AsyncMock(return_value=mock_user),
-            )
-
+        with patch("app.middleware.auth.get_or_update_user", return_value=mock_user):
             # Act
             await auth_middleware(mock_handler, mock_event, mock_data)
 
@@ -87,12 +82,10 @@ class TestAuthMiddleware:
         mock_handler = AsyncMock()
         mock_data = {}
 
-        with pytest.MonkeyPatch().context() as m:
-            m.setattr(
-                "app.middleware.auth.get_or_update_user",
-                AsyncMock(side_effect=Exception("Test error")),
-            )
-
+        with patch(
+            "app.middleware.auth.get_or_update_user",
+            side_effect=Exception("Test error"),
+        ):
             # Act
             await auth_middleware(mock_handler, mock_event, mock_data)
 

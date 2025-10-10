@@ -39,7 +39,7 @@ def create_main_menu_keyboard(lang_code: str = "ru") -> InlineKeyboardMarkup:
 
     builder.row(
         InlineKeyboardButton(
-            text=get_text("keyboards.main_menu_limits", lang_code),
+            text=get_text("keyboards.main_menu_settings", lang_code),
             callback_data="settings",
         ),
     )

@@ -41,7 +41,7 @@ LEXICON_EN = {
         "main_menu": "🏠 Main Menu",
         "detailed_stats": "📈 Detailed Statistics",
         "achievements": "🏆 My Achievements",
-        "settings": "⚙️ Settings",
+        "main_menu_settings": "⚙️ Settings",
         "language": "🌍 Language",
         "notifications": "🔔 Notifications",
         "delete_data": "🗑️ Delete Data",

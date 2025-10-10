@@ -6,6 +6,7 @@
 @updated: 2025-09-14
 """
 
+from .admin import admin_router
 from .callbacks import callback_router
 from .health import health_router
 from .help import help_router
@@ -27,10 +28,12 @@ ROUTERS = [
     callback_router,  # Обработчик callback запросов
     message_router,  # Обработчик текстовых сообщений
     health_router,  # Обработчик healthcheck
+    admin_router,  # Админские команды
 ]
 
 __all__ = [
     "ROUTERS",
+    "admin_router",
     "callback_router",
     "health_router",
     "help_router",

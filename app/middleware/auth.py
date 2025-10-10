@@ -8,7 +8,7 @@
 from collections.abc import Awaitable, Callable
 from typing import Any, ClassVar, cast
 
-from aiogram.types import TelegramObject
+from aiogram.types import CallbackQuery, Message, TelegramObject
 from aiogram.types import User as TelegramUser
 from loguru import logger
 
@@ -53,21 +53,15 @@ class AuthMiddleware(BaseAIMiddleware):
         telegram_user: TelegramUser | None = None
 
         # Проверяем разные типы событий для получения пользователя
-        if hasattr(event, "from_user") and event.from_user:
-            telegram_user = event.from_user
-        elif hasattr(event, "message") and event.message and event.message.from_user:
-            telegram_user = event.message.from_user
-        elif (
-            hasattr(event, "callback_query")
-            and event.callback_query
-            and event.callback_query.from_user
+        if (isinstance(event, Message) and event.from_user) or (
+            isinstance(event, CallbackQuery) and event.from_user
         ):
-            telegram_user = event.callback_query.from_user
+            telegram_user = event.from_user
 
         if telegram_user:
             try:
                 # Получаем или создаем пользователя в базе данных
-                user = await get_or_update_user(cast("Any", event))
+                user = await get_or_update_user(event)
 
                 if user:
                     # Добавляем пользователя в данные контекста

@@ -56,10 +56,6 @@ async def get_or_update_user(message: Message) -> User | None:
 
             await session.commit()
             await session.refresh(user)
-
-            logger.info(
-                f"👤 Пользователь {'обновлен' if user.id else 'создан'}: {user.get_display_name()}"
-            )
             return user
 
     except Exception as e:

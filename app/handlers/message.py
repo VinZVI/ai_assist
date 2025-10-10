@@ -6,7 +6,9 @@
 @updated: 2025-10-09
 """
 
+from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
+from typing import Optional
 
 from aiogram import F, Router
 from aiogram.types import Message
@@ -157,8 +159,8 @@ async def handle_text_message(
     message: Message,
     user: User,
     user_lang: str = "ru",
-    save_conversation: callable = None,
-    increment_user_message_count: callable = None,
+    save_conversation_func: Callable[..., Awaitable[None]] | None = None,
+    increment_user_message_count: Callable[..., Awaitable[None]] | None = None,
 ) -> None:
     """Обработка входящих текстовых сообщений от пользователей."""
     try:
@@ -188,8 +190,8 @@ async def handle_text_message(
         await message.answer(sanitized_response)
 
         # Сохраняем диалог через middleware функцию если доступна
-        if save_conversation:
-            await save_conversation(
+        if save_conversation_func:
+            await save_conversation_func(
                 user_id=user.id,
                 user_message=message.text,
                 ai_response=ai_response,

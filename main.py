@@ -62,28 +62,58 @@ class AIAssistantBot:
     def register_middleware(self, dp: Dispatcher) -> None:
         """Регистрация middleware."""
         from app.middleware import (
+            AdminMiddleware,
             AuthMiddleware,
+            ConversationMiddleware,
             LoggingMiddleware,
             MetricsMiddleware,
             RateLimitMiddleware,
+            UserCounterMiddleware,
+            UserLanguageMiddleware,
         )
+
+        # Создаем единственные экземпляры middleware
+        logging_middleware = LoggingMiddleware()
+        auth_middleware = AuthMiddleware()
+        user_language_middleware = UserLanguageMiddleware()
+        rate_limit_middleware = RateLimitMiddleware()
+        conversation_middleware = ConversationMiddleware()
+        user_counter_middleware = UserCounterMiddleware()
+        metrics_middleware = MetricsMiddleware()
+        admin_middleware = AdminMiddleware()
 
         # Регистрация middleware в правильном порядке
         # 1. Логирование (первым для записи всех событий)
-        dp.message.middleware(LoggingMiddleware())
-        dp.callback_query.middleware(LoggingMiddleware())
+        dp.message.middleware(logging_middleware)
+        dp.callback_query.middleware(logging_middleware)
 
         # 2. Аутентификация (для получения пользователя)
-        dp.message.middleware(AuthMiddleware())
-        dp.callback_query.middleware(AuthMiddleware())
+        dp.message.middleware(auth_middleware)
+        dp.callback_query.middleware(auth_middleware)
 
-        # 3. Ограничение частоты запросов (после аутентификации)
-        dp.message.middleware(RateLimitMiddleware())
-        dp.callback_query.middleware(RateLimitMiddleware())
+        # 3. Проверка прав администратора
+        dp.message.middleware(admin_middleware)
+        dp.callback_query.middleware(admin_middleware)
 
-        # 4. Сбор метрик (последним для сбора полной информации)
-        dp.message.middleware(MetricsMiddleware())
-        dp.callback_query.middleware(MetricsMiddleware())
+        # 4. Управление языком пользователя
+        dp.message.middleware(user_language_middleware)
+        dp.callback_query.middleware(user_language_middleware)
+
+        # 5. Ограничение частоты запросов (после аутентификации)
+        dp.message.middleware(rate_limit_middleware)
+        dp.callback_query.middleware(rate_limit_middleware)
+
+        # 6. Сохранение диалогов
+        dp.message.middleware(conversation_middleware)
+        dp.callback_query.middleware(conversation_middleware)
+
+        # 7. Подсчет сообщений пользователей
+        dp.message.middleware(user_counter_middleware)
+        dp.callback_query.middleware(user_counter_middleware)
+
+        # 8. Сбор метрик (последним для сбора полной информации)
+        dp.message.middleware(metrics_middleware)
+        dp.callback_query.middleware(metrics_middleware)
 
         logger.info(get_log_text("main.bot_registered_middleware"))
 

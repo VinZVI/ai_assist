@@ -42,12 +42,11 @@ class AdminMiddleware(BaseAIMiddleware):
             Результат выполнения следующего обработчика
         """
         user_id = None
-        
+
         # Проверяем, является ли событие сообщением
-        if isinstance(event, Message) and event.from_user:
-            user_id = event.from_user.id
-        # Проверяем, является ли событие callback query
-        elif isinstance(event, CallbackQuery) and event.from_user:
+        if (isinstance(event, Message) and event.from_user) or (
+            isinstance(event, CallbackQuery) and event.from_user
+        ):
             user_id = event.from_user.id
 
         # Если удалось получить ID пользователя, проверяем права администратора

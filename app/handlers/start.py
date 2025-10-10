@@ -24,107 +24,6 @@ from app.models import User, UserCreate
 start_router = Router(name="start")
 
 
-async def get_or_create_user(telegram_user: TgUser) -> User | None:
-    """
-    Получение существующего пользователя или создание нового.
-
-    Args:
-        telegram_user: Объект пользователя Telegram
-
-    Returns:
-        User: Объект пользователя из базы данных
-    """
-    async with get_session() as session:
-        try:
-            from sqlalchemy import select
-
-            # Попытка найти существующего пользователя
-            stmt = select(User).where(User.telegram_id == telegram_user.id)
-            result = await session.execute(stmt)
-            existing_user = result.scalar_one_or_none()
-
-            if existing_user:
-                # Обновляем информацию о пользователе если что-то изменилось
-                # ВАЖНО: Не обновляем language_code, чтобы сохранить выбор пользователя
-                user_updated = False
-
-                if existing_user.username != telegram_user.username:
-                    existing_user.username = telegram_user.username
-                    user_updated = True
-
-                if existing_user.first_name != telegram_user.first_name:
-                    existing_user.first_name = telegram_user.first_name
-                    user_updated = True
-
-                if existing_user.last_name != telegram_user.last_name:
-                    existing_user.last_name = telegram_user.last_name
-                    user_updated = True
-
-                # Обновляем время последней активности
-                existing_user.last_activity_at = datetime.now(UTC)
-                existing_user.updated_at = datetime.now(UTC)
-
-                # Сбрасываем дневной счетчик если прошел день
-                existing_user.reset_daily_count_if_needed()
-
-                if user_updated:
-                    await session.commit()
-                    logger.info(
-                        get_log_text("start.start_user_info_updated").format(
-                            user_id=telegram_user.id
-                        )
-                    )
-
-                return existing_user
-
-            # Создаем нового пользователя
-            new_user_data = UserCreate(
-                telegram_id=telegram_user.id,
-                username=telegram_user.username,
-                first_name=telegram_user.first_name,
-                last_name=telegram_user.last_name,
-                language_code=telegram_user.language_code or "ru",
-            )
-
-            new_user = User(
-                telegram_id=new_user_data.telegram_id,
-                username=new_user_data.username,
-                first_name=new_user_data.first_name,
-                last_name=new_user_data.last_name,
-                language_code=new_user_data.language_code,
-                last_activity_at=datetime.now(UTC),
-            )
-
-            session.add(new_user)
-            await session.commit()
-            await session.refresh(new_user)
-
-            logger.info(
-                get_log_text("start.start_user_created").format(
-                    user_id=telegram_user.id, username=telegram_user.username
-                )
-            )
-            return new_user
-
-        except IntegrityError as e:
-            await session.rollback()
-            logger.error(
-                get_log_text("start.start_user_creation_error").format(
-                    user_id=telegram_user.id, error=e
-                )
-            )
-            return None
-
-        except Exception as e:
-            await session.rollback()
-            logger.error(
-                get_log_text("start.start_unexpected_error").format(
-                    user_id=telegram_user.id, error=e
-                )
-            )
-            return None
-
-
 def format_welcome_message(user: User, config: AppConfig) -> str:
     """
     Формирование приветственного сообщения для пользователя.
@@ -178,15 +77,16 @@ def format_welcome_message(user: User, config: AppConfig) -> str:
 
 
 @start_router.message(CommandStart())
-async def handle_start_command(message: Message) -> None:
+async def handle_start_command(message: Message, user: User) -> None:
     """
     Обработчик команды /start.
 
-    Регистрирует нового пользователя или обновляет информацию существующего,
-    отправляет приветственное сообщение с информацией о боте.
+    Отправляет приветственное сообщение с информацией о боте.
+    Пользователь уже аутентифицирован через middleware.
 
     Args:
         message: Объект сообщения от пользователя
+        user: Объект пользователя из middleware
     """
     try:
         # Получаем конфигурацию
@@ -194,21 +94,53 @@ async def handle_start_command(message: Message) -> None:
 
         # Логируем попытку старта
         logger.info(
-            get_log_text("start.start_command_received").format(
-                user_id=message.from_user.id
-            )
+            get_log_text("start.start_command_received").format(user_id=user.id)
         )
 
-        # Получаем или создаем пользователя
-        user = await get_or_create_user(message.from_user)
-        if not user:
-            logger.error(
-                get_log_text("start.start_command_error").format(
-                    user_id=message.from_user.id
+        # Обновляем информацию о пользователе если что-то изменилось
+        # ВАЖНО: Не обновляем language_code, чтобы сохранить выбор пользователя
+        user_updated = False
+
+        if (
+            message.from_user
+            and hasattr(message.from_user, "username")
+            and user.username != message.from_user.username
+        ):
+            user.username = message.from_user.username
+            user_updated = True
+
+        if (
+            message.from_user
+            and hasattr(message.from_user, "first_name")
+            and user.first_name != message.from_user.first_name
+        ):
+            user.first_name = message.from_user.first_name
+            user_updated = True
+
+        if (
+            message.from_user
+            and hasattr(message.from_user, "last_name")
+            and user.last_name != message.from_user.last_name
+        ):
+            user.last_name = message.from_user.last_name
+            user_updated = True
+
+        # Обновляем время последней активности
+        user.last_activity_at = datetime.now(UTC)
+        user.updated_at = datetime.now(UTC)
+
+        # Сбрасываем дневной счетчик если прошел день
+        user.reset_daily_count_if_needed()
+
+        if user_updated:
+            async with get_session() as session:
+                session.add(user)
+                await session.commit()
+                logger.info(
+                    get_log_text("start.start_user_info_updated").format(
+                        user_id=user.id
+                    )
                 )
-            )
-            await message.answer(get_text("errors.user_registration_error"))
-            return
 
         # Формируем приветственное сообщение
         welcome_message = format_welcome_message(user, config)
@@ -222,7 +154,7 @@ async def handle_start_command(message: Message) -> None:
 
         logger.info(
             get_log_text("start.start_command_processed").format(
-                user_id=message.from_user.id,
+                user_id=user.id,
                 message_id=sent_message.message_id,
             )
         )
@@ -230,11 +162,13 @@ async def handle_start_command(message: Message) -> None:
     except Exception as e:
         logger.error(
             get_log_text("start.start_unexpected_error").format(
-                user_id=message.from_user.id, error=e
+                user_id=user.id, error=e
             )
         )
         try:
-            await message.answer(get_text("errors.general_error"))
+            await message.answer(
+                get_text("errors.general_error", user.language_code or "ru")
+            )
         except Exception as send_error:
             logger.error(
                 get_log_text("start.start_error_sending_message").format(

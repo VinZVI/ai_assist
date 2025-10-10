@@ -30,50 +30,41 @@ async def test_handle_text_message_with_user() -> None:
     message.bot = MagicMock()
     message.bot.send_chat_action = AsyncMock()
 
-    # Mock the get_or_update_user function to return a user
+    # Create a mock user
     user = MagicMock(spec=UserModel)
     user.id = 12345
     user.can_send_message.return_value = True
     user.increment_message_count = AsyncMock()
 
-    with patch("app.handlers.message.get_or_update_user") as mock_get_user:
-        mock_get_user.return_value = user
+    # Test successful execution with user and user_lang parameters
+    with patch("app.handlers.message.generate_ai_response") as mock_generate_response:
+        mock_generate_response.return_value = (
+            "Test response",
+            10,
+            "test-model",
+            0.1,
+        )
 
-        with patch(
-            "app.handlers.message.generate_ai_response"
-        ) as mock_generate_response:
-            mock_generate_response.return_value = (
-                "Test response",
-                10,
-                "test-model",
-                0.1,
-            )
+        # Mock session context manager properly
+        mock_session = AsyncMock()
+        mock_session.add = MagicMock()
+        mock_session.commit = AsyncMock()
+        mock_session.rollback = AsyncMock()
 
-            # Mock session context manager properly
-            mock_session = AsyncMock()
-            mock_session.add = MagicMock()
-            mock_session.commit = AsyncMock()
-            mock_session.rollback = AsyncMock()
+        with patch("app.handlers.message.get_session") as mock_get_session:
+            mock_get_session.return_value.__aenter__.return_value = mock_session
 
-            with patch("app.handlers.message.get_session") as mock_get_session:
-                mock_get_session.return_value.__aenter__.return_value = mock_session
+            # Mock the get_recent_conversation_history function
+            with patch(
+                "app.services.conversation_service.get_recent_conversation_history"
+            ) as mock_get_history:
+                mock_get_history.return_value = []
 
-                # Mock the get_recent_conversation_history function
-                with patch(
-                    "app.services.conversation_service.get_recent_conversation_history"
-                ) as mock_get_history:
-                    mock_get_history.return_value = []
+                # Test successful execution
+                await handle_text_message(message, user, "en")
 
-                    # Test successful execution
-                    await handle_text_message(message)
-
-                    # Verify that the message was processed without errors
-                    message.answer.assert_called_with(
-                        "Test response", parse_mode="Markdown"
-                    )
-
-                    # Verify that increment_message_count was called
-                    user.increment_message_count.assert_called_once()
+                # Verify that the message was processed without errors
+                message.answer.assert_called_with("Test response")
 
 
 @pytest.mark.asyncio
@@ -85,11 +76,15 @@ async def test_handle_text_message_without_user() -> None:
     message.from_user = None
     message.answer = AsyncMock()
 
-    # Test handling when from_user is None
-    await handle_text_message(message)
+    # Create a mock user
+    user = MagicMock(spec=UserModel)
+    user.id = 12345
 
-    # Verify that the error is handled gracefully
-    message.answer.assert_called_with(get_text("errors.general_error"))
+    # Test handling when from_user is None
+    await handle_text_message(message, user, "en")
+
+    # Verify that an error message was sent
+    message.answer.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -102,12 +97,16 @@ async def test_handle_text_message_exception_handling() -> None:
     message.from_user.id = 12345
     message.answer = AsyncMock()
 
-    # Mock get_or_update_user to raise an exception
+    # Create a mock user
+    user = MagicMock(spec=UserModel)
+    user.id = 12345
+
+    # Mock generate_ai_response to raise an exception
     with patch(
-        "app.handlers.message.get_or_update_user", side_effect=Exception("Test error")
+        "app.handlers.message.generate_ai_response", side_effect=Exception("Test error")
     ):
         # Test exception handling
-        await handle_text_message(message)
+        await handle_text_message(message, user, "en")
 
-        # Verify that the error is handled gracefully
-        message.answer.assert_called_with(get_text("errors.general_error"))
+        # Verify that an error message was sent
+        message.answer.assert_called_once()

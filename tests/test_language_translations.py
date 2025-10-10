@@ -10,7 +10,7 @@ from aiogram.types import Message, User
 from app.handlers.message import handle_text_message, message_router
 from app.handlers.start import handle_start_command, start_router
 from app.keyboards.inline import create_main_menu_keyboard
-from app.models import User as UserModel
+from app.models.user import User as UserModel
 
 
 @pytest.mark.asyncio
@@ -50,45 +50,26 @@ async def test_start_command_uses_user_language() -> None:
         language_code="ru",  # But user previously selected Russian
     )
 
-    # Mock database session for get_or_create_user
+    # Mock config
+    mock_config = MagicMock()
+    mock_config.user_limits.free_messages_limit = 10
+    mock_config.user_limits.premium_price = 100
+    mock_config.user_limits.premium_duration_days = 30
+
+    # Mock the async context manager for session
+    session_context = AsyncMock()
+    session_context.__aenter__ = AsyncMock(return_value=session_context)
+    session_context.__aexit__ = AsyncMock()
+
     with (
         patch("app.handlers.start.get_session") as mock_get_session,
-        patch("app.config.get_config") as mock_get_config,
+        patch("app.handlers.start.get_config") as mock_get_config,
     ):
-        # Mock config
-        mock_config = MagicMock()
-        mock_config.user_limits.free_messages_limit = 10
-        mock_config.user_limits.premium_price = 100
-        mock_config.user_limits.premium_duration_days = 30
         mock_get_config.return_value = mock_config
-
-        # Mock the async context manager
-        session_context = AsyncMock()
-        session_context.__aenter__ = AsyncMock(return_value=session_context)
-        session_context.__aexit__ = AsyncMock()
-
-        # Mock the session methods
-        mock_session = session_context.__aenter__.return_value
-        mock_session.execute = AsyncMock()
-        mock_session.execute.return_value.scalar_one_or_none = MagicMock(
-            return_value=db_user
-        )
-        mock_session.commit = AsyncMock()
-
         mock_get_session.return_value = session_context
 
-        # Get the handler
-        handlers = start_router.message.handlers
-        start_handler = None
-        for handler in handlers:
-            if handler.callback.__name__ == "handle_start_command":
-                start_handler = handler.callback
-                break
-
-        assert start_handler is not None, "handle_start_command handler not found"
-
-        # Test the handler
-        await start_handler(message)
+        # Test the handler with the user parameter (as provided by middleware)
+        await handle_start_command(message, db_user)
 
         # Verify that the message was sent with Russian language content and keyboard
         call_args = message.answer.call_args
@@ -117,6 +98,8 @@ async def test_message_handler_uses_user_language() -> None:
     message.text = "Test message"
     message.chat = MagicMock()
     message.chat.id = 12345
+    message.bot = MagicMock()
+    message.bot.send_chat_action = AsyncMock()
 
     # Create a mock database user with Russian language preference
     db_user = UserModel(
@@ -127,31 +110,24 @@ async def test_message_handler_uses_user_language() -> None:
         language_code="ru",  # User prefers Russian
     )
 
-    # Mock services to return user with Russian preference
-    with patch("app.services.user_service.get_or_update_user") as mock_get_user:
-        mock_get_user.return_value = db_user
+    # Mock config
+    mock_config = MagicMock()
+    mock_config.conversation.enable_saving = False
 
-        # Mock AI manager to raise an exception to test error messages
-        with patch("app.handlers.message.generate_ai_response") as mock_generate:
-            mock_generate.side_effect = Exception("Test error")
+    with (
+        patch("app.handlers.message.generate_ai_response") as mock_generate,
+        patch("app.handlers.message.get_config") as mock_get_config,
+    ):
+        mock_generate.side_effect = Exception("Test error")
+        mock_get_config.return_value = mock_config
 
-            # Get the handler
-            handlers = message_router.message.handlers
-            msg_handler = None
-            for handler in handlers:
-                if handler.callback.__name__ == "handle_text_message":
-                    msg_handler = handler.callback
-                    break
+        # Test the handler with user and user_lang parameters (as provided by middleware)
+        await handle_text_message(message, db_user, "ru")
 
-            assert msg_handler is not None, "handle_text_message handler not found"
+        # Verify that the error message was sent in Russian (user's preference)
+        call_args = message.answer.call_args
+        assert call_args is not None
 
-            # Test the handler
-            await msg_handler(message)
-
-            # Verify that the error message was sent in Russian (user's preference)
-            call_args = message.answer.call_args
-            assert call_args is not None
-
-            # Check that the error message is in Russian
-            error_message = call_args[0][0]
-            assert "Ошибка" in error_message or "ошибка" in error_message.lower()
+        # Check that the error message is in Russian
+        error_message = call_args[0][0]
+        assert "Ошибка" in error_message or "ошибка" in error_message.lower()
