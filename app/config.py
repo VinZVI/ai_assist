@@ -258,6 +258,7 @@ class AppConfig(BaseSettings):
     user_limits: UserLimitsConfig = Field(default_factory=UserLimitsConfig)
     cache: CacheConfig = Field(default_factory=CacheConfig)
     conversation: ConversationConfig = Field(default_factory=ConversationConfig)
+    admin: AdminConfig = Field(default_factory=AdminConfig)
 
     # Дополнительные настройки
     debug: bool = Field(default=False, validation_alias="DEBUG")

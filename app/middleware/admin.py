@@ -42,7 +42,7 @@ class AdminMiddleware(BaseAIMiddleware):
             Результат выполнения следующего обработчика
         """
         user_id = None
-
+        
         # Проверяем, является ли событие сообщением
         if isinstance(event, Message) and event.from_user:
             user_id = event.from_user.id
