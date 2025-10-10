@@ -1,9 +1,3 @@
-"""
-@file: en.py
-@description: English lexicon for log messages
-@created: 2025-10-07
-"""
-
 # English lexicon for log messages
 LOG_LEXICON_EN = {
     "main": {
@@ -190,5 +184,37 @@ LOG_LEXICON_EN = {
         "language_command_error": "💥 Error processing /language for user ID:{user_id}: {error}",
         "language_changed_success": "✅ User ID:{user_id} language successfully changed to {language}",
         "language_selection_error": "💥 Error selecting language for user ID:{user_id}: {error}",
+    },
+    "middleware": {
+        "auth_middleware_initialized": "🛡️ AuthMiddleware initialized",
+        "rate_limit_middleware_initialized": "⏳ RateLimitMiddleware initialized with limit {limit} requests/minute",
+        "logging_middleware_initialized": "📝 LoggingMiddleware initialized",
+        "metrics_middleware_initialized": "📊 MetricsMiddleware initialized",
+        "user_language_middleware_initialized": "🌍 UserLanguageMiddleware initialized",
+        "conversation_middleware_initialized": "💾 ConversationMiddleware initialized",
+        "user_counter_middleware_initialized": "🔢 UserCounterMiddleware initialized",
+        "user_authenticated": "✅ User ID:{user_id} (@{username}) authenticated",
+        "user_auth_failed": "❌ Failed to authenticate Telegram user ID:{telegram_id}",
+        "user_auth_error": "💥 Error authenticating Telegram user ID:{telegram_id}: {error}",
+        "user_language_set": "🌐 Set user ID:{user_id} language to {language}",
+        "conversation_saved": "💾 Conversation saved for user ID:{user_id}",
+        "conversation_save_error": "💥 Error saving conversation for user ID:{user_id}",
+        "user_message_count_updated": "📈 Updated message count for user ID:{user_id}",
+        "user_message_count_error": "💥 Error updating message count for user ID:{user_id}: {error}",
+        "rate_limit_exceeded": "🚫 User ID:{user_id} exceeded request limit ({requests_count}/{limit})",
+        "rate_limit_message_error": "💥 Error sending rate limit message: {error}",
+        "rate_limit_callback_error": "💥 Error sending rate limit callback response: {error}",
+        "message_received": "📥 Received message from user ID:{user_id} (@{username}): {text_preview}",
+        "callback_received": "📥 Received callback from user ID:{user_id} (@{username}): {callback_data}",
+        "other_event_received": "📥 Received other event from user ID:{user_id} (@{username})",
+        "event_processed": "✅ Event {event_type} from user ID:{user_id} processed",
+        "event_processing_error": "💥 Error processing event {event_type} from user ID:{user_id}: {error}",
+        "metrics_collected": "📈 Collected metrics: total {total_requests}, messages {message_requests}, callbacks {callback_requests}",
+    },
+    "admin": {
+        "unauthorized_access": "🔒 Unauthorized access by user ID:{user_id} to command {command}",
+        "health_check_requested": "🏥 Admin ID:{admin_id} requested health check",
+        "health_check_completed": "✅ Extended health check completed",
+        "health_check_error": "💥 Error executing health check for admin ID:{admin_id}: {error}",
     },
 }

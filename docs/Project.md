@@ -23,7 +23,7 @@ Language: Python 3.11+
 Database: PostgreSQL 15+ (основная БД)
 ORM: SQLAlchemy 2.0+ с async поддержкой
 Migration Tool: Alembic
-HTTP Client: httpx (для DeepSeek API)
+HTTP Client: httpx (для OpenRouter API)
 Environment: python-dotenv
 Validation: Pydantic v2.11.7
 Logging: Loguru
@@ -35,7 +35,7 @@ Dependency Management: uv
 **Слой представления:**
 - Telegram Bot API Handler (aiogram dispatcher)
 - Webhook/Polling механизм обработки обновлений
-- Middleware для аутентификации и rate limiting
+- Middleware для аутентификации, rate limiting, логирования и метрик
 
 **Бизнес-логика:**
 - Conversation Manager (управление диалогами)
@@ -47,7 +47,50 @@ Dependency Management: uv
 - Database Abstraction Layer (SQLAlchemy ORM)
 - Repository Pattern для работы с данными
 
-### 2.3 Структура проекта
+### 2.3 Система Middleware
+
+Для централизации обработки запросов и уменьшения дублирования кода в обработчиках реализована система Middleware. Middleware компоненты обрабатывают запросы до и после их обработки основными обработчиками.
+
+**Реализованные Middleware компоненты:**
+
+1. **AuthMiddleware** - автоматическая аутентификация пользователей
+   - Получает или создает пользователя в базе данных
+   - Добавляет объект пользователя в контекст обработки
+
+2. **UserLanguageMiddleware** - управление языком пользователя
+   - Определяет язык пользователя на основе его настроек
+   - Добавляет язык пользователя в контекст обработки
+
+3. **RateLimitMiddleware** - ограничение частоты запросов
+   - Ограничивает количество запросов от пользователя в минуту
+   - Отправляет уведомление при превышении лимита
+
+4. **LoggingMiddleware** - централизованное логирование
+   - Логирует все входящие события
+   - Собирает статистику по типам событий
+
+5. **ConversationMiddleware** - сохранение диалогов
+   - Предоставляет функции для сохранения диалогов в базе данных
+   - Автоматически сохраняет диалоги при наличии соответствующих данных в контексте
+
+6. **UserCounterMiddleware** - подсчет сообщений пользователей
+   - Предоставляет функции для обновления счетчиков сообщений
+   - Автоматически обновляет счетчики при наличии соответствующих данных в контексте
+
+7. **MetricsMiddleware** - сбор метрик использования
+   - Собирает метрики по использованию бота
+   - Предоставляет статистику по запросам
+
+**Порядок выполнения Middleware:**
+1. LoggingMiddleware (первым для записи всех событий)
+2. AuthMiddleware (для получения пользователя)
+3. UserLanguageMiddleware (для определения языка)
+4. RateLimitMiddleware (после аутентификации)
+5. ConversationMiddleware (для сохранения диалогов)
+6. UserCounterMiddleware (для подсчета сообщений)
+7. MetricsMiddleware (последним для сбора полной информации)
+
+### 2.4 Структура проекта
 
 ```bash
 ai_assist/
@@ -70,13 +113,17 @@ ai_assist/
 │   │   ├── premium.py        # /premium команда
 │   │   ├── message.py        # Обработка сообщений
 │   │   ├── callbacks.py      # Обработка callback-запросов
-│   │   └── health.py         # Healthcheck endpoint
+│   │   ├── health.py         # Healthcheck endpoint
+│   │   └── admin.py          # Админские команды
 │   ├── middleware/            # Middleware компоненты
 │   │   ├── __init__.py
 │   │   ├── base.py           # Базовый класс middleware
 │   │   ├── auth.py           # Аутентификация пользователей
 │   │   ├── rate_limit.py     # Ограничение частоты запросов
 │   │   ├── logging.py        # Централизованное логирование
+│   │   ├── user_language.py  # Управление языком пользователя
+│   │   ├── conversation.py   # Сохранение диалогов
+│   │   ├── user_counter.py   # Подсчет сообщений пользователей
 │   │   └── metrics.py        # Сбор метрик использования
 │   ├── services/              # Бизнес-логика
 │   │   ├── __init__.py
@@ -197,45 +244,3 @@ CACHE_TTL=3600
 - `APIRateLimitError` - превышение лимитов
 - `APIAuthenticationError` - ошибки аутентификации
 - `APIQuotaExceededError` - превышение квоты/недостаток средств
-
-## 4. Система Middleware
-
-### 4.1 Общая архитектура
-
-Система Middleware реализована для централизованной обработки запросов от пользователей Telegram. Все middleware компоненты наследуются от базового класса [BaseAIMiddleware](file:///c:/Users/User/PycharmProjects/ai_assist/app/middleware/base.py#L13-L46) и регистрируются в [main.py](file:///c:/Users/User/PycharmProjects/ai_assist/main.py).
-
-**Порядок регистрации middleware:**
-1. [LoggingMiddleware](file:///c:/Users/User/PycharmProjects/ai_assist/app/middleware/logging.py#L19-L132) - логирование всех событий
-2. [AuthMiddleware](file:///c:/Users/User/PycharmProjects/ai_assist/app/middleware/auth.py#L15-L111) - аутентификация пользователей
-3. [RateLimitMiddleware](file:///c:/Users/User/PycharmProjects/ai_assist/app/middleware/rate_limit.py#L17-L142) - ограничение частоты запросов
-4. [MetricsMiddleware](file:///c:/Users/User/PycharmProjects/ai_assist/app/middleware/metrics.py#L19-L139) - сбор метрик использования
-
-### 4.2 Компоненты Middleware
-
-#### AuthMiddleware
-- Автоматическое получение или создание пользователя в базе данных
-- Поддержка различных типов событий (сообщения, callback запросы)
-- Передача объекта пользователя в контексте обработки
-
-#### RateLimitMiddleware
-- Ограничение частоты запросов (по умолчанию 10 запросов в минуту)
-- Увеличенные лимиты для премиум пользователей (2x)
-- Поддержка различных типов событий с соответствующими уведомлениями
-
-#### LoggingMiddleware
-- Централизованное логирование всех событий
-- Сбор информации о пользователях, сообщениях и callback запросах
-- Обработка ошибок логирования
-
-#### MetricsMiddleware
-- Сбор метрик использования (общее количество запросов, по типам)
-- Отслеживание активности пользователей
-- Статистика по времени запросов
-
-### 4.3 Преимущества системы Middleware
-
-- **Разделение ответственности**: Каждый компонент отвечает за одну задачу
-- **Переиспользование кода**: Функциональность не дублируется в обработчиках
-- **Централизованное управление**: Все аспекты обработки запросов находятся в одном месте
-- **Легкость тестирования**: Каждый компонент можно тестировать отдельно
-- **Расширяемость**: Легко добавлять новые middleware компоненты

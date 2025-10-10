@@ -1,9 +1,3 @@
-"""
-@file: ru.py
-@description: Русский лексикон для лог-сообщений
-@created: 2025-10-07
-"""
-
 # Русский лексикон для лог-сообщений
 LOG_LEXICON_RU = {
     "main": {
@@ -32,6 +26,7 @@ LOG_LEXICON_RU = {
         "bot_program_finished": "🏁 Программа завершена",
         "bot_db_initializing": "📚 Инициализация базы данных...",
         "bot_registered_routers": "✅ Зарегистрировано {count} роутеров",
+        "bot_registered_middleware": "✅ Зарегистрирован middleware",
         "bot_webhook_started": "🌐 Запуск в режиме webhook: {url}",
         "bot_webhook_set": "✅ Webhook настроен",
         "bot_polling_not_started": "Polling was not started, skipping stop_polling",
@@ -143,7 +138,7 @@ LOG_LEXICON_RU = {
     },
     "ai_manager": {
         "ai_manager_initializing": "🧠 Инициализация AI менеджера...",
-        "ai_manager_initialized": "✅ AI менеджер инициализирован",
+        "ai_manager_initialized": "✅ AI менеджера инициализирован",
         "ai_manager_registering_provider": "🔌 Регистрация провайдера {provider}",
         "ai_manager_provider_registered": "✅ Провайдер {provider} зарегистрирован",
         "ai_manager_selecting_provider": "🔄 Выбор провайдера для запроса...",
@@ -190,5 +185,37 @@ LOG_LEXICON_RU = {
         "language_command_error": "💥 Ошибка обработки /language для пользователя ID:{user_id}: {error}",
         "language_changed_success": "✅ Язык пользователя ID:{user_id} успешно изменен на {language}",
         "language_selection_error": "💥 Ошибка выбора языка для пользователя ID:{user_id}: {error}",
+    },
+    "middleware": {
+        "auth_middleware_initialized": "🛡️ AuthMiddleware инициализирован",
+        "rate_limit_middleware_initialized": "⏳ RateLimitMiddleware инициализирован с лимитом {limit} запросов/минуту",
+        "logging_middleware_initialized": "📝 LoggingMiddleware инициализирован",
+        "metrics_middleware_initialized": "📊 MetricsMiddleware инициализирован",
+        "user_language_middleware_initialized": "🌍 UserLanguageMiddleware инициализирован",
+        "conversation_middleware_initialized": "💾 ConversationMiddleware инициализирован",
+        "user_counter_middleware_initialized": "🔢 UserCounterMiddleware инициализирован",
+        "user_authenticated": "✅ Пользователь ID:{user_id} (@{username}) аутентифицирован",
+        "user_auth_failed": "❌ Не удалось аутентифицировать пользователя Telegram ID:{telegram_id}",
+        "user_auth_error": "💥 Ошибка аутентификации пользователя Telegram ID:{telegram_id}: {error}",
+        "user_language_set": "🌐 Установлен язык пользователя ID:{user_id} на {language}",
+        "conversation_saved": "💾 Диалог сохранен для пользователя ID:{user_id}",
+        "conversation_save_error": "💥 Ошибка сохранения диалога для пользователя ID:{user_id}",
+        "user_message_count_updated": "📈 Обновлен счетчик сообщений для пользователя ID:{user_id}",
+        "user_message_count_error": "💥 Ошибка обновления счетчика сообщений для пользователя ID:{user_id}: {error}",
+        "rate_limit_exceeded": "🚫 Пользователь ID:{user_id} превысил лимит запросов ({requests_count}/{limit})",
+        "rate_limit_message_error": "💥 Ошибка отправки сообщения о превышении лимита: {error}",
+        "rate_limit_callback_error": "💥 Ошибка отправки callback ответа о превышении лимита: {error}",
+        "message_received": "📥 Получено сообщение от пользователя ID:{user_id} (@{username}): {text_preview}",
+        "callback_received": "📥 Получен callback от пользователя ID:{user_id} (@{username}): {callback_data}",
+        "other_event_received": "📥 Получено другое событие от пользователя ID:{user_id} (@{username})",
+        "event_processed": "✅ Событие {event_type} от пользователя ID:{user_id} обработано",
+        "event_processing_error": "💥 Ошибка обработки события {event_type} от пользователя ID:{user_id}: {error}",
+        "metrics_collected": "📈 Собраны метрики: всего {total_requests}, сообщений {message_requests}, callback {callback_requests}",
+    },
+    "admin": {
+        "unauthorized_access": "🔒 Несанкционированный доступ пользователя ID:{user_id} к команде {command}",
+        "health_check_requested": "🏥 Админ ID:{admin_id} запросил health check",
+        "health_check_completed": "✅ Расширенный health check завершен",
+        "health_check_error": "💥 Ошибка выполнения health check для админа ID:{admin_id}: {error}",
     },
 }
