@@ -20,36 +20,29 @@ admin_router = Router(name="admin")
 
 
 @admin_router.message(Command("health"))
-async def admin_health_check(message: Message) -> None:
+async def admin_health_check(message: Message, is_admin: bool = False) -> None:
     """
     Админская команда /health с расширенной информацией.
 
     Args:
         message: Объект сообщения от пользователя
+        is_admin: Флаг, указывающий, является ли пользователь администратором (из middleware)
     """
+    # Проверяем, что пользователь является администратором (через middleware)
+    if not is_admin:
+        logger.warning(
+            get_log_text("admin.unauthorized_access").format(
+                user_id=message.from_user.id if message.from_user else "unknown",
+                command="/health",
+            )
+        )
+        # Отправляем стандартный ответ для неавторизованных пользователей
+        await message.answer(
+            "❌ Доступ запрещен. Команда доступна только администраторам."
+        )
+        return
+
     try:
-        # Проверяем, что у сообщения есть информация о пользователе
-        if not message.from_user:
-            logger.warning(
-                get_log_text("admin.unauthorized_access").format(
-                    user_id="unknown", command="/health"
-                )
-            )
-            return
-
-        # Проверяем, что пользователь является администратором
-        config = get_config()
-        # Получаем админские ID из конфигурации
-        admin_ids = config.telegram.get_admin_ids()
-
-        if message.from_user.id not in admin_ids:
-            logger.warning(
-                get_log_text("admin.unauthorized_access").format(
-                    user_id=message.from_user.id, command="/health"
-                )
-            )
-            return
-
         # Логируем попытку админского health check
         logger.info(
             get_log_text("admin.health_check_requested").format(
@@ -57,7 +50,8 @@ async def admin_health_check(message: Message) -> None:
             )
         )
 
-        # Проверяем конфигурацию
+        # Получаем конфигурацию
+        config = get_config()
         config_status = "healthy" if config else "unhealthy"
 
         # Проверяем подключение к базе данных

@@ -61,8 +61,8 @@ async def test_admin_health_check_authorized() -> None:
 
         assert admin_health_handler is not None, "Admin health check handler not found"
 
-        # Тестируем обработчик
-        await admin_health_handler(message)
+        # Тестируем обработчик с is_admin=True (как если бы middleware установил это)
+        await admin_health_handler(message, is_admin=True)
 
         # Проверяем, что ответ был отправлен
         message.answer.assert_called_once()
@@ -82,33 +82,23 @@ async def test_admin_health_check_unauthorized() -> None:
     )
     message.answer = AsyncMock()
 
-    # Мокаем конфигурацию и админские ID
-    with patch("app.handlers.admin.get_config") as mock_get_config:
-        # Настраиваем мок конфигурации
-        mock_telegram_config = MagicMock()
-        mock_telegram_config.get_admin_ids.return_value = [
-            123456789
-        ]  # Другой ID админа
+    # Получаем обработчик
+    handlers = admin_router.message.handlers
+    admin_health_handler = None
+    for handler in handlers:
+        if handler.callback.__name__ == "admin_health_check":
+            admin_health_handler = handler.callback
+            break
 
-        mock_config = MagicMock()
-        mock_config.telegram = mock_telegram_config
-        mock_get_config.return_value = mock_config
+    assert admin_health_handler is not None, "Admin health check handler not found"
 
-        # Получаем обработчик
-        handlers = admin_router.message.handlers
-        admin_health_handler = None
-        for handler in handlers:
-            if handler.callback.__name__ == "admin_health_check":
-                admin_health_handler = handler.callback
-                break
+    # Тестируем обработчик с is_admin=False (как если бы middleware установил это)
+    await admin_health_handler(message, is_admin=False)
 
-        assert admin_health_handler is not None, "Admin health check handler not found"
-
-        # Тестируем обработчик
-        await admin_health_handler(message)
-
-        # Проверяем, что ответ не был отправлен неавторизованному пользователю
-        message.answer.assert_not_called()
+    # Проверяем, что был отправлен ответ о запрете доступа
+    message.answer.assert_called_once_with(
+        "❌ Доступ запрещен. Команда доступна только администраторам."
+    )
 
 
 @pytest.mark.asyncio
@@ -129,8 +119,10 @@ async def test_admin_health_check_no_user() -> None:
 
     assert admin_health_handler is not None, "Admin health check handler not found"
 
-    # Тестируем обработчик
-    await admin_health_handler(message)
+    # Тестируем обработчик с is_admin=False (как если бы middleware установил это)
+    await admin_health_handler(message, is_admin=False)
 
-    # Проверяем, что ответ не был отправлен
-    message.answer.assert_not_called()
+    # Проверяем, что был отправлен ответ о запрете доступа
+    message.answer.assert_called_once_with(
+        "❌ Доступ запрещен. Команда доступна только администраторам."
+    )

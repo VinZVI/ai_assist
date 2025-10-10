@@ -81,14 +81,19 @@ Dependency Management: uv
    - Собирает метрики по использованию бота
    - Предоставляет статистику по запросам
 
+8. **AdminMiddleware** - проверка прав администратора
+   - Проверяет, является ли пользователь администратором
+   - Добавляет информацию о правах администратора в контекст обработки
+
 **Порядок выполнения Middleware:**
 1. LoggingMiddleware (первым для записи всех событий)
 2. AuthMiddleware (для получения пользователя)
-3. UserLanguageMiddleware (для определения языка)
-4. RateLimitMiddleware (после аутентификации)
-5. ConversationMiddleware (для сохранения диалогов)
-6. UserCounterMiddleware (для подсчета сообщений)
-7. MetricsMiddleware (последним для сбора полной информации)
+3. AdminMiddleware (для проверки прав администратора)
+4. UserLanguageMiddleware (для определения языка)
+5. RateLimitMiddleware (после аутентификации)
+6. ConversationMiddleware (для сохранения диалогов)
+7. UserCounterMiddleware (для подсчета сообщений)
+8. MetricsMiddleware (последним для сбора полной информации)
 
 ### 2.4 Структура проекта
 

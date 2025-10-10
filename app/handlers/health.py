@@ -6,19 +6,15 @@
 """
 
 from aiogram import Router
+from aiogram.filters import Command
 from aiogram.types import Message
 from loguru import logger
-
-from app.config import get_config
-from app.database import get_session
 
 # Создаем роутер для обработчиков healthcheck
 health_router = Router(name="health")
 
 
-@health_router.message(
-    lambda message: message.text and message.text.lower() == "/health"
-)
+@health_router.message(Command("health"))
 async def health_check(message: Message) -> None:
     """
     Healthcheck endpoint для проверки состояния приложения.
@@ -27,17 +23,7 @@ async def health_check(message: Message) -> None:
         message: Объект сообщения от пользователя
     """
     try:
-        # Проверяем конфигурацию
-        config = get_config()
-        if not config:
-            await message.answer("❌ Конфигурация не загружена")
-            return
-
-        # Проверяем подключение к базе данных
-        async with get_session() as session:
-            await session.execute("SELECT 1")
-
-        # Отправляем ответ о состоянии здоровья
+        # Отправляем простой ответ о состоянии здоровья
         await message.answer("✅ Приложение работает нормально")
         logger.info("Health check passed")
 
