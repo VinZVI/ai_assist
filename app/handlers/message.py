@@ -31,7 +31,6 @@ from app.services.conversation_service import (
     get_recent_conversation_history,
     save_conversation,
 )
-from app.services.user_service import get_or_update_user
 
 # Создаем роутер для обработчиков сообщений
 message_router = Router()
@@ -153,13 +152,16 @@ async def generate_ai_response(
         )
 
 
-@message_router.message(F.text)
-async def handle_text_message(message: Message, user: User) -> None:
+@message_router.message(F.text & ~F.text.startswith("/"))
+async def handle_text_message(
+    message: Message,
+    user: User,
+    user_lang: str = "ru",
+    save_conversation: callable = None,
+    increment_user_message_count: callable = None,
+) -> None:
     """Обработка входящих текстовых сообщений от пользователей."""
     try:
-        # Устанавливаем язык пользователя
-        user_lang = user.language_code or "ru"
-
         # Проверяем длину сообщения
         if len(message.text) > 4000:
             await message.answer(get_text("errors.message_too_long", user_lang))
@@ -185,50 +187,22 @@ async def handle_text_message(message: Message, user: User) -> None:
         # Отправляем ответ пользователю без parse_mode чтобы избежать ошибок парсинга
         await message.answer(sanitized_response)
 
-        # Сохраняем диалог в базе данных если это разрешено в конфигурации
-        config = get_config()
-        if config.conversation.enable_saving:
-            async with get_session() as session:
-                success = await save_conversation(
-                    session=session,
-                    user_id=user.id,
-                    user_message=message.text,
-                    ai_response=ai_response,
-                    ai_model=model_name,
-                    tokens_used=tokens_used,
-                    response_time=response_time,
-                )
+        # Сохраняем диалог через middleware функцию если доступна
+        if save_conversation:
+            await save_conversation(
+                user_id=user.id,
+                user_message=message.text,
+                ai_response=ai_response,
+                ai_model=model_name,
+                tokens_used=tokens_used,
+                response_time=response_time,
+            )
 
-                if success:
-                    logger.info(
-                        get_log_text("message.message_conversation_saved").format(
-                            user_id=user.id
-                        )
-                    )
-                else:
-                    logger.error(
-                        get_log_text("message.message_conversation_save_error").format(
-                            user_id=user.id
-                        )
-                    )
+        # Обновляем счетчик сообщений через middleware функцию если доступна
+        if increment_user_message_count:
+            await increment_user_message_count(user.id)
 
-        # Обновляем счетчик сообщений пользователя если это разрешено в конфигурации
-        if config.conversation.enable_saving:
-            async with get_session() as session:
-                from sqlalchemy import update
-
-                stmt = (
-                    update(User)
-                    .where(User.id == user.id)
-                    .values(
-                        daily_message_count=User.daily_message_count + 1,
-                        last_message_date=datetime.now(UTC).date(),
-                    )
-                )
-                await session.execute(stmt)
-                await session.commit()
-
-        # Логируем обработку сообщения независимо от того, сохраняется ли диалог
+        # Логируем обработку сообщения
         logger.info(
             get_log_text("message.message_processed").format(
                 user_id=user.id,
@@ -244,12 +218,9 @@ async def handle_text_message(message: Message, user: User) -> None:
             get_log_text("message.message_error").format(user_id=user.id, error=str(e))
         )
 
-        # Определяем язык пользователя для сообщения об ошибке
-        error_lang = user.language_code if user.language_code else "ru"
-
         # Отправляем пользователю сообщение об ошибке
         try:
-            await message.answer(get_text("errors.general_error", error_lang))
+            await message.answer(get_text("errors.general_error", user_lang))
         except Exception:
             # Если не удалось отправить сообщение на языке пользователя, отправляем на русском
             await message.answer(get_text("errors.general_error", "ru"))
