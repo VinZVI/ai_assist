@@ -175,6 +175,15 @@ class UserLimitsConfig(BaseSettings):
     )
     premium_price: int = Field(default=100, validation_alias="PREMIUM_PRICE")
 
+    # New configuration parameters for anti-spam and rate limiting
+    spam_actions_per_minute: int = Field(
+        default=20, validation_alias="SPAM_ACTIONS_PER_MINUTE"
+    )
+    spam_restriction_duration: int = Field(
+        default=10, validation_alias="SPAM_RESTRICTION_DURATION"
+    )
+    daily_message_limit: int = Field(default=20, validation_alias="DAILY_MESSAGE_LIMIT")
+
     model_config = {"extra": "ignore", "env_file": ".env", "env_file_encoding": "utf-8"}
 
     @field_validator("free_messages_limit")

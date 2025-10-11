@@ -9,9 +9,9 @@ from .auth import AuthMiddleware
 from .base import BaseAIMiddleware
 from .conversation import ConversationMiddleware
 from .logging import LoggingMiddleware
+from .message_counter import MessageCountingMiddleware
 from .metrics import MetricsMiddleware
 from .rate_limit import RateLimitMiddleware
-from .user_counter import UserCounterMiddleware
 from .user_language import UserLanguageMiddleware
 
 __all__ = [
@@ -20,8 +20,8 @@ __all__ = [
     "BaseAIMiddleware",
     "ConversationMiddleware",
     "LoggingMiddleware",
+    "MessageCountingMiddleware",
     "MetricsMiddleware",
     "RateLimitMiddleware",
-    "UserCounterMiddleware",
     "UserLanguageMiddleware",
 ]

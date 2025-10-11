@@ -63,12 +63,13 @@ class AIAssistantBot:
         """Регистрация middleware."""
         from app.middleware import (
             AdminMiddleware,
+            AntiSpamMiddleware,
             AuthMiddleware,
             ConversationMiddleware,
             LoggingMiddleware,
+            MessageCountingMiddleware,
             MetricsMiddleware,
             RateLimitMiddleware,
-            UserCounterMiddleware,
             UserLanguageMiddleware,
         )
 
@@ -76,9 +77,10 @@ class AIAssistantBot:
         logging_middleware = LoggingMiddleware()
         auth_middleware = AuthMiddleware()
         user_language_middleware = UserLanguageMiddleware()
+        anti_spam_middleware = AntiSpamMiddleware()
         rate_limit_middleware = RateLimitMiddleware()
         conversation_middleware = ConversationMiddleware()
-        user_counter_middleware = UserCounterMiddleware()
+        message_counting_middleware = MessageCountingMiddleware()
         metrics_middleware = MetricsMiddleware()
         admin_middleware = AdminMiddleware()
 
@@ -99,19 +101,23 @@ class AIAssistantBot:
         dp.message.middleware(user_language_middleware)
         dp.callback_query.middleware(user_language_middleware)
 
-        # 5. Ограничение частоты запросов (после аутентификации)
+        # 5. Защита от спама (после аутентификации)
+        dp.message.middleware(anti_spam_middleware)
+        dp.callback_query.middleware(anti_spam_middleware)
+
+        # 6. Ограничение частоты запросов (после аутентификации)
         dp.message.middleware(rate_limit_middleware)
         dp.callback_query.middleware(rate_limit_middleware)
 
-        # 6. Сохранение диалогов
+        # 7. Сохранение диалогов
         dp.message.middleware(conversation_middleware)
         dp.callback_query.middleware(conversation_middleware)
 
-        # 7. Подсчет сообщений пользователей
-        dp.message.middleware(user_counter_middleware)
-        dp.callback_query.middleware(user_counter_middleware)
+        # 8. Подсчет сообщений пользователей (только для сообщений)
+        dp.message.middleware(message_counting_middleware)
+        # Не регистрируем для callback_query, так как они не считаются в лимиты
 
-        # 8. Сбор метрик (последним для сбора полной информации)
+        # 9. Сбор метрик (последним для сбора полной информации)
         dp.message.middleware(metrics_middleware)
         dp.callback_query.middleware(metrics_middleware)
 

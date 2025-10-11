@@ -65,6 +65,9 @@ LEXICON_EN = {
         "ai_general_error": "🤖 Problem generating response. Please try repeating your message.",
         "ai_unexpected_error": "💥 Unexpected error generating response. Please try again later.",
         "ai_all_providers_down": "📡 All AI providers are temporarily unavailable. Please try again later.",
+        # New error messages for anti-spam middleware
+        "spam_limit_exceeded": "⚠️ You have exceeded the action limit per minute. Please wait a moment before your next action.",
+        "user_temporarily_blocked": "⛔ You are temporarily blocked due to suspicious activity. Please try again later.",
     },
     "system_prompts": {
         "default_ai_prompt": "You are an empathetic AI assistant and companion. Your task is to provide emotional support and understanding. Respond kindly, supportively, and with understanding. Ask clarifying questions to better understand the user's feelings and needs. Avoid giving medical or legal advice. If the user is in a crisis situation, gently suggest seeking help from a specialist."

@@ -160,9 +160,12 @@ async def handle_text_message(
     user: User,
     user_lang: str = "ru",
     save_conversation_func: Callable[..., Awaitable[None]] | None = None,
-    increment_user_message_count: Callable[..., Awaitable[None]] | None = None,
 ) -> None:
     """Обработка входящих текстовых сообщений от пользователей."""
+    # Проверяем, что у сообщения есть текст
+    if not message.text:
+        return
+
     try:
         # Проверяем длину сообщения
         if len(message.text) > 4000:
@@ -170,10 +173,11 @@ async def handle_text_message(
             return
 
         # Отправляем статус "печатает"
-        await message.bot.send_chat_action(
-            chat_id=message.chat.id,
-            action="typing",
-        )
+        if message.bot:
+            await message.bot.send_chat_action(
+                chat_id=message.chat.id,
+                action="typing",
+            )
 
         # Генерируем ответ от AI
         (
@@ -199,10 +203,6 @@ async def handle_text_message(
                 tokens_used=tokens_used,
                 response_time=response_time,
             )
-
-        # Обновляем счетчик сообщений через middleware функцию если доступна
-        if increment_user_message_count:
-            await increment_user_message_count(user.id)
 
         # Логируем обработку сообщения
         logger.info(

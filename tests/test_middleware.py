@@ -110,6 +110,7 @@ class TestRateLimitMiddleware:
         event.from_user.id = 12345
         event.from_user.username = "testuser"
         event.answer = AsyncMock()
+        event.text = "Test message"
         return event
 
     @pytest.fixture
