@@ -1,129 +1,129 @@
-# Telegram Stars Payment Integration
+# Интеграция платежей Telegram Stars
 
-## Overview
+## Обзор
 
-This document describes the implementation of Telegram Stars payment integration for premium subscriptions in the AI-Companion bot. The integration allows users to purchase premium access using Telegram Stars, a native payment system in Telegram.
+В этом документе описана реализация интеграции платежей Telegram Stars для премиум-подписок в боте AI-Companion. Интеграция позволяет пользователям приобретать премиум-доступ с помощью Telegram Stars, нативной платежной системы Telegram.
 
-## Features
+## Особенности
 
-1. **Telegram Stars Integration**: Full integration with Telegram's native payment system
-2. **Premium Subscription Plans**: Multiple subscription options with different durations
-3. **Payment Tracking**: Database storage of all payment transactions
-4. **Premium Status Management**: Automatic activation and expiration of premium subscriptions
-5. **Multi-language Support**: Payment messages in both Russian and English
+1. **Интеграция с Telegram Stars**: Полная интеграция с нативной платежной системой Telegram
+2. **Планы премиум-подписки**: Несколько вариантов подписки с разными сроками действия
+3. **Отслеживание платежей**: Хранение информации о всех транзакциях в базе данных
+4. **Управление премиум-статусом**: Автоматическая активация и истечение срока действия премиум-подписок
+5. **Многоязычная поддержка**: Платежные сообщения на русском и английском языках
 
-## Architecture
+## Архитектура
 
-### Components
+### Компоненты
 
-1. **Payment Model**: Database model for storing payment information
-2. **Payment Service**: Business logic for handling payments and premium subscriptions
-3. **Callback Handlers**: Integration with Telegram's callback system for payment initiation
-4. **Message Handlers**: Processing of successful payments
-5. **Configuration**: Payment-related settings and parameters
+1. **Модель платежей**: Модель базы данных для хранения информации о платежах
+2. **Сервис платежей**: Бизнес-логика для обработки платежей и премиум-подписок
+3. **Обработчики обратных вызовов**: Интеграция с системой обратных вызовов Telegram для инициации платежей
+4. **Обработчики сообщений**: Обработка успешных платежей
+5. **Конфигурация**: Настройки и параметры, связанные с платежами
 
-### Data Flow
+### Поток данных
 
-1. User selects premium plan in the bot interface
-2. Bot creates an invoice using Telegram's `send_invoice` method
-3. User completes payment in Telegram
-4. Telegram sends a `SuccessfulPayment` event to the bot
-5. Bot processes the payment and activates premium subscription
-6. Payment information is stored in the database
+1. Пользователь выбирает план премиум в интерфейсе бота
+2. Бот создает счет с помощью метода `send_invoice` Telegram
+3. Пользователь завершает платеж в Telegram
+4. Telegram отправляет событие `SuccessfulPayment` боту
+5. Бот обрабатывает платеж и активирует премиум-подписку
+6. Информация о платеже сохраняется в базе данных
 
-## Implementation Details
+## Детали реализации
 
-### Payment Model
+### Модель платежей
 
-The `Payment` model stores information about all transactions:
+Модель `Payment` хранит информацию о всех транзакциях:
 
-- `id`: Internal payment ID
-- `user_id`: Reference to the user who made the payment
-- `amount`: Amount in Telegram Stars
-- `currency`: Currency code (XTR for Telegram Stars)
-- `payment_provider`: Payment provider (telegram_stars)
-- `payment_id`: Telegram's payment charge ID
-- `status`: Payment status (completed, refunded, failed)
-- `created_at`: Timestamp of payment creation
+- `id`: Внутренний ID платежа
+- `user_id`: Ссылка на пользователя, совершившего платеж
+- `amount`: Сумма в Telegram Stars
+- `currency`: Код валюты (XTR для Telegram Stars)
+- `payment_provider`: Платежный провайдер (telegram_stars)
+- `payment_id`: ID платежа от Telegram
+- `status`: Статус платежа (completed, refunded, failed)
+- `created_at`: Временная метка создания платежа
 
-### Payment Service
+### Сервис платежей
 
-The `TelegramStarsPaymentService` handles all payment-related operations:
+`TelegramStarsPaymentService` обрабатывает все операции, связанные с платежами:
 
-- Creating invoices
-- Processing successful payments
-- Activating/deactivating premium subscriptions
-- Checking premium status
+- Создание счетов
+- Обработка успешных платежей
+- Активация/деактивация премиум-подписок
+- Проверка статуса премиум
 
-### Premium Plans
+### Планы премиум
 
-The bot offers three premium subscription plans:
+Бот предлагает три плана премиум-подписки:
 
-1. **Monthly**: 100 Telegram Stars for 30 days
-2. **Quarterly**: 250 Telegram Stars for 90 days (15% discount)
-3. **Yearly**: 800 Telegram Stars for 365 days (30% discount)
+1. **Ежемесячный**: 100 Telegram Stars на 30 дней
+2. **Квартальный**: 250 Telegram Stars на 90 дней (скидка 15%)
+3. **Годовой**: 800 Telegram Stars на 365 дней (скидка 30%)
 
-### Configuration
+### Конфигурация
 
-Payment settings can be configured through environment variables:
+Настройки платежей можно настроить через переменные окружения:
 
-- `PAYMENT_ENABLED`: Enable/disable payment functionality
-- `PAYMENT_PROVIDER`: Payment provider (telegram_stars)
-- `PAYMENT_TEST_MODE`: Enable test mode
+- `PAYMENT_ENABLED`: Включение/отключение функциональности платежей
+- `PAYMENT_PROVIDER`: Платежный провайдер (telegram_stars)
+- `PAYMENT_TEST_MODE`: Включение тестового режима
 
-## Security Considerations
+## Вопросы безопасности
 
-1. **Payload Validation**: All payment payloads are validated to prevent tampering
-2. **User Verification**: Payments are linked to specific users to prevent fraud
-3. **Error Handling**: Comprehensive error handling to prevent inconsistent states
-4. **Logging**: Detailed logging of all payment operations for audit purposes
+1. **Валидация полезной нагрузки**: Все полезные нагрузки платежей проверяются для предотвращения подделки
+2. **Верификация пользователей**: Платежи привязаны к конкретным пользователям для предотвращения мошенничества
+3. **Обработка ошибок**: Комплексная обработка ошибок для предотвращения несогласованного состояния
+4. **Логирование**: Подробное логирование всех платежных операций для целей аудита
 
-## Testing
+## Тестирование
 
-Unit tests cover all aspects of the payment system:
+Модульные тесты охватывают все аспекты платежной системы:
 
-- Invoice creation
-- Payment processing
-- Premium activation/deactivation
-- Status checking
-- Error handling
+- Создание счетов
+- Обработка платежей
+- Активация/деактивация премиум
+- Проверка статуса
+- Обработка ошибок
 
-## Future Improvements
+## Будущие улучшения
 
-1. **Refund Handling**: Process refund events from Telegram
-2. **Subscription Management**: Allow users to manage their subscriptions
-3. **Analytics Dashboard**: Admin interface for viewing payment statistics
-4. **Promotional Codes**: Support for discount codes
-5. **Gift Subscriptions**: Allow users to gift premium subscriptions to others
+1. **Обработка возвратов**: Обработка событий возврата от Telegram
+2. **Управление подписками**: Позволить пользователям управлять своими подписками
+3. **Панель аналитики**: Административный интерфейс для просмотра статистики платежей
+4. **Промокоды**: Поддержка скидочных кодов
+5. **Подарочные подписки**: Позволить пользователям дарить премиум-подписки другим
 
-## API Reference
+## Справочник API
 
 ### TelegramStarsPaymentService
 
-#### Methods
+#### Методы
 
-- `create_invoice(user_id, amount, description, duration_days)`: Create a payment invoice
-- `handle_successful_payment(payment, user_telegram_id)`: Process a successful payment
-- `activate_premium(user_id, duration_days)`: Activate premium subscription
-- `deactivate_premium(user_id)`: Deactivate premium subscription
-- `check_premium_status(user_id)`: Check premium subscription status
+- `create_invoice(user_id, amount, description, duration_days)`: Создать счет на оплату
+- `handle_successful_payment(payment, user_telegram_id)`: Обработать успешный платеж
+- `activate_premium(user_id, duration_days)`: Активировать премиум-подписку
+- `deactivate_premium(user_id)`: Деактивировать премиум-подписку
+- `check_premium_status(user_id)`: Проверить статус премиум-подписки
 
-## Troubleshooting
+## Устранение неполадок
 
-### Common Issues
+### Распространенные проблемы
 
-1. **Payment Creation Failed**: Check Telegram bot token and payment configuration
-2. **Payment Not Processed**: Verify webhook configuration and payment handler registration
-3. **Premium Not Activated**: Check database connection and user ID mapping
+1. **Ошибка создания платежа**: Проверьте токен бота Telegram и конфигурацию платежей
+2. **Платеж не обработан**: Проверьте конфигурацию вебхука и регистрацию обработчика платежей
+3. **Премиум не активирован**: Проверьте подключение к базе данных и сопоставление ID пользователей
 
-### Logs
+### Логи
 
-All payment operations are logged with the prefix `payment.` in the log system:
+Все платежные операции регистрируются с префиксом `payment.` в системе логов:
 
-- `payment.invoice_created`: Invoice successfully created
-- `payment.invoice_creation_error`: Error creating invoice
-- `payment.payment_processed`: Payment successfully processed
-- `payment.payment_handling_error`: Error processing payment
-- `payment.premium_activated`: Premium subscription activated
-- `payment.premium_activation_failed`: Failed to activate premium subscription
-- `payment.premium_activation_error`: Error activating premium subscription
+- `payment.invoice_created`: Счет успешно создан
+- `payment.invoice_creation_error`: Ошибка создания счета
+- `payment.payment_processed`: Платеж успешно обработан
+- `payment.payment_handling_error`: Ошибка обработки платежа
+- `payment.premium_activated`: Премиум-подписка активирована
+- `payment.premium_activation_failed`: Не удалось активировать премиум-подписку
+- `payment.premium_activation_error`: Ошибка активации премиум-подписки
