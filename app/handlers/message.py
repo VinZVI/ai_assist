@@ -11,7 +11,7 @@ from datetime import UTC, datetime
 from typing import Optional
 
 from aiogram import F, Router
-from aiogram.types import Message
+from aiogram.types import Message, SuccessfulPayment
 from loguru import logger
 from sqlalchemy import select
 
@@ -281,3 +281,53 @@ def sanitize_telegram_message(text: str) -> str:
         text = text[:4093] + "..."
 
     return text
+
+
+@message_router.message(F.successful_payment)
+async def handle_successful_payment(message: Message, successful_payment: SuccessfulPayment) -> None:
+    """Обработка успешного платежа Telegram Stars."""
+    try:
+        if not message.from_user:
+            return
+            
+        # Process payment
+        from app.config import get_config
+        config = get_config()
+        
+        from aiogram import Bot
+        from app.services.payment_service import TelegramStarsPaymentService
+        
+        bot = Bot(token=config.telegram.bot_token)
+        payment_service = TelegramStarsPaymentService(bot)
+        
+        success = await payment_service.handle_successful_payment(
+            successful_payment, 
+            message.from_user.id
+        )
+        
+        # Get user's language preference
+        async with get_session() as session:
+            stmt = select(User).where(User.telegram_id == message.from_user.id)
+            result = await session.execute(stmt)
+            user = result.scalar_one_or_none()
+            user_lang = user.language_code if user and user.language_code else "ru"
+        
+        if success:
+            # Send confirmation message
+            await message.answer(get_text("premium.payment_success", user_lang))
+        else:
+            # Handle error
+            await message.answer(get_text("errors.payment_processing_failed", user_lang))
+            
+    except Exception as e:
+        from loguru import logger
+        logger.error(f"Error handling successful payment: {e}")
+        # Try to send error message in default language
+        try:
+            await message.answer(get_text("errors.general_error", "ru"))
+        except Exception:
+            pass
+
+
+# Экспорт роутера
+__all__ = ["message_router"]

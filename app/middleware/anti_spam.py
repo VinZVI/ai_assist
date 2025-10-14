@@ -27,7 +27,7 @@ class AntiSpamMiddleware(BaseAIMiddleware):
 
     # Хранилище для отслеживания действий пользователей
     _user_actions: ClassVar[dict[int, list[datetime]]] = defaultdict(list)
-
+    
     # Хранилище для отслеживания временных блокировок
     _user_blocks: ClassVar[dict[int, datetime]] = {}
 
@@ -74,6 +74,14 @@ class AntiSpamMiddleware(BaseAIMiddleware):
 
             # Получаем пользователя из контекста (если уже аутентифицирован)
             user: User | None = data.get("user")
+            
+            # Проверяем, является ли пользователь администратором
+            is_admin = data.get("is_admin", False)
+            
+            # Администраторы не подвержены ограничениям
+            if is_admin:
+                # Передаем управление следующему обработчику без проверки лимитов
+                return await handler(event, data)
 
             # Проверяем, не заблокирован ли пользователь
             if self._is_user_blocked(user_id):
@@ -107,7 +115,7 @@ class AntiSpamMiddleware(BaseAIMiddleware):
                                 error=str(e)
                             )
                         )
-
+                
                 # Не передаем управление следующему обработчику
                 return None
 
@@ -124,7 +132,7 @@ class AntiSpamMiddleware(BaseAIMiddleware):
             # Получаем конфигурацию
             config = get_config()
             actions_per_minute_limit = config.user_limits.spam_actions_per_minute
-
+            
             # Проверяем лимит действий в минуту
             if len(self._user_actions[user_id]) >= actions_per_minute_limit:
                 # Превышен лимит действий
@@ -140,7 +148,7 @@ class AntiSpamMiddleware(BaseAIMiddleware):
                             limit=actions_per_minute_limit,
                         )
                     )
-
+                    
                     # Блокируем пользователя на указанное время
                     block_duration = config.user_limits.spam_restriction_duration
                     self._user_blocks[user_id] = datetime.now(UTC) + timedelta(

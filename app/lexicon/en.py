@@ -68,6 +68,9 @@ LEXICON_EN = {
         # New error messages for anti-spam middleware
         "spam_limit_exceeded": "⚠️ You have exceeded the action limit per minute. Please wait a moment before your next action.",
         "user_temporarily_blocked": "⛔ You are temporarily blocked due to suspicious activity. Please try again later.",
+        # Payment error messages
+        "payment_creation_failed": "💳 Failed to create payment. Please try again later.",
+        "payment_processing_failed": "💳 Error processing payment. Please contact support.",
     },
     "system_prompts": {
         "default_ai_prompt": "You are an empathetic AI assistant and companion. Your task is to provide emotional support and understanding. Respond kindly, supportively, and with understanding. Ask clarifying questions to better understand the user's feelings and needs. Avoid giving medical or legal advice. If the user is in a crisis situation, gently suggest seeking help from a specialist."
@@ -105,6 +108,10 @@ LEXICON_EN = {
             "✅ Access to extended features",
         ],
         "already_active": "⭐ Your Premium is already active until {premium_until}!",
+        "description_monthly": "Premium subscription for 30 days",
+        "description_quarterly": "Premium subscription for 90 days (15% discount)",
+        "description_yearly": "Premium subscription for 365 days (30% discount)",
+        "payment_success": "🎉 Congratulations! Your Premium access has been activated. Enjoy unlimited communication with the AI assistant!",
     },
     "language": {
         "title": "🌐 Language Selection",

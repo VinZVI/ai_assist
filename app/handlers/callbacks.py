@@ -299,7 +299,7 @@ async def show_premium_info(callback: CallbackQuery, user: User) -> None:
 
 @callback_router.callback_query(F.data.startswith("buy_premium:"))
 async def handle_premium_purchase(callback: CallbackQuery, user: User) -> None:
-    """Обработать покупку премиум-доступа."""
+    """Обработать покупку премиум-доступа через Telegram Stars."""
     try:
         # Get user's language preference
         user_lang = user.language_code or "ru"
@@ -310,14 +310,41 @@ async def handle_premium_purchase(callback: CallbackQuery, user: User) -> None:
         except (IndexError, ValueError):
             premium_price = 99  # Default price
 
-        # In a real implementation, this would integrate with a payment system
-        # For now, we'll just show a placeholder message
-        message_text = get_text(
-            "callbacks.premium_purchase_initiated", user_lang, price=premium_price
+        # Get configuration
+        config = get_config()
+        
+        # Calculate duration based on price (simplified pricing model)
+        # In a real implementation, you might have a mapping of prices to durations
+        if premium_price >= 800:  # Yearly plan
+            duration_days = 365
+            description = get_text("premium.description_yearly", user_lang)
+        elif premium_price >= 250:  # 3-month plan
+            duration_days = 90
+            description = get_text("premium.description_quarterly", user_lang)
+        else:  # Monthly plan
+            duration_days = 30
+            description = get_text("premium.description_monthly", user_lang)
+
+        # Create invoice using payment service
+        from aiogram import Bot
+        from app.services.payment_service import TelegramStarsPaymentService
+        
+        bot = Bot(token=config.telegram.bot_token)
+        payment_service = TelegramStarsPaymentService(bot)
+        
+        success = await payment_service.create_invoice(
+            user_id=callback.from_user.id,
+            amount=premium_price,
+            description=description,
+            duration_days=duration_days
         )
-
-        await callback.answer(message_text, show_alert=True)
-
+        
+        if not success:
+            await callback.answer(
+                get_text("errors.payment_creation_failed", user_lang),
+                show_alert=True
+            )
+            
     except Exception as e:
         logger.error(get_log_text("callbacks.callback_error").format(error=e))
         user_lang = user.language_code or "ru"

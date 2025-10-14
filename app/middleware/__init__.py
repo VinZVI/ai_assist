@@ -5,6 +5,7 @@
 """
 
 from .admin import AdminMiddleware
+from .anti_spam import AntiSpamMiddleware
 from .auth import AuthMiddleware
 from .base import BaseAIMiddleware
 from .conversation import ConversationMiddleware
@@ -16,6 +17,7 @@ from .user_language import UserLanguageMiddleware
 
 __all__ = [
     "AdminMiddleware",
+    "AntiSpamMiddleware",
     "AuthMiddleware",
     "BaseAIMiddleware",
     "ConversationMiddleware",

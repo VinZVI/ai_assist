@@ -186,23 +186,15 @@ class UserLimitsConfig(BaseSettings):
 
     model_config = {"extra": "ignore", "env_file": ".env", "env_file_encoding": "utf-8"}
 
-    @field_validator("free_messages_limit")
-    @classmethod
-    def validate_free_messages_limit(cls, v: int) -> int:
-        """Валидация лимита бесплатных сообщений."""
-        if v < 0:
-            raise ValueError(
-                ConfigErrorMessages.INVALID_FREE_MESSAGES_LIMIT_NON_NEGATIVE
-            )
-        return v
 
-    @field_validator("premium_price")
-    @classmethod
-    def validate_premium_price(cls, v: int) -> int:
-        """Валидация цены премиум подписки."""
-        if v <= 0:
-            raise ValueError(ConfigErrorMessages.INVALID_PREMIUM_PRICE)
-        return v
+class PaymentConfig(BaseSettings):
+    """Конфигурация платежей."""
+
+    enabled: bool = Field(default=True, validation_alias="PAYMENT_ENABLED")
+    provider: str = Field(default="telegram_stars", validation_alias="PAYMENT_PROVIDER")
+    test_mode: bool = Field(default=False, validation_alias="PAYMENT_TEST_MODE")
+
+    model_config = {"extra": "ignore", "env_file": ".env", "env_file_encoding": "utf-8"}
 
 
 class CacheConfig(BaseSettings):
@@ -268,6 +260,7 @@ class AppConfig(BaseSettings):
     cache: CacheConfig = Field(default_factory=CacheConfig)
     conversation: ConversationConfig = Field(default_factory=ConversationConfig)
     admin: AdminConfig = Field(default_factory=AdminConfig)
+    payment: PaymentConfig = Field(default_factory=PaymentConfig)
 
     # Дополнительные настройки
     debug: bool = Field(default=False, validation_alias="DEBUG")

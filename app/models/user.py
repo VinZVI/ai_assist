@@ -31,6 +31,7 @@ from app.database import Base, get_session
 
 if TYPE_CHECKING:
     from app.models.conversation import Conversation
+    from app.models.payment import Payment
 
 
 class User(Base):
@@ -157,6 +158,13 @@ class User(Base):
     # Use string annotation for forward reference to avoid circular import
     conversations: Mapped[list["Conversation"]] = relationship(
         "Conversation",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="select",
+    )
+
+    payments: Mapped[list["Payment"]] = relationship(
+        "Payment",
         back_populates="user",
         cascade="all, delete-orphan",
         lazy="select",
