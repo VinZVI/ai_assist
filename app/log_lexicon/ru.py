@@ -196,6 +196,7 @@ LOG_LEXICON_RU = {
         "user_counter_middleware_initialized": "🔢 UserCounterMiddleware инициализирован",
         "admin_middleware_initialized": "👑 AdminMiddleware инициализирован",
         "anti_spam_middleware_initialized": "🛡️ AntiSpamMiddleware инициализирован",
+        "content_filter_middleware_initialized": "🛡️ ContentFilterMiddleware инициализирован",
         "admin_access_granted": "✅ Админ ID:{admin_id} получил доступ",
         "admin_access_denied": "🔒 Пользователю ID:{user_id} отказано в админском доступе",
         "user_authenticated": "✅ Пользователь ID:{user_id} (@{username}) аутентифицирован",
@@ -224,7 +225,7 @@ LOG_LEXICON_RU = {
         "user_cache_hit": "✅ Пользователь ID:{user_id} (@{username}) найден в кеше",
         "batch_updates_processed": "📦 Обработаны пакетные обновления для {count} пользователей",
         "batch_updates_error": "💥 Ошибка пакетных обновлений: {error}",
-        "redis_cache_initialized": "キャッシング инициализирован",
+        "redis_cache_initialized": "кэширование инициализировано",
         "redis_cache_error": "💥 Ошибка инициализации Redis кеша: {error}",
     },
 }

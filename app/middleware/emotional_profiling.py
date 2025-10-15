@@ -48,7 +48,6 @@ class EmotionalProfilingMiddleware(BaseAIMiddleware):
         if isinstance(event, Message) and event.text:
             telegram_user: TelegramUser | None = event.from_user
             if telegram_user:
-                user_id = telegram_user.id
                 user: User | None = data.get("user")
 
                 if user:
@@ -73,14 +72,19 @@ class EmotionalProfilingMiddleware(BaseAIMiddleware):
 
             # Обновляем эмоциональный профиль пользователя
             if emotional_indicators:
-                await user_service.update_emotional_profile(
-                    user.telegram_id, emotional_indicators
+                # Обновляем профиль пользователя напрямую
+                user.update_emotional_profile(emotional_indicators)
+
+                # Сохраняем обновленный профиль в базе данных
+                updated_user = await user_service.update_emotional_profile(
+                    user.telegram_id, user.emotional_profile or {}
                 )
 
-                logger.debug(
-                    f"Эмоциональный профиль обновлен для пользователя {user.telegram_id}: "
-                    f"{emotional_indicators}"
-                )
+                if updated_user:
+                    logger.debug(
+                        f"Эмоциональный профиль обновлен для пользователя {user.telegram_id}: "
+                        f"{emotional_indicators}"
+                    )
         except Exception as e:
             logger.warning(
                 f"Ошибка при анализе эмоций пользователя {user.telegram_id}: {e}"

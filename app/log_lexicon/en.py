@@ -195,6 +195,7 @@ LOG_LEXICON_EN = {
         "user_counter_middleware_initialized": "🔢 UserCounterMiddleware initialized",
         "admin_middleware_initialized": "👑 AdminMiddleware initialized",
         "anti_spam_middleware_initialized": "🛡️ AntiSpamMiddleware initialized",
+        "content_filter_middleware_initialized": "🛡️ ContentFilterMiddleware initialized",
         "admin_access_granted": "✅ Admin ID:{admin_id} granted access",
         "admin_access_denied": "🔒 User ID:{user_id} denied admin access",
         "user_authenticated": "✅ User ID:{user_id} (@{username}) authenticated",

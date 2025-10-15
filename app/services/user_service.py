@@ -6,7 +6,7 @@
 """
 
 import asyncio
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from aiogram.types import Message
@@ -126,26 +126,94 @@ class UserService:
         Returns:
             User | None: Обновленный пользователь или None, если не найден
         """
-        async with get_session() as session:
-            stmt = select(User).where(User.telegram_id == telegram_id)
-            result = await session.execute(stmt)
-            user = result.scalar_one_or_none()
+        # Пытаемся получить пользователя из кеша первым делом
+        user = await cache_service.get_user(telegram_id)
 
-            if not user:
-                return None
+        # Если пользователь не в кеше, загружаем из БД
+        if not user:
+            async with get_session() as session:
+                stmt = select(User).where(User.telegram_id == telegram_id)
+                result = await session.execute(stmt)
+                user = result.scalar_one_or_none()
 
-            user.update_emotional_profile(profile_data)
+                if not user:
+                    return None
+
+        # Сохраняем старый профиль для сравнения
+        old_profile = user.emotional_profile.copy() if user.emotional_profile else {}
+
+        # Обновляем эмоциональный профиль пользователя
+        user.update_emotional_profile(profile_data)
+
+        # Проверяем, изменился ли профиль достаточно, чтобы обновлять базу данных
+        # Если изменения незначительны, пропускаем обновление БД
+        significant_change = UserService._is_emotional_profile_change_significant(
+            old_profile, user.emotional_profile or {}
+        )
+
+        if significant_change:
             user.updated_at = datetime.now(UTC)
-            await session.commit()
-            await session.refresh(user)
 
-            # Обновляем кеш
-            await cache_service.set_user(user)
+            # Сохраняем в БД
+            async with get_session() as session:
+                session.add(user)
+                await session.commit()
+                await session.refresh(user)
 
             logger.info(
                 f"Эмоциональный профиль обновлен для пользователя: {telegram_id}"
             )
-            return user
+        else:
+            logger.debug(
+                f"Незначительные изменения эмоционального профиля для пользователя: {telegram_id}, "
+                f"обновление БД пропущено"
+            )
+
+        # Обновляем кеш в любом случае
+        await cache_service.set_user(user)
+
+        return user
+
+    @staticmethod
+    def _is_emotional_profile_change_significant(
+        old_profile: dict[str, Any], new_profile: dict[str, Any]
+    ) -> bool:
+        """
+        Проверка, является ли изменение эмоционального профиля значительным.
+
+        Args:
+            old_profile: Старый профиль
+            new_profile: Новый профиль
+
+        Returns:
+            bool: True если изменения значительны, False если незначительны
+        """
+        # Если профиль был пустым, а теперь не пустой - значительное изменение
+        if not old_profile and new_profile:
+            return True
+
+        # Если профиль был не пустым, а теперь пустой - значительное изменение
+        if old_profile and not new_profile:
+            return True
+
+        # Проверяем числовые поля на значительные изменения
+        numeric_fields = ["positive_words", "negative_words", "intensity"]
+        for field in numeric_fields:
+            old_value = old_profile.get(field, 0)
+            new_value = new_profile.get(field, 0)
+            # Считаем изменение значительным, если разница больше 1
+            if abs(new_value - old_value) > 1:
+                return True
+
+        # Проверяем списки (например, topics) на изменения
+        old_topics = set(old_profile.get("topics", []))
+        new_topics = set(new_profile.get("topics", []))
+        # Считаем изменение значительным, если добавились/удалились темы
+        if old_topics != new_topics:
+            return True
+
+        # Если ничего значительного не изменилось
+        return False
 
     @staticmethod
     async def update_support_preferences(
@@ -308,7 +376,12 @@ class UserService:
         """
         try:
             # Не блокируем ответ пользователю, выполняем обновление в фоне
-            asyncio.create_task(UserService._update_user_activity(user_id))
+            task = asyncio.create_task(UserService._update_user_activity(user_id))
+            # Store reference to prevent it from being garbage collected
+            if not hasattr(UserService, '_background_tasks'):
+                UserService._background_tasks = set()
+            UserService._background_tasks.add(task)
+            task.add_done_callback(UserService._background_tasks.discard)
         except Exception as e:
             logger.error(
                 f"Ошибка при запуске фонового обновления активности пользователя {user_id}: {e}"
