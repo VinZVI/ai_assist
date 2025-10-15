@@ -92,7 +92,7 @@ class ContentFilterMiddleware(BaseAIMiddleware):
 
                     return None
 
-                elif filter_result["action"] == "warn":
+                if filter_result["action"] == "warn":
                     # Предупреждаем пользователя
                     self._content_filter_stats["messages_filtered"] += 1
                     logger.info(

@@ -29,7 +29,7 @@ async def get_recent_conversation_history(
     try:
         # Вычисляем время cutoff для ограничения по возрасту
         cutoff_time = datetime.now(UTC) - timedelta(hours=max_age_hours)
-        
+
         # Получаем последние завершенные сообщения
         stmt = (
             select(Conversation)
@@ -85,20 +85,22 @@ async def get_conversation_context(
 ) -> dict[str, any]:
     """
     Получение контекста диалога пользователя для более точной генерации ответов.
-    
+
     Args:
         session: Сессия базы данных
         user_id: ID пользователя
         limit: Максимальное количество сообщений в истории
         max_age_hours: Максимальный возраст сообщений в часах
-        
+
     Returns:
         dict: Контекст диалога с метаинформацией
     """
     try:
         # Получаем историю разговоров
-        history = await get_recent_conversation_history(session, user_id, limit, max_age_hours)
-        
+        history = await get_recent_conversation_history(
+            session, user_id, limit, max_age_hours
+        )
+
         # Анализируем историю для извлечения контекста
         context = {
             "history": history,
@@ -107,44 +109,77 @@ async def get_conversation_context(
             "topics": [],
             "emotional_tone": "neutral",
         }
-        
+
         # Извлекаем темы из истории
         all_texts = " ".join([msg.content for msg in history])
         lower_texts = all_texts.lower()
-        
+
         # Определяем темы
         topics = []
-        if any(word in lower_texts for word in ["работа", "работу", "работы", "job", "work"]):
+        if any(
+            word in lower_texts
+            for word in ["работа", "работу", "работы", "job", "work"]
+        ):
             topics.append("work")
         if any(word in lower_texts for word in ["семья", "семье", "семью", "family"]):
             topics.append("family")
-        if any(word in lower_texts for word in ["друзья", "друг", "подруга", "friends", "friend"]):
+        if any(
+            word in lower_texts
+            for word in ["друзья", "друг", "подруга", "friends", "friend"]
+        ):
             topics.append("social")
-        if any(word in lower_texts for word in ["здоровье", "здоров", "болезнь", "health", "ill", "sick"]):
+        if any(
+            word in lower_texts
+            for word in ["здоровье", "здоров", "болезнь", "health", "ill", "sick"]
+        ):
             topics.append("health")
-        if any(word in lower_texts for word in ["деньги", "денег", "заработок", "money", "finance"]):
+        if any(
+            word in lower_texts
+            for word in ["деньги", "денег", "заработок", "money", "finance"]
+        ):
             topics.append("finance")
-        if any(word in lower_texts for word in ["любовь", "люблю", "романтика", "love", "romance"]):
+        if any(
+            word in lower_texts
+            for word in ["любовь", "люблю", "романтика", "love", "romance"]
+        ):
             topics.append("romance")
-            
+
         context["topics"] = topics
-        
+
         # Определяем эмоциональный тон (простой анализ)
-        positive_words = ["хорошо", "отлично", "прекрасно", "рад", "счастлив", "fantastic", "great", "happy"]
-        negative_words = ["плохо", "ужасно", "грустно", "зло", "ненавижу", "sad", "terrible", "awful"]
-        
+        positive_words = [
+            "хорошо",
+            "отлично",
+            "прекрасно",
+            "рад",
+            "счастлив",
+            "fantastic",
+            "great",
+            "happy",
+        ]
+        negative_words = [
+            "плохо",
+            "ужасно",
+            "грустно",
+            "зло",
+            "ненавижу",
+            "sad",
+            "terrible",
+            "awful",
+        ]
+
         pos_count = sum(lower_texts.count(word) for word in positive_words)
         neg_count = sum(lower_texts.count(word) for word in negative_words)
-        
+
         if pos_count > neg_count:
             context["emotional_tone"] = "positive"
         elif neg_count > pos_count:
             context["emotional_tone"] = "negative"
         else:
             context["emotional_tone"] = "neutral"
-        
+
         return context
-        
+
     except Exception as e:
         logger.error(f"❌ Ошибка при получении контекста диалога: {e}")
         return {
@@ -238,13 +273,15 @@ async def clear_user_conversation_history(
         stmt = select(Conversation).where(Conversation.user_id == user_id)
         result = await session.execute(stmt)
         conversations = result.scalars().all()
-        
+
         for conv in conversations:
             await session.delete(conv)
-            
+
         await session.commit()
         logger.info(
-            get_log_text("message.message_conversation_history_cleared").format(user_id=user_id)
+            get_log_text("message.message_conversation_history_cleared").format(
+                user_id=user_id
+            )
         )
         return True
 

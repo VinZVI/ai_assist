@@ -53,7 +53,7 @@ class ScalingConfig(BaseModel):
         default="redis", description="Бэкенд кэширования (redis, memory)"
     )
 
-    cache_hosts: List[str] = Field(
+    cache_hosts: list[str] = Field(
         default=["localhost:6379"], description="Список хостов кэширования"
     )
 
@@ -68,7 +68,7 @@ class ScalingConfig(BaseModel):
         default="redis", description="Бэкенд очереди сообщений (redis, rabbitmq)"
     )
 
-    message_queue_hosts: List[str] = Field(
+    message_queue_hosts: list[str] = Field(
         default=["localhost:6379"], description="Список хостов очереди сообщений"
     )
 
@@ -77,7 +77,7 @@ class ScalingConfig(BaseModel):
         default="redis", description="Бэкенд сессий (redis, database)"
     )
 
-    session_hosts: List[str] = Field(
+    session_hosts: list[str] = Field(
         default=["localhost:6379"], description="Список хостов сессий"
     )
 
@@ -91,7 +91,7 @@ class ScalingConfig(BaseModel):
         description="Бэкенд распределенной блокировки (redis, zookeeper)",
     )
 
-    lock_hosts: List[str] = Field(
+    lock_hosts: list[str] = Field(
         default=["localhost:6379"], description="Список хостов блокировок"
     )
 

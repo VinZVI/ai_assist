@@ -7,9 +7,9 @@
 
 import asyncio
 import time
-from typing import Any, Dict, List, Optional
 from collections import defaultdict
 from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional
 
 from loguru import logger
 
@@ -21,9 +21,9 @@ class AnalyticsService:
 
     def __init__(self) -> None:
         """Инициализация сервиса аналитики."""
-        self.analytics_data: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+        self.analytics_data: dict[str, list[dict[str, Any]]] = defaultdict(list)
         self.is_collecting = False
-        self.collection_task: Optional[asyncio.Task] = None
+        self.collection_task: asyncio.Task | None = None
 
     async def start_analytics_collection(self, interval: int = 300) -> None:
         """
@@ -91,7 +91,7 @@ class AnalyticsService:
             # Ждем до следующего сбора
             await asyncio.sleep(interval)
 
-    async def collect_analytics(self) -> Dict[str, Any]:
+    async def collect_analytics(self) -> dict[str, Any]:
         """
         Сбор аналитики по всем аспектам работы бота.
 
@@ -122,7 +122,7 @@ class AnalyticsService:
             logger.error(f"Ошибка при сборе аналитики: {e}")
             return {"error": str(e), "timestamp": time.time()}
 
-    def _calculate_uptime(self) -> Dict[str, Any]:
+    def _calculate_uptime(self) -> dict[str, Any]:
         """
         Вычисление времени работы системы.
 
@@ -154,7 +154,7 @@ class AnalyticsService:
             logger.error(f"Ошибка при вычислении времени работы: {e}")
             return {"total_seconds": 0, "formatted": "0d 0h 0m 0s", "error": str(e)}
 
-    async def _analyze_user_engagement(self) -> Dict[str, Any]:
+    async def _analyze_user_engagement(self) -> dict[str, Any]:
         """
         Анализ вовлеченности пользователей.
 
@@ -196,7 +196,7 @@ class AnalyticsService:
             logger.error(f"Ошибка при анализе вовлеченности: {e}")
             return {"error": str(e)}
 
-    async def _analyze_message_volume_trend(self) -> Dict[str, Any]:
+    async def _analyze_message_volume_trend(self) -> dict[str, Any]:
         """
         Анализ тренда объема сообщений.
 
@@ -247,7 +247,7 @@ class AnalyticsService:
             logger.error(f"Ошибка при анализе тренда объема сообщений: {e}")
             return {"trend": "error", "change_percent": 0, "error": str(e)}
 
-    async def _analyze_message_patterns(self) -> Dict[str, Any]:
+    async def _analyze_message_patterns(self) -> dict[str, Any]:
         """
         Анализ паттернов сообщений.
 
@@ -296,7 +296,7 @@ class AnalyticsService:
             logger.error(f"Ошибка при анализе паттернов сообщений: {e}")
             return {"error": str(e)}
 
-    async def _analyze_performance_trends(self) -> Dict[str, Any]:
+    async def _analyze_performance_trends(self) -> dict[str, Any]:
         """
         Анализ трендов производительности.
 
@@ -330,7 +330,7 @@ class AnalyticsService:
             logger.error(f"Ошибка при анализе трендов производительности: {e}")
             return {"error": str(e)}
 
-    async def _analyze_errors(self) -> Dict[str, Any]:
+    async def _analyze_errors(self) -> dict[str, Any]:
         """
         Анализ ошибок.
 
@@ -372,7 +372,7 @@ class AnalyticsService:
             logger.error(f"Ошибка при анализе ошибок: {e}")
             return {"error": str(e)}
 
-    def get_analytics_report(self, period_hours: int = 24) -> Dict[str, Any]:
+    def get_analytics_report(self, period_hours: int = 24) -> dict[str, Any]:
         """
         Получение отчета по аналитике за указанный период.
 
@@ -415,7 +415,7 @@ class AnalyticsService:
             logger.error(f"Ошибка при генерации отчета: {e}")
             return {"error": str(e), "period_hours": period_hours}
 
-    def _generate_summary(self, period_data: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _generate_summary(self, period_data: list[dict[str, Any]]) -> dict[str, Any]:
         """
         Генерация сводки по данным.
 
@@ -441,7 +441,7 @@ class AnalyticsService:
             logger.error(f"Ошибка при генерации сводки: {e}")
             return {}
 
-    def _generate_trends(self, period_data: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _generate_trends(self, period_data: list[dict[str, Any]]) -> dict[str, Any]:
         """
         Генерация трендов по данным.
 
@@ -472,7 +472,7 @@ class AnalyticsService:
             logger.error(f"Ошибка при генерации трендов: {e}")
             return {"error": str(e)}
 
-    def _generate_recommendations(self, period_data: List[Dict[str, Any]]) -> List[str]:
+    def _generate_recommendations(self, period_data: list[dict[str, Any]]) -> list[str]:
         """
         Генерация рекомендаций по данным.
 

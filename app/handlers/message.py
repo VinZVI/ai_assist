@@ -88,25 +88,33 @@ async def generate_ai_response(
 
         # Проверяем, нужно ли активировать специальные режимы
         lower_message = user_message.lower()
-        
+
         # Проверка на кризисные ситуации
         crisis_keywords = [
-            "самоубийство", "убить себя", "не могу жить", "смерть", 
-            "suicide", "kill myself", "can't live", "death"
+            "самоубийство",
+            "убить себя",
+            "не могу жить",
+            "смерть",
+            "suicide",
+            "kill myself",
+            "can't live",
+            "death",
         ]
         if any(keyword in lower_message for keyword in crisis_keywords):
             # Добавляем специальный промпт для кризисных ситуаций
             crisis_prompt = create_crisis_intervention_prompt(user_language)
-            messages.insert(1, ConversationMessage(role="system", content=crisis_prompt))
-        
+            messages.insert(
+                1, ConversationMessage(role="system", content=crisis_prompt)
+            )
+
         # Проверка на темы для взрослых
-        mature_keywords = [
-            "секс", "интим", "эротика", "sex", "intimate", "erotic"
-        ]
+        mature_keywords = ["секс", "интим", "эротика", "sex", "intimate", "erotic"]
         if any(keyword in lower_message for keyword in mature_keywords):
             # Добавляем специальный промпт для тем для взрослых
             mature_prompt = create_mature_content_prompt(user_language)
-            messages.insert(1, ConversationMessage(role="system", content=mature_prompt))
+            messages.insert(
+                1, ConversationMessage(role="system", content=mature_prompt)
+            )
 
         # Устанавливаем параметры генерации в зависимости от статуса премиум
         temperature = 0.7 if user.is_premium_active() else 0.8

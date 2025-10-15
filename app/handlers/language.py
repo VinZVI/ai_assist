@@ -25,7 +25,7 @@ language_router = Router(name="language")
 
 
 @language_router.message(Command("language"))
-async def handle_language_command(message: Message) -> None:
+async def handle_language_command(message: Message, user: User) -> None:
     """
     Обработчик команды /language.
 
@@ -33,50 +33,32 @@ async def handle_language_command(message: Message) -> None:
 
     Args:
         message: Объект сообщения от пользователя
+        user: Объект пользователя из middleware
     """
-    # Проверяем, что у сообщения есть from_user
-    if not message.from_user:
-        logger.error("Получено сообщение без информации о пользователе")
-        return
-
     try:
-        # Получаем пользователя из базы данных
-        async with get_session() as session:
-            from sqlalchemy import select
+        # Получаем текущий язык пользователя
+        current_language = user.language_code or "ru"
 
-            stmt = select(User).where(User.telegram_id == message.from_user.id)
-            result = await session.execute(stmt)
-            user = result.scalar_one_or_none()
+        # Создаем клавиатуру с выбором языков
+        keyboard = create_language_keyboard(current_language)
 
-            if not user:
-                await message.answer(get_text("errors.user_registration_error", "ru"))
-                return
+        # Отправляем сообщение с выбором языка
+        await message.answer(
+            f"🌐 <b>{get_text('language.title', current_language)}</b>\n\n"
+            f"{get_text('language.current_language', current_language, language=get_text('language.available_languages.' + current_language, current_language))}\n\n"
+            f"{get_text('language.select_language', current_language)}",
+            reply_markup=keyboard,
+            parse_mode="HTML",
+        )
 
-            # Получаем текущий язык пользователя
-            current_language = user.language_code or "ru"
-
-            # Создаем клавиатуру с выбором языков
-            keyboard = create_language_keyboard(current_language)
-
-            # Отправляем сообщение с выбором языка
-            await message.answer(
-                f"🌐 <b>{get_text('language.title', current_language)}</b>\n\n"
-                f"{get_text('language.current_language', current_language, language=get_text('language.available_languages.' + current_language, current_language))}\n\n"
-                f"{get_text('language.select_language', current_language)}",
-                reply_markup=keyboard,
-                parse_mode="HTML",
-            )
-
-            logger.info(
-                get_log_text("language.language_command_processed").format(
-                    user_id=message.from_user.id
-                )
-            )
+        logger.info(
+            get_log_text("language.language_command_processed").format(user_id=user.id)
+        )
 
     except Exception as e:
         logger.error(
             get_log_text("language.language_command_error").format(
-                user_id=message.from_user.id, error=e
+                user_id=user.id, error=e
             )
         )
         # Используем русский язык по умолчанию для сообщения об ошибке
@@ -84,15 +66,16 @@ async def handle_language_command(message: Message) -> None:
 
 
 @language_router.callback_query(F.data.startswith("select_language:"))
-async def handle_language_selection(callback: CallbackQuery) -> None:
+async def handle_language_selection(callback: CallbackQuery, user: User) -> None:
     """
     Обработчик выбора языка через callback.
 
     Args:
         callback: Callback запрос от пользователя
+        user: Объект пользователя из middleware
     """
-    # Проверяем, что у callback есть data и from_user
-    if not callback.data or not callback.from_user:
+    # Проверяем, что у callback есть data
+    if not callback.data:
         await callback.answer(get_text("errors.general_error", "ru"))
         return
 
@@ -120,16 +103,7 @@ async def handle_language_selection(callback: CallbackQuery) -> None:
 
         # Обновляем язык пользователя в базе данных
         async with get_session() as session:
-            from sqlalchemy import select, update
-
-            # Получаем пользователя
-            stmt = select(User).where(User.telegram_id == callback.from_user.id)
-            result = await session.execute(stmt)
-            user = result.scalar_one_or_none()
-
-            if not user:
-                await callback.answer(get_text("errors.user_registration_error", "ru"))
-                return
+            from sqlalchemy import update
 
             # Обновляем язык пользователя
             update_stmt = (

@@ -7,12 +7,12 @@
 """
 
 import asyncio
-import psutil
 import time
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import Any
 
+import psutil
 from fastapi import FastAPI, Request, Response, status
 from fastapi.responses import JSONResponse
 from loguru import logger
@@ -29,7 +29,6 @@ from app.services.ai_manager import get_ai_manager
 from app.services.analytics import analytics_service
 from app.services.monitoring import monitoring_service
 
-
 # Global variables for metrics
 _request_count = 0
 _error_count = 0
@@ -41,7 +40,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:  # noqa: ARG001
     """Lifespan manager for the FastAPI application."""
     global _start_time
     _start_time = asyncio.get_event_loop().time()
-    
+
     logger.info("🚀 Запуск веб-сервера...")
 
     # Инициализация базы данных
@@ -195,7 +194,7 @@ async def metrics_endpoint() -> JSONResponse:
         # Получаем статистику AI менеджера
         ai_manager = get_ai_manager()
         ai_stats = ai_manager.get_stats()
-        
+
         # Получаем статистику middleware
         anti_spam_stats = AntiSpamMiddleware.get_anti_spam_stats()
         content_filter_stats = ContentFilterMiddleware.get_content_filter_stats()
@@ -250,10 +249,10 @@ async def analytics_endpoint(hours: int = 24) -> JSONResponse:
     try:
         # Собираем аналитику
         analytics_data = await analytics_service.collect_analytics()
-        
+
         # Получаем отчет
         analytics_report = analytics_service.get_analytics_report(hours)
-        
+
         return JSONResponse(
             status_code=status.HTTP_200_OK,
             content={
@@ -287,7 +286,7 @@ async def analytics_report_endpoint(hours: int = 24) -> JSONResponse:
     try:
         # Получаем отчет
         analytics_report = analytics_service.get_analytics_report(hours)
-        
+
         return JSONResponse(
             status_code=status.HTTP_200_OK,
             content={
@@ -316,24 +315,24 @@ def _get_system_metrics() -> dict[str, Any]:
     try:
         # Получаем метрики CPU
         cpu_percent = psutil.cpu_percent(interval=1)
-        
+
         # Получаем метрики памяти
         memory = psutil.virtual_memory()
         memory_percent = memory.percent
         memory_available = memory.available
         memory_total = memory.total
-        
+
         # Получаем метрики диска
         disk = psutil.disk_usage("/")
         disk_percent = (disk.used / disk.total) * 100
         disk_free = disk.free
         disk_total = disk.total
-        
+
         # Получаем метрики сети
         net_io = psutil.net_io_counters()
         bytes_sent = net_io.bytes_sent
         bytes_recv = net_io.bytes_recv
-        
+
         return {
             "cpu_percent": cpu_percent,
             "memory_percent": memory_percent,
@@ -347,9 +346,7 @@ def _get_system_metrics() -> dict[str, Any]:
         }
     except Exception as e:
         logger.warning(f"Ошибка получения системных метрик: {e}")
-        return {
-            "error": f"Не удалось получить системные метрики: {e}"
-        }
+        return {"error": f"Не удалось получить системные метрики: {e}"}
 
 
 @app.post("/webhook")

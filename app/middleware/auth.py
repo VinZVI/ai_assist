@@ -14,6 +14,7 @@ from loguru import logger
 
 from app.lexicon.gettext import get_log_text
 from app.middleware.base import BaseAIMiddleware
+from app.services.cache_service import cache_service
 from app.services.user_service import get_or_update_user
 
 
@@ -30,7 +31,19 @@ class AuthMiddleware(BaseAIMiddleware):
     def __init__(self) -> None:
         """Инициализация AuthMiddleware."""
         super().__init__()
+        self.cache_service = cache_service
+        # Инициализация Redis кеша
+        import asyncio
+
+        _task = asyncio.create_task(self._initialize_redis_cache())
         logger.info(get_log_text("middleware.auth_middleware_initialized"))
+
+    async def _initialize_redis_cache(self) -> None:
+        """Асинхронная инициализация Redis кеша."""
+        try:
+            await self.cache_service.initialize_redis_cache()
+        except Exception as e:
+            logger.error(f"Failed to initialize Redis cache: {e}")
 
     async def __call__(
         self,
@@ -66,8 +79,36 @@ class AuthMiddleware(BaseAIMiddleware):
         # Только если у нас есть и пользователь, и сообщение, пытаемся аутентифицировать
         if telegram_user and message:
             try:
-                # Получаем или создаем пользователя в базе данных
-                user = await get_or_update_user(message)
+                # Проверяем кеш первым делом
+                user = await self.cache_service.get_user(telegram_user.id)
+
+                if not user:
+                    # Если нет в кеше - загружаем из БД
+                    user = await get_or_update_user(message)
+
+                    if user:
+                        # Кешируем пользователя
+                        await self.cache_service.set_user(user)
+                        logger.debug(
+                            get_log_text("middleware.user_cached").format(
+                                user_id=user.id, username=user.username or "No username"
+                            )
+                        )
+                    else:
+                        # Ошибка при создании/получении пользователя
+                        self._auth_stats["auth_errors"] += 1
+                        logger.warning(
+                            get_log_text("middleware.user_auth_failed").format(
+                                telegram_id=telegram_user.id
+                            )
+                        )
+                else:
+                    # Пользователь найден в кеше
+                    logger.debug(
+                        get_log_text("middleware.user_cache_hit").format(
+                            user_id=user.id, username=user.username or "No username"
+                        )
+                    )
 
                 if user:
                     # Добавляем пользователя в данные контекста
@@ -77,14 +118,6 @@ class AuthMiddleware(BaseAIMiddleware):
                     logger.info(
                         get_log_text("middleware.user_authenticated").format(
                             user_id=user.id, username=user.username or "No username"
-                        )
-                    )
-                else:
-                    # Ошибка при создании/получении пользователя
-                    self._auth_stats["auth_errors"] += 1
-                    logger.warning(
-                        get_log_text("middleware.user_auth_failed").format(
-                            telegram_id=telegram_user.id
                         )
                     )
 
@@ -118,3 +151,12 @@ class AuthMiddleware(BaseAIMiddleware):
             "users_created": 0,
             "auth_errors": 0,
         }
+
+    def get_cache_stats(self) -> dict[str, Any]:
+        """
+        Получение статистики кеша.
+
+        Returns:
+            Словарь со статистикой кеша
+        """
+        return self.cache_service.get_cache_stats()

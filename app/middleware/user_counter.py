@@ -5,6 +5,7 @@
 @created: 2025-10-09
 """
 
+import asyncio
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from typing import Any, ClassVar
@@ -30,6 +31,11 @@ class MessageCountingMiddleware(BaseAIMiddleware):
         "counter_errors": 0,
         "messages_counted": 0,
     }
+
+    # Буфер для пакетных обновлений
+    _batch_buffer: ClassVar[dict[int, datetime]] = {}
+    _batch_timer: ClassVar[Any] = None
+    _batch_interval: ClassVar[int] = 30  # Интервал пакетных обновлений в секундах
 
     def __init__(self) -> None:
         """Инициализация MessageCountingMiddleware."""
@@ -98,24 +104,23 @@ class MessageCountingMiddleware(BaseAIMiddleware):
             return
 
         try:
-            async with get_session() as session:
-                stmt = (
-                    update(User)
-                    .where(User.id == user.id)
-                    .values(
-                        daily_message_count=User.daily_message_count + 1,
-                        last_message_date=datetime.now(UTC).date(),
-                    )
-                )
-                await session.execute(stmt)
-                await session.commit()
+            # Добавляем пользователя в буфер для пакетного обновления
+            self._batch_buffer[user.id] = datetime.now(UTC)
 
-                self._counter_stats["message_counts_updated"] += 1
-                logger.info(
-                    get_log_text("middleware.user_message_count_updated").format(
-                        user_id=user.id
-                    )
+            # Запускаем таймер для пакетного обновления, если он еще не запущен
+            if self._batch_timer is None:
+                self._batch_timer = asyncio.get_event_loop().call_later(
+                    self._batch_interval,
+                    lambda: asyncio.create_task(self._process_batch_updates()),
                 )
+
+            # Обновляем статистику
+            self._counter_stats["message_counts_updated"] += 1
+            logger.info(
+                get_log_text("middleware.user_message_count_updated").format(
+                    user_id=user.id
+                )
+            )
 
         except Exception as e:
             self._counter_stats["counter_errors"] += 1
@@ -124,6 +129,47 @@ class MessageCountingMiddleware(BaseAIMiddleware):
                     user_id=user.id if user else "unknown", error=str(e)
                 )
             )
+
+    async def _process_batch_updates(self) -> None:
+        """
+        Обработка пакетных обновлений счетчиков сообщений пользователей.
+        """
+        if not self._batch_buffer:
+            self._batch_timer = None
+            return
+
+        try:
+            # Копируем буфер и очищаем его
+            batch_updates = self._batch_buffer.copy()
+            self._batch_buffer.clear()
+
+            # Выполняем пакетное обновление
+            async with get_session() as session:
+                for user_id, activity_time in batch_updates.items():
+                    stmt = (
+                        update(User)
+                        .where(User.id == user_id)
+                        .values(
+                            daily_message_count=User.daily_message_count + 1,
+                            last_message_date=activity_time.date(),
+                        )
+                    )
+                    await session.execute(stmt)
+                await session.commit()
+
+            logger.info(
+                get_log_text("middleware.batch_updates_processed").format(
+                    count=len(batch_updates)
+                )
+            )
+
+        except Exception as e:
+            self._counter_stats["counter_errors"] += 1
+            logger.error(
+                get_log_text("middleware.batch_updates_error").format(error=str(e))
+            )
+        finally:
+            self._batch_timer = None
 
     @classmethod
     def get_counter_stats(cls) -> dict[str, int]:
@@ -143,3 +189,8 @@ class MessageCountingMiddleware(BaseAIMiddleware):
             "counter_errors": 0,
             "messages_counted": 0,
         }
+        # Очищаем буфер пакетных обновлений
+        cls._batch_buffer.clear()
+        if cls._batch_timer:
+            cls._batch_timer.cancel()
+            cls._batch_timer = None

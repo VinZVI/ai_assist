@@ -14,7 +14,7 @@ class LoadBalancerConfig(BaseModel):
     """Конфигурация балансировщика нагрузки."""
 
     # Список серверов для балансировки
-    servers: List[str] = Field(
+    servers: list[str] = Field(
         default=["http://localhost:8000"],
         description="Список серверов для балансировки нагрузки",
     )

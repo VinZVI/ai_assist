@@ -73,13 +73,13 @@ def create_engine() -> AsyncEngine:
 
     logger.info(get_log_text("database.db_connecting"))
 
-    # Создаем движок с настройками пула соединений
+    # Создаем движок с оптимизированными настройками пула соединений
     engine = create_async_engine(
         config.database.database_url,
-        # Настройки пула соединений
-        pool_size=config.database.database_pool_size,
-        max_overflow=20,
-        pool_timeout=config.database.database_timeout,
+        # Оптимизированные настройки пула соединений
+        pool_size=20,  # Увеличиваем пул соединений с 10 до 20
+        max_overflow=30,  # Увеличиваем дополнительные соединения с 20 до 30
+        pool_timeout=30,  # Таймаут ожидания соединения
         pool_recycle=3600,  # Пересоздание соединений каждый час
         pool_pre_ping=True,  # Проверка соединений перед использованием
         # Настройки для разработки

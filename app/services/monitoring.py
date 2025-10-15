@@ -7,16 +7,17 @@
 
 import asyncio
 import time
-from typing import Any, Callable, Dict, List, Optional
 from collections import defaultdict, deque
+from collections.abc import Callable
+from typing import Any, Dict, List, Optional
 
 from loguru import logger
 
-from app.services.health_check import health_check_service
-from app.middleware.metrics import MetricsMiddleware
-from app.middleware.message_counter import MessageCountingMiddleware
 from app.middleware.anti_spam import AntiSpamMiddleware
+from app.middleware.message_counter import MessageCountingMiddleware
+from app.middleware.metrics import MetricsMiddleware
 from app.middleware.rate_limit import RateLimitMiddleware
+from app.services.health_check import health_check_service
 
 
 class MonitoringService:
@@ -25,11 +26,11 @@ class MonitoringService:
     def __init__(self) -> None:
         """Инициализация сервиса мониторинга."""
         self.is_running = False
-        self.monitoring_tasks: List[asyncio.Task] = []
-        self.alert_handlers: List[Callable] = []
-        self.metrics_history: Dict[str, deque] = defaultdict(lambda: deque(maxlen=1000))
-        self.health_status_history: List[Dict[str, Any]] = []
-        self.performance_stats: Dict[str, Any] = {
+        self.monitoring_tasks: list[asyncio.Task] = []
+        self.alert_handlers: list[Callable] = []
+        self.metrics_history: dict[str, deque] = defaultdict(lambda: deque(maxlen=1000))
+        self.health_status_history: list[dict[str, Any]] = []
+        self.performance_stats: dict[str, Any] = {
             "request_count": 0,
             "error_count": 0,
             "avg_response_time": 0.0,
@@ -174,7 +175,7 @@ class MonitoringService:
             # Ждем до следующего сбора аналитики
             await asyncio.sleep(interval)
 
-    def _collect_middleware_metrics(self) -> Dict[str, Any]:
+    def _collect_middleware_metrics(self) -> dict[str, Any]:
         """
         Сбор метрик из middleware.
 
@@ -192,7 +193,7 @@ class MonitoringService:
             logger.error(f"Ошибка при сборе метрик middleware: {e}")
             return {}
 
-    def _collect_analytics(self) -> Dict[str, Any]:
+    def _collect_analytics(self) -> dict[str, Any]:
         """
         Сбор аналитики.
 
@@ -228,7 +229,7 @@ class MonitoringService:
             logger.error(f"Ошибка при сборе аналитики: {e}")
             return {}
 
-    async def _send_alert(self, health_result: Dict[str, Any]) -> None:
+    async def _send_alert(self, health_result: dict[str, Any]) -> None:
         """
         Отправка уведомления о проблеме.
 
@@ -277,7 +278,7 @@ class MonitoringService:
             self.alert_handlers.remove(handler)
             logger.info("Удален обработчик уведомлений")
 
-    def get_health_history(self, limit: int = 10) -> List[Dict[str, Any]]:
+    def get_health_history(self, limit: int = 10) -> list[dict[str, Any]]:
         """
         Получение истории проверок здоровья.
 
@@ -291,7 +292,7 @@ class MonitoringService:
 
     def get_metrics_history(
         self, metric_name: str, limit: int = 10
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Получение истории метрик.
 
@@ -308,7 +309,7 @@ class MonitoringService:
             return records[-limit:]
         return []
 
-    async def get_current_status(self) -> Dict[str, Any]:
+    async def get_current_status(self) -> dict[str, Any]:
         """
         Получение текущего статуса системы.
 
@@ -341,7 +342,7 @@ class MonitoringService:
         if counter_name in self.performance_stats:
             self.performance_stats[counter_name] += increment
 
-    def get_analytics_summary(self) -> Dict[str, Any]:
+    def get_analytics_summary(self) -> dict[str, Any]:
         """
         Получение сводки аналитики.
 

@@ -64,8 +64,9 @@ class AntiSpamMiddleware(BaseAIMiddleware):
         telegram_user: TelegramUser | None = None
 
         # Проверяем разные типы событий для получения пользователя
-        if (isinstance(event, Message) and event.from_user) or \
-           (isinstance(event, CallbackQuery) and event.from_user):
+        if (isinstance(event, Message) and event.from_user) or (
+            isinstance(event, CallbackQuery) and event.from_user
+        ):
             telegram_user = event.from_user
 
         if telegram_user:

@@ -63,7 +63,7 @@ class ConfigMagicValues:
     """Магические значения, используемые в конфигурации."""
 
     # Database
-    DATABASE_DEFAULT_POOL_SIZE = 10
+    DATABASE_DEFAULT_POOL_SIZE = 20  # Увеличиваем с 10 до 20
     DATABASE_DEFAULT_TIMEOUT = 30
     DATABASE_DEFAULT_PORT = 5432
 
@@ -84,6 +84,7 @@ class ConfigMagicValues:
 
     # Cache
     DEFAULT_CACHE_TTL = 3600
+    DEFAULT_REDIS_URL = "redis://localhost:6379"
 
     # Rate Limit
     DEFAULT_RATE_LIMIT_PER_MINUTE = 60

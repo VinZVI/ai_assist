@@ -29,7 +29,9 @@ class DatabaseConfig(BaseSettings):
     )
 
     # Настройки пула соединений
-    database_pool_size: int = Field(default=10, validation_alias="DATABASE_POOL_SIZE")
+    database_pool_size: int = Field(
+        default=20, validation_alias="DATABASE_POOL_SIZE"
+    )  # Увеличиваем с 10 до 20
     database_timeout: int = Field(default=30, validation_alias="DATABASE_TIMEOUT")
 
     model_config = {"extra": "ignore", "env_file": ".env", "env_file_encoding": "utf-8"}
@@ -176,7 +178,9 @@ class UserLimitsConfig(BaseSettings):
         default=30, validation_alias="PREMIUM_DURATION_DAYS"
     )
     premium_price: int = Field(default=100, validation_alias="PREMIUM_PRICE")
-    premium_message_limit: int = Field(default=100, validation_alias="PREMIUM_MESSAGE_LIMIT")
+    premium_message_limit: int = Field(
+        default=100, validation_alias="PREMIUM_MESSAGE_LIMIT"
+    )
 
     # New configuration parameters for anti-spam and rate limiting
     spam_actions_per_minute: int = Field(
@@ -204,6 +208,9 @@ class CacheConfig(BaseSettings):
     """Конфигурация кэширования."""
 
     ttl: int = Field(default=3600, validation_alias="CACHE_TTL")
+    redis_url: str = Field(
+        default="redis://localhost:6379", validation_alias="REDIS_URL"
+    )
 
     model_config = {"extra": "ignore", "env_file": ".env", "env_file_encoding": "utf-8"}
 

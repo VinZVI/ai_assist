@@ -25,6 +25,7 @@ from app.lexicon.gettext import get_log_text
 from app.services.ai_manager import close_ai_manager
 from app.services.analytics import analytics_service
 from app.services.monitoring import monitoring_service
+from app.services.redis_cache_service import initialize_redis_cache
 from app.utils.logging import setup_logging
 
 
@@ -195,6 +196,10 @@ class AIAssistantBot:
             # Инициализация базы данных
             logger.info(get_log_text("main.bot_db_initializing"))
             await init_db()
+
+            # Инициализация Redis кеша
+            logger.info("Initializing Redis cache...")
+            await initialize_redis_cache()
 
             # Создание бота и диспетчера
             self.bot = self.create_bot()

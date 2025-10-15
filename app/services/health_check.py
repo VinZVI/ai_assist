@@ -23,9 +23,9 @@ class HealthCheckService:
         """Инициализация сервиса проверки здоровья."""
         self.config = get_config()
         self.last_check_time = 0.0
-        self.last_check_result: Dict[str, Any] = {}
+        self.last_check_result: dict[str, Any] = {}
 
-    async def perform_health_check(self) -> Dict[str, Any]:
+    async def perform_health_check(self) -> dict[str, Any]:
         """
         Выполнение полной проверки здоровья системы.
 
@@ -74,7 +74,7 @@ class HealthCheckService:
 
         return health_results
 
-    def _check_config(self) -> Dict[str, Any]:
+    def _check_config(self) -> dict[str, Any]:
         """
         Проверка конфигурации.
 
@@ -88,12 +88,11 @@ class HealthCheckService:
                     "status": "healthy",
                     "message": "Конфигурация загружена успешно",
                 }
-            else:
-                return {"status": "unhealthy", "message": "Конфигурация не загружена"}
+            return {"status": "unhealthy", "message": "Конфигурация не загружена"}
         except Exception as e:
             return {"status": "error", "message": f"Ошибка проверки конфигурации: {e}"}
 
-    async def _check_database(self) -> Dict[str, Any]:
+    async def _check_database(self) -> dict[str, Any]:
         """
         Проверка подключения к базе данных.
 
@@ -107,15 +106,14 @@ class HealthCheckService:
                     "status": "healthy",
                     "message": "Подключение к базе данных установлено",
                 }
-            else:
-                return {
-                    "status": "unhealthy",
-                    "message": "Нет подключения к базе данных",
-                }
+            return {
+                "status": "unhealthy",
+                "message": "Нет подключения к базе данных",
+            }
         except Exception as e:
             return {"status": "error", "message": f"Ошибка проверки базы данных: {e}"}
 
-    async def _check_ai_providers(self) -> Dict[str, Any]:
+    async def _check_ai_providers(self) -> dict[str, Any]:
         """
         Проверка AI провайдеров.
 
@@ -135,25 +133,24 @@ class HealthCheckService:
                     "message": "Все AI провайдеры работают нормально",
                     "providers": ai_health.get("providers", {}),
                 }
-            elif manager_status == "degraded":
+            if manager_status == "degraded":
                 return {
                     "status": "degraded",
                     "message": "Некоторые AI провайдеры недоступны",
                     "providers": ai_health.get("providers", {}),
                 }
-            else:
-                return {
-                    "status": "unhealthy",
-                    "message": "Все AI провайдеры недоступны",
-                    "providers": ai_health.get("providers", {}),
-                }
+            return {
+                "status": "unhealthy",
+                "message": "Все AI провайдеры недоступны",
+                "providers": ai_health.get("providers", {}),
+            }
         except Exception as e:
             return {
                 "status": "error",
                 "message": f"Ошибка проверки AI провайдеров: {e}",
             }
 
-    def _determine_overall_status(self, components: Dict[str, Any]) -> str:
+    def _determine_overall_status(self, components: dict[str, Any]) -> str:
         """
         Определение общего статуса на основе компонентов.
 
@@ -181,7 +178,7 @@ class HealthCheckService:
         # Если все компоненты здоровы, общий статус - здоров
         return "healthy"
 
-    async def get_cached_health_status(self, max_age: int = 30) -> Dict[str, Any]:
+    async def get_cached_health_status(self, max_age: int = 30) -> dict[str, Any]:
         """
         Получение кэшированного статуса здоровья.
 

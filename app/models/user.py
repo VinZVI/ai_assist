@@ -258,10 +258,10 @@ class User(Base):
 
         # Получаем конфигурацию для лимитов
         config = get_config()
-        
+
         # Для премиум пользователей используем премиум лимит
         if self.is_premium_active():
-            premium_limit = getattr(config.user_limits, 'premium_message_limit', 100)
+            premium_limit = getattr(config.user_limits, "premium_message_limit", 100)
             return self.daily_message_count < premium_limit
 
         # Сброс счетчика если прошел день
