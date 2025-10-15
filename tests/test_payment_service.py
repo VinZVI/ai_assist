@@ -1,16 +1,16 @@
 """
-Тесты для TelegramStarsPaymentService.
+Unit tests for TelegramStarsPaymentService
 """
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from aiogram.types import SuccessfulPayment
 
-from app.services.payment_service import TelegramStarsPaymentService
-from app.models.user import User as UserModel
 from app.models.payment import Payment as PaymentModel
+from app.models.user import User as UserModel
+from app.services.payment_service import TelegramStarsPaymentService
 
 
 class TestTelegramStarsPaymentService:
@@ -76,7 +76,9 @@ class TestTelegramStarsPaymentService:
         duration_days = 30
 
         # Mock the bot.send_invoice method to raise an exception
-        payment_service.bot.send_invoice = AsyncMock(side_effect=Exception("Test error"))
+        payment_service.bot.send_invoice = AsyncMock(
+            side_effect=Exception("Test error")
+        )
 
         # Act
         result = await payment_service.create_invoice(
@@ -171,7 +173,7 @@ class TestTelegramStarsPaymentService:
         # Arrange
         user_id = 1
         duration_days = 30
-        mock_user.premium_expires_at = datetime.utcnow() + timedelta(days=15)
+        mock_user.premium_expires_at = datetime.now(UTC) + timedelta(days=15)
 
         # Mock database session
         mock_session = AsyncMock()
@@ -246,7 +248,7 @@ class TestTelegramStarsPaymentService:
         # Arrange
         user_id = 1
         mock_user.is_premium = True
-        mock_user.premium_expires_at = datetime.utcnow() + timedelta(days=30)
+        mock_user.premium_expires_at = datetime.now(UTC) + timedelta(days=30)
 
         # Mock database session
         mock_session = AsyncMock()

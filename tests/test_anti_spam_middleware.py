@@ -95,7 +95,9 @@ class TestAntiSpamMiddleware:
             anti_spam_middleware._user_actions[user_id].append(datetime.now(UTC))
 
         # Act
-        result = await anti_spam_middleware(mock_handler, mock_callback_event, mock_data)
+        result = await anti_spam_middleware(
+            mock_handler, mock_callback_event, mock_data
+        )
 
         # Assert
         assert result is None  # Handler should not be called
@@ -113,7 +115,9 @@ class TestAntiSpamMiddleware:
 
         # Set user as blocked
         user_id = mock_message_event.from_user.id
-        anti_spam_middleware._user_blocks[user_id] = datetime.now(UTC) + timedelta(seconds=10)
+        anti_spam_middleware._user_blocks[user_id] = datetime.now(UTC) + timedelta(
+            seconds=10
+        )
 
         # Act
         result = await anti_spam_middleware(mock_handler, mock_message_event, mock_data)
@@ -141,7 +145,7 @@ class TestAntiSpamMiddleware:
         anti_spam_middleware._user_blocks[user_id] = expired_time
 
         # Act
-        result = await anti_spam_middleware(mock_handler, mock_message_event, mock_data)
+        await anti_spam_middleware(mock_handler, mock_message_event, mock_data)
 
         # Assert - when block expires, the user should be able to perform actions again
         # The middleware should process the action normally
@@ -204,17 +208,20 @@ class TestMessageCountingMiddleware:
 
     @pytest.mark.asyncio
     async def test_message_counting_middleware_under_limit(
-        self, message_counting_middleware: MessageCountingMiddleware, 
-        mock_message_event: MagicMock, mock_user: MagicMock
+        self,
+        message_counting_middleware: MessageCountingMiddleware,
+        mock_message_event: MagicMock,
+        mock_user: MagicMock,
     ) -> None:
         """Тест обработки сообщения в пределах дневного лимита."""
         # Arrange
         mock_handler = AsyncMock()
         mock_data = {"user": mock_user}
 
-        with patch("app.middleware.message_counter.get_config") as mock_get_config, \
-             patch("app.middleware.message_counter.get_session") as mock_get_session:
-            
+        with (
+            patch("app.middleware.message_counter.get_config") as mock_get_config,
+            patch("app.middleware.message_counter.get_session") as mock_get_session,
+        ):
             # Mock config
             mock_config = MagicMock()
             mock_config.user_limits.daily_message_limit = 20
@@ -228,7 +235,9 @@ class TestMessageCountingMiddleware:
             mock_get_session.return_value.__aenter__.return_value = mock_session
 
             # Act
-            await message_counting_middleware(mock_handler, mock_message_event, mock_data)
+            await message_counting_middleware(
+                mock_handler, mock_message_event, mock_data
+            )
 
             # Assert
             mock_handler.assert_called_once_with(mock_message_event, mock_data)
@@ -236,8 +245,10 @@ class TestMessageCountingMiddleware:
 
     @pytest.mark.asyncio
     async def test_message_counting_middleware_over_limit(
-        self, message_counting_middleware: MessageCountingMiddleware, 
-        mock_message_event: MagicMock, mock_user: MagicMock
+        self,
+        message_counting_middleware: MessageCountingMiddleware,
+        mock_message_event: MagicMock,
+        mock_user: MagicMock,
     ) -> None:
         """Тест обработки сообщения при превышении дневного лимита."""
         # Arrange
@@ -246,7 +257,6 @@ class TestMessageCountingMiddleware:
         mock_user.daily_message_count = 20  # At limit
 
         with patch("app.middleware.message_counter.get_config") as mock_get_config:
-            
             # Mock config
             mock_config = MagicMock()
             mock_config.user_limits.daily_message_limit = 20
@@ -254,7 +264,9 @@ class TestMessageCountingMiddleware:
             mock_get_config.return_value = mock_config
 
             # Act
-            result = await message_counting_middleware(mock_handler, mock_message_event, mock_data)
+            result = await message_counting_middleware(
+                mock_handler, mock_message_event, mock_data
+            )
 
             # Assert
             assert result is None  # Handler should not be called
@@ -263,8 +275,10 @@ class TestMessageCountingMiddleware:
 
     @pytest.mark.asyncio
     async def test_message_counting_middleware_premium_user(
-        self, message_counting_middleware: MessageCountingMiddleware, 
-        mock_message_event: MagicMock, mock_user: MagicMock
+        self,
+        message_counting_middleware: MessageCountingMiddleware,
+        mock_message_event: MagicMock,
+        mock_user: MagicMock,
     ) -> None:
         """Тест обработки сообщения от премиум пользователя."""
         # Arrange
@@ -272,10 +286,11 @@ class TestMessageCountingMiddleware:
         mock_data = {"user": mock_user}
         mock_user.is_premium = True
         mock_user.is_premium_active.return_value = True
-        mock_user.daily_message_count = 100  # Over limit but should be allowed for premium
+        mock_user.daily_message_count = (
+            100  # Over limit but should be allowed for premium
+        )
 
         with patch("app.middleware.message_counter.get_config") as mock_get_config:
-            
             # Mock config
             mock_config = MagicMock()
             mock_config.user_limits.daily_message_limit = 20
@@ -283,7 +298,9 @@ class TestMessageCountingMiddleware:
             mock_get_config.return_value = mock_config
 
             # Act
-            await message_counting_middleware(mock_handler, mock_message_event, mock_data)
+            await message_counting_middleware(
+                mock_handler, mock_message_event, mock_data
+            )
 
             # Assert
             mock_handler.assert_called_once_with(mock_message_event, mock_data)

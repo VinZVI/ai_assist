@@ -176,6 +176,7 @@ class UserLimitsConfig(BaseSettings):
         default=30, validation_alias="PREMIUM_DURATION_DAYS"
     )
     premium_price: int = Field(default=100, validation_alias="PREMIUM_PRICE")
+    premium_message_limit: int = Field(default=100, validation_alias="PREMIUM_MESSAGE_LIMIT")
 
     # New configuration parameters for anti-spam and rate limiting
     spam_actions_per_minute: int = Field(

@@ -9,7 +9,7 @@
 from datetime import datetime
 
 from aiogram import F, Router
-from aiogram.types import CallbackQuery
+from aiogram.types import CallbackQuery, InaccessibleMessage
 from loguru import logger
 from sqlalchemy import select
 
@@ -31,17 +31,18 @@ callback_router = Router(name="callbacks")
 @callback_router.callback_query(F.data == "main_menu")
 async def show_main_menu(callback: CallbackQuery, user: User) -> None:
     """Показать главное меню."""
-    try:
-        # Get user's language preference
-        user_lang = user.language_code or "ru"
+    # Get user's language preference
+    user_lang = user.language_code or "ru"
 
+    try:
         # Check if the message content and reply markup are actually different
         # before attempting to edit to prevent "message is not modified" error
         new_text = get_text("callbacks.main_menu_title", user_lang)
         new_keyboard = create_main_menu_keyboard(user_lang)
 
         # Only edit if message exists and content/markup are different
-        if callback.message:
+        if callback.message and not isinstance(callback.message, InaccessibleMessage):
+            # Safe to access text attribute now
             if (
                 callback.message.text != new_text
                 or callback.message.reply_markup != new_keyboard
@@ -55,12 +56,7 @@ async def show_main_menu(callback: CallbackQuery, user: User) -> None:
                 # Message content is the same, just answer the callback
                 await callback.answer()
         else:
-            # If there's no message, send a new one
-            await callback.message.answer(
-                new_text,
-                reply_markup=new_keyboard,
-                parse_mode="Markdown",
-            )
+            # If there's no message or it's inaccessible, just answer the callback
             await callback.answer()
     except Exception as e:
         # Handle the specific "message is not modified" error
@@ -73,11 +69,14 @@ async def show_main_menu(callback: CallbackQuery, user: User) -> None:
             )
             # Try to send a new message if editing fails
             try:
-                await callback.message.answer(
-                    get_text("callbacks.main_menu_title", user_lang),
-                    reply_markup=create_main_menu_keyboard(user_lang),
-                    parse_mode="Markdown",
-                )
+                if callback.message and not isinstance(
+                    callback.message, InaccessibleMessage
+                ):
+                    await callback.message.answer(
+                        get_text("callbacks.main_menu_title", user_lang),
+                        reply_markup=create_main_menu_keyboard(user_lang),
+                        parse_mode="Markdown",
+                    )
                 await callback.answer()
             except Exception as fallback_error:
                 logger.error(
@@ -91,29 +90,29 @@ async def show_main_menu(callback: CallbackQuery, user: User) -> None:
 @callback_router.callback_query(F.data == "start_chat")
 async def start_chat(callback: CallbackQuery, user: User) -> None:
     """Начать диалог."""
-    try:
-        # Get user's language preference
-        user_lang = user.language_code or "ru"
+    # Get user's language preference
+    user_lang = user.language_code or "ru"
 
+    try:
         # Send a welcome message to start the chat
-        await callback.message.answer(
-            get_text("start.first_message_text", user_lang),
-            parse_mode="Markdown",
-        )
+        if callback.message and not isinstance(callback.message, InaccessibleMessage):
+            await callback.message.answer(
+                get_text("start.first_message_text", user_lang),
+                parse_mode="Markdown",
+            )
         await callback.answer()
     except Exception as e:
         logger.error(get_log_text("callbacks.callback_error").format(error=e))
-        user_lang = user.language_code or "ru"
         await callback.answer(get_text("errors.general_error", user_lang))
 
 
 @callback_router.callback_query(F.data == "my_stats")
 async def show_user_stats(callback: CallbackQuery, user: User) -> None:
     """Показать статистику пользователя."""
-    try:
-        # Get user's language preference
-        user_lang = user.language_code or "ru"
+    # Get user's language preference
+    user_lang = user.language_code or "ru"
 
+    try:
         from app.keyboards import create_stats_keyboard
 
         # Create a simple stats message
@@ -123,57 +122,45 @@ async def show_user_stats(callback: CallbackQuery, user: User) -> None:
 
         new_keyboard = create_stats_keyboard(user_lang)
 
-        if callback.message:
+        if callback.message and not isinstance(callback.message, InaccessibleMessage):
             await callback.message.edit_text(
                 stats_text,
                 reply_markup=new_keyboard,
                 parse_mode="Markdown",
             )
         else:
-            await callback.message.answer(
-                stats_text,
-                reply_markup=new_keyboard,
-                parse_mode="Markdown",
-            )
-        await callback.answer()
+            await callback.answer()
     except Exception as e:
         logger.error(get_log_text("callbacks.callback_error").format(error=e))
-        user_lang = user.language_code or "ru"
         await callback.answer(get_text("errors.general_error", user_lang))
 
 
 @callback_router.callback_query(F.data == "help")
 async def show_help(callback: CallbackQuery, user: User) -> None:
     """Показать помощь."""
-    try:
-        # Get user's language preference
-        user_lang = user.language_code or "ru"
+    # Get user's language preference
+    user_lang = user.language_code or "ru"
 
+    try:
         from app.keyboards import create_help_keyboard
 
         # Create help text
         help_text = f"*{get_text('help.title', user_lang)}*\n\n"
-        for command, description in get_text("help.commands", user_lang):
-            help_text += f"• {command} - {description}\n"
+        # Fix: get_text("help.commands", user_lang) returns a single string, not a list of tuples
+        help_text += get_text("help.commands", user_lang)
 
         new_keyboard = create_help_keyboard(user_lang)
 
-        if callback.message:
+        if callback.message and not isinstance(callback.message, InaccessibleMessage):
             await callback.message.edit_text(
                 help_text,
                 reply_markup=new_keyboard,
                 parse_mode="Markdown",
             )
         else:
-            await callback.message.answer(
-                help_text,
-                reply_markup=new_keyboard,
-                parse_mode="Markdown",
-            )
-        await callback.answer()
+            await callback.answer()
     except Exception as e:
         logger.error(get_log_text("callbacks.callback_error").format(error=e))
-        user_lang = user.language_code or "ru"
         await callback.answer(get_text("errors.general_error", user_lang))
 
 
@@ -203,72 +190,60 @@ async def placeholder_callback(callback: CallbackQuery, user: User) -> None:
 @callback_router.callback_query(F.data == "settings")
 async def show_settings_menu(callback: CallbackQuery, user: User) -> None:
     """Показать меню настроек."""
-    try:
-        # Get user's language preference
-        user_lang = user.language_code or "ru"
+    # Get user's language preference
+    user_lang = user.language_code or "ru"
 
+    try:
         from app.keyboards import create_settings_keyboard
 
         new_text = get_text("callbacks.settings_menu_title", user_lang)
         new_keyboard = create_settings_keyboard(user_lang)
 
-        if callback.message:
+        if callback.message and not isinstance(callback.message, InaccessibleMessage):
             await callback.message.edit_text(
                 new_text,
                 reply_markup=new_keyboard,
                 parse_mode="Markdown",
             )
         else:
-            await callback.message.answer(
-                new_text,
-                reply_markup=new_keyboard,
-                parse_mode="Markdown",
-            )
-        await callback.answer()
+            await callback.answer()
     except Exception as e:
         logger.error(get_log_text("callbacks.callback_error").format(error=e))
-        user_lang = user.language_code or "ru"
         await callback.answer(get_text("errors.general_error", user_lang))
 
 
 @callback_router.callback_query(F.data == "settings_language")
 async def show_language_settings(callback: CallbackQuery, user: User) -> None:
     """Показать настройки языка."""
-    try:
-        # Get user's language preference
-        user_lang = user.language_code or "ru"
+    # Get user's language preference
+    user_lang = user.language_code or "ru"
 
+    try:
         from app.keyboards import create_language_keyboard
 
         new_text = get_text("language.title", user_lang)
         new_keyboard = create_language_keyboard(user_lang)
 
-        if callback.message:
+        if callback.message and not isinstance(callback.message, InaccessibleMessage):
             await callback.message.edit_text(
                 new_text,
                 reply_markup=new_keyboard,
                 parse_mode="Markdown",
             )
         else:
-            await callback.message.answer(
-                new_text,
-                reply_markup=new_keyboard,
-                parse_mode="Markdown",
-            )
-        await callback.answer()
+            await callback.answer()
     except Exception as e:
         logger.error(get_log_text("callbacks.callback_error").format(error=e))
-        user_lang = user.language_code or "ru"
         await callback.answer(get_text("errors.general_error", user_lang))
 
 
 @callback_router.callback_query(F.data == "premium_info")
 async def show_premium_info(callback: CallbackQuery, user: User) -> None:
     """Показать информацию о премиуме."""
-    try:
-        # Get user's language preference
-        user_lang = user.language_code or "ru"
+    # Get user's language preference
+    user_lang = user.language_code or "ru"
 
+    try:
         from app.keyboards import create_premium_keyboard
 
         config = get_config()
@@ -278,41 +253,38 @@ async def show_premium_info(callback: CallbackQuery, user: User) -> None:
             config.user_limits.premium_price, user_lang
         )
 
-        if callback.message:
+        if callback.message and not isinstance(callback.message, InaccessibleMessage):
             await callback.message.edit_text(
                 new_text,
                 reply_markup=new_keyboard,
                 parse_mode="Markdown",
             )
         else:
-            await callback.message.answer(
-                new_text,
-                reply_markup=new_keyboard,
-                parse_mode="Markdown",
-            )
-        await callback.answer()
+            await callback.answer()
     except Exception as e:
         logger.error(get_log_text("callbacks.callback_error").format(error=e))
-        user_lang = user.language_code or "ru"
         await callback.answer(get_text("errors.general_error", user_lang))
 
 
 @callback_router.callback_query(F.data.startswith("buy_premium:"))
 async def handle_premium_purchase(callback: CallbackQuery, user: User) -> None:
     """Обработать покупку премиум-доступа через Telegram Stars."""
-    try:
-        # Get user's language preference
-        user_lang = user.language_code or "ru"
+    # Get user's language preference
+    user_lang = user.language_code or "ru"
 
+    try:
         # Extract premium price from callback data
         try:
-            premium_price = int(callback.data.split(":")[1])
+            # Check if callback.data exists before accessing split
+            premium_price = (
+                int(callback.data.split(":")[1]) if callback.data else 99
+            )  # Default price
         except (IndexError, ValueError):
             premium_price = 99  # Default price
 
         # Get configuration
         config = get_config()
-        
+
         # Calculate duration based on price (simplified pricing model)
         # In a real implementation, you might have a mapping of prices to durations
         if premium_price >= 800:  # Yearly plan
@@ -327,27 +299,26 @@ async def handle_premium_purchase(callback: CallbackQuery, user: User) -> None:
 
         # Create invoice using payment service
         from aiogram import Bot
+
         from app.services.payment_service import TelegramStarsPaymentService
-        
+
         bot = Bot(token=config.telegram.bot_token)
         payment_service = TelegramStarsPaymentService(bot)
-        
+
         success = await payment_service.create_invoice(
             user_id=callback.from_user.id,
             amount=premium_price,
             description=description,
-            duration_days=duration_days
+            duration_days=duration_days,
         )
-        
+
         if not success:
             await callback.answer(
-                get_text("errors.payment_creation_failed", user_lang),
-                show_alert=True
+                get_text("errors.payment_creation_failed", user_lang), show_alert=True
             )
-            
+
     except Exception as e:
         logger.error(get_log_text("callbacks.callback_error").format(error=e))
-        user_lang = user.language_code or "ru"
         await callback.answer(get_text("errors.general_error", user_lang))
 
 

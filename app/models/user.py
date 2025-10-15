@@ -3,7 +3,7 @@
 @description: Модель пользователя Telegram бота с поддержкой премиум статуса
 @dependencies: sqlalchemy, datetime, pydantic
 @created: 2025-09-07
-@updated: 2025-09-12
+@updated: 2025-10-15
 """
 
 from datetime import UTC, date, datetime
@@ -22,11 +22,14 @@ from sqlalchemy import (
     Index,
     Integer,
     String,
+    Text,
     func,
     select,
 )
+from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from app.config import get_config
 from app.database import Base, get_session
 
 if TYPE_CHECKING:
@@ -154,6 +157,25 @@ class User(Base):
         comment="Время последней активности",
     )
 
+    # Поля для персонализированной эмоциональной поддержки
+    emotional_profile: Mapped[dict[str, Any] | None] = mapped_column(
+        JSON,
+        nullable=True,
+        comment="Профиль эмоциональных предпочтений пользователя",
+    )
+
+    support_preferences: Mapped[dict[str, Any] | None] = mapped_column(
+        JSON,
+        nullable=True,
+        comment="Предпочтения в типе поддержки",
+    )
+
+    communication_style: Mapped[str | None] = mapped_column(
+        String(50),
+        nullable=True,
+        comment="Предпочтительный стиль общения",
+    )
+
     # Отношения
     # Use string annotation for forward reference to avoid circular import
     conversations: Mapped[list["Conversation"]] = relationship(
@@ -234,8 +256,13 @@ class User(Base):
         if self.is_blocked:
             return False
 
+        # Получаем конфигурацию для лимитов
+        config = get_config()
+        
+        # Для премиум пользователей используем премиум лимит
         if self.is_premium_active():
-            return True
+            premium_limit = getattr(config.user_limits, 'premium_message_limit', 100)
+            return self.daily_message_count < premium_limit
 
         # Сброс счетчика если прошел день
         today = date.today()
@@ -259,6 +286,26 @@ class User(Base):
         self.daily_message_count += 1
         self.total_messages = (self.total_messages or 0) + 1
         self.last_message_date = datetime.now(UTC).date()
+
+    def update_emotional_profile(self, profile_data: dict[str, Any]) -> None:
+        """Обновление эмоционального профиля пользователя."""
+        if self.emotional_profile is None:
+            self.emotional_profile = {}
+        self.emotional_profile.update(profile_data)
+
+    def update_support_preferences(self, preferences: dict[str, Any]) -> None:
+        """Обновление предпочтений в типе поддержки."""
+        if self.support_preferences is None:
+            self.support_preferences = {}
+        self.support_preferences.update(preferences)
+
+    def get_emotional_profile(self) -> dict[str, Any]:
+        """Получение эмоционального профиля пользователя."""
+        return self.emotional_profile or {}
+
+    def get_support_preferences(self) -> dict[str, Any]:
+        """Получение предпочтений в типе поддержки."""
+        return self.support_preferences or {}
 
 
 # Pydantic схемы для валидации и сериализации
@@ -307,6 +354,9 @@ class UserUpdate(BaseModel):
     daily_message_count: int | None = Field(None, ge=0)
     premium_expires_at: datetime | None = None
     last_message_date: date | None = None
+    emotional_profile: dict[str, Any] | None = None
+    support_preferences: dict[str, Any] | None = None
+    communication_style: str | None = Field(None, max_length=50)
 
 
 class UserResponse(UserBase):
@@ -320,6 +370,9 @@ class UserResponse(UserBase):
     is_blocked: bool
     created_at: datetime
     last_activity_at: datetime | None
+    emotional_profile: dict[str, Any] | None
+    support_preferences: dict[str, Any] | None
+    communication_style: str | None
 
     model_config = ConfigDict(from_attributes=True)
 

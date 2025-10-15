@@ -5,7 +5,7 @@
 @created: 2025-10-10
 """
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Optional
 
 from aiogram import Bot
@@ -111,7 +111,7 @@ class TelegramStarsPaymentService:
                     payment_id=payment.telegram_payment_charge_id,
                     payment_provider="telegram_stars",
                     status="completed",
-                    created_at=datetime.utcnow(),
+                    created_at=datetime.now(UTC),
                 )
                 session.add(payment_record)
                 await session.commit()
@@ -168,7 +168,7 @@ class TelegramStarsPaymentService:
                     return False
 
                 # Рассчитываем новую дату окончания премиум подписки
-                current_time = datetime.utcnow()
+                current_time = datetime.now(UTC)
                 if user.premium_expires_at and user.premium_expires_at > current_time:
                     # Продлеваем существующую подписку
                     new_premium_until = user.premium_expires_at + timedelta(
@@ -255,9 +255,13 @@ class TelegramStarsPaymentService:
                 user = await result.scalar_one_or_none()
 
                 if not user:
-                    return {"is_premium": False, "expires_at": None, "remaining_days": 0}
+                    return {
+                        "is_premium": False,
+                        "expires_at": None,
+                        "remaining_days": 0,
+                    }
 
-                current_time = datetime.utcnow()
+                current_time = datetime.now(UTC)
                 is_active = (
                     user.is_premium
                     and user.premium_expires_at
@@ -269,9 +273,7 @@ class TelegramStarsPaymentService:
                     "expires_at": user.premium_expires_at.isoformat()
                     if user.premium_expires_at
                     else None,
-                    "remaining_days": (
-                        user.premium_expires_at - current_time
-                    ).days
+                    "remaining_days": (user.premium_expires_at - current_time).days
                     if is_active and user.premium_expires_at
                     else 0,
                 }

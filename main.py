@@ -23,6 +23,8 @@ from app.database import close_db, init_db
 from app.handlers import ROUTERS
 from app.lexicon.gettext import get_log_text
 from app.services.ai_manager import close_ai_manager
+from app.services.analytics import analytics_service
+from app.services.monitoring import monitoring_service
 from app.utils.logging import setup_logging
 
 
@@ -65,7 +67,9 @@ class AIAssistantBot:
             AdminMiddleware,
             AntiSpamMiddleware,
             AuthMiddleware,
+            ContentFilterMiddleware,
             ConversationMiddleware,
+            EmotionalProfilingMiddleware,
             LoggingMiddleware,
             MessageCountingMiddleware,
             MetricsMiddleware,
@@ -79,6 +83,8 @@ class AIAssistantBot:
         user_language_middleware = UserLanguageMiddleware()
         anti_spam_middleware = AntiSpamMiddleware()
         rate_limit_middleware = RateLimitMiddleware()
+        content_filter_middleware = ContentFilterMiddleware()
+        emotional_profiling_middleware = EmotionalProfilingMiddleware()
         conversation_middleware = ConversationMiddleware()
         message_counting_middleware = MessageCountingMiddleware()
         metrics_middleware = MetricsMiddleware()
@@ -109,15 +115,23 @@ class AIAssistantBot:
         dp.message.middleware(rate_limit_middleware)
         dp.callback_query.middleware(rate_limit_middleware)
 
-        # 7. Сохранение диалогов
+        # 7. Фильтрация контента (после аутентификации)
+        dp.message.middleware(content_filter_middleware)
+        dp.callback_query.middleware(content_filter_middleware)
+
+        # 8. Профилирование эмоций пользователя (после аутентификации)
+        dp.message.middleware(emotional_profiling_middleware)
+        dp.callback_query.middleware(emotional_profiling_middleware)
+
+        # 9. Сохранение диалогов
         dp.message.middleware(conversation_middleware)
         dp.callback_query.middleware(conversation_middleware)
 
-        # 8. Подсчет сообщений пользователей (только для сообщений)
+        # 10. Подсчет сообщений пользователей (только для сообщений)
         dp.message.middleware(message_counting_middleware)
         # Не регистрируем для callback_query, так как они не считаются в лимиты
 
-        # 9. Сбор метрик (последним для сбора полной информации)
+        # 11. Сбор метрик (последним для сбора полной информации)
         dp.message.middleware(metrics_middleware)
         dp.callback_query.middleware(metrics_middleware)
 
@@ -197,6 +211,10 @@ class AIAssistantBot:
             # Настройка команд
             await self.setup_bot_commands()
 
+            # Запуск мониторинга и аналитики
+            await monitoring_service.start_monitoring()
+            await analytics_service.start_analytics_collection()
+
             logger.success(get_log_text("main.bot_initialized"))
 
         except Exception as e:
@@ -208,6 +226,10 @@ class AIAssistantBot:
         logger.info(get_log_text("main.bot_shutdown_started"))
 
         try:
+            # Остановка мониторинга и аналитики
+            await monitoring_service.stop_monitoring()
+            await analytics_service.stop_analytics_collection()
+
             # Остановка диспетчера с таймаутом
             if self.dp:
                 try:

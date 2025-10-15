@@ -8,7 +8,9 @@ from .admin import AdminMiddleware
 from .anti_spam import AntiSpamMiddleware
 from .auth import AuthMiddleware
 from .base import BaseAIMiddleware
+from .content_filter import ContentFilterMiddleware
 from .conversation import ConversationMiddleware
+from .emotional_profiling import EmotionalProfilingMiddleware
 from .logging import LoggingMiddleware
 from .message_counter import MessageCountingMiddleware
 from .metrics import MetricsMiddleware
@@ -20,7 +22,9 @@ __all__ = [
     "AntiSpamMiddleware",
     "AuthMiddleware",
     "BaseAIMiddleware",
+    "ContentFilterMiddleware",
     "ConversationMiddleware",
+    "EmotionalProfilingMiddleware",
     "LoggingMiddleware",
     "MessageCountingMiddleware",
     "MetricsMiddleware",

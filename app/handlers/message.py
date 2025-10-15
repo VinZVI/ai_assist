@@ -3,10 +3,11 @@
 @description: Обработчик входящих сообщений от пользователей
 @dependencies: aiogram, sqlalchemy, loguru
 @created: 2025-09-07
-@updated: 2025-10-09
+@updated: 2025-10-15
 """
 
 from collections.abc import Awaitable, Callable
+from contextlib import suppress as contextlib_suppress
 from datetime import UTC, datetime
 from typing import Optional
 
@@ -23,14 +24,18 @@ from app.constants.errors import (
     AI_QUOTA_ERROR as AI_QUOTA_ERROR_CONST,
 )
 from app.database import get_session
-from app.lexicon.ai_prompts import create_system_message
+from app.lexicon.ai_prompts import (
+    create_crisis_intervention_prompt,
+    create_mature_content_prompt,
+    create_system_message,
+)
 from app.lexicon.gettext import get_log_text, get_text
 from app.models.conversation import Conversation, ConversationStatus
 from app.models.user import User
 from app.services.ai_manager import AIProviderError, get_ai_manager
 from app.services.ai_providers.base import ConversationMessage
 from app.services.conversation_service import (
-    get_recent_conversation_history,
+    get_conversation_context,
     save_conversation,
 )
 
@@ -52,20 +57,26 @@ async def generate_ai_response(
         ai_manager = get_ai_manager()
         start_time = datetime.now(UTC)
 
-        # Получаем историю диалога
+        # Определяем параметры контекста в зависимости от статуса премиум
+        context_limit = 12 if user.is_premium_active() else 6
+        context_max_age = 24 if user.is_premium_active() else 12
+
+        # Получаем контекст диалога
         async with get_session() as session:
-            conversation_history = await get_recent_conversation_history(
+            conversation_context = await get_conversation_context(
                 session,
                 user.id,
-                limit=6,  # Последние 3 обмена
+                limit=context_limit,
+                max_age_hours=context_max_age,
             )
 
         # Формируем сообщения для AI с учетом языка пользователя
         user_language = user.language_code or "ru"
         messages = [create_system_message(user_language)]
 
-        # Добавляем историю
-        messages.extend(conversation_history)
+        # Добавляем контекст диалога
+        if conversation_context["history"]:
+            messages.extend(conversation_context["history"])
 
         # Добавляем текущее сообщение пользователя
         messages.append(
@@ -75,11 +86,37 @@ async def generate_ai_response(
             ),
         )
 
+        # Проверяем, нужно ли активировать специальные режимы
+        lower_message = user_message.lower()
+        
+        # Проверка на кризисные ситуации
+        crisis_keywords = [
+            "самоубийство", "убить себя", "не могу жить", "смерть", 
+            "suicide", "kill myself", "can't live", "death"
+        ]
+        if any(keyword in lower_message for keyword in crisis_keywords):
+            # Добавляем специальный промпт для кризисных ситуаций
+            crisis_prompt = create_crisis_intervention_prompt(user_language)
+            messages.insert(1, ConversationMessage(role="system", content=crisis_prompt))
+        
+        # Проверка на темы для взрослых
+        mature_keywords = [
+            "секс", "интим", "эротика", "sex", "intimate", "erotic"
+        ]
+        if any(keyword in lower_message for keyword in mature_keywords):
+            # Добавляем специальный промпт для тем для взрослых
+            mature_prompt = create_mature_content_prompt(user_language)
+            messages.insert(1, ConversationMessage(role="system", content=mature_prompt))
+
+        # Устанавливаем параметры генерации в зависимости от статуса премиум
+        temperature = 0.7 if user.is_premium_active() else 0.8
+        max_tokens = 1500 if user.is_premium_active() else 1000
+
         # Генерируем ответ с автоматическим fallback
         response = await ai_manager.generate_response(
             messages=messages,
-            temperature=0.8,  # Немного больше креативности для эмпатии
-            max_tokens=1000,
+            temperature=temperature,
+            max_tokens=max_tokens,
         )
 
         response_time = (datetime.now(UTC) - start_time).total_seconds()
@@ -172,6 +209,11 @@ async def handle_text_message(
             await message.answer(get_text("errors.message_too_long", user_lang))
             return
 
+        # Проверяем лимиты пользователя
+        if not user.can_send_message(100 if user.is_premium_active() else 10):
+            await message.answer(get_text("errors.daily_limit_exceeded", user_lang))
+            return
+
         # Отправляем статус "печатает"
         if message.bot:
             await message.bot.send_chat_action(
@@ -203,6 +245,9 @@ async def handle_text_message(
                 tokens_used=tokens_used,
                 response_time=response_time,
             )
+
+        # Увеличиваем счетчик сообщений пользователя
+        user.increment_message_count()
 
         # Логируем обработку сообщения
         logger.info(
@@ -284,49 +329,53 @@ def sanitize_telegram_message(text: str) -> str:
 
 
 @message_router.message(F.successful_payment)
-async def handle_successful_payment(message: Message, successful_payment: SuccessfulPayment) -> None:
+async def handle_successful_payment(
+    message: Message, successful_payment: SuccessfulPayment
+) -> None:
     """Обработка успешного платежа Telegram Stars."""
     try:
         if not message.from_user:
             return
-            
+
         # Process payment
         from app.config import get_config
+
         config = get_config()
-        
+
         from aiogram import Bot
+
         from app.services.payment_service import TelegramStarsPaymentService
-        
+
         bot = Bot(token=config.telegram.bot_token)
         payment_service = TelegramStarsPaymentService(bot)
-        
+
         success = await payment_service.handle_successful_payment(
-            successful_payment, 
-            message.from_user.id
+            successful_payment, message.from_user.id
         )
-        
+
         # Get user's language preference
         async with get_session() as session:
             stmt = select(User).where(User.telegram_id == message.from_user.id)
             result = await session.execute(stmt)
             user = result.scalar_one_or_none()
             user_lang = user.language_code if user and user.language_code else "ru"
-        
+
         if success:
             # Send confirmation message
             await message.answer(get_text("premium.payment_success", user_lang))
         else:
             # Handle error
-            await message.answer(get_text("errors.payment_processing_failed", user_lang))
-            
+            await message.answer(
+                get_text("errors.payment_processing_failed", user_lang)
+            )
+
     except Exception as e:
         from loguru import logger
+
         logger.error(f"Error handling successful payment: {e}")
         # Try to send error message in default language
-        try:
+        with contextlib_suppress(Exception):
             await message.answer(get_text("errors.general_error", "ru"))
-        except Exception:
-            pass
 
 
 # Экспорт роутера

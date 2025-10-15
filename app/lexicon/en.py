@@ -71,6 +71,12 @@ LEXICON_EN = {
         # Payment error messages
         "payment_creation_failed": "💳 Failed to create payment. Please try again later.",
         "payment_processing_failed": "💳 Error processing payment. Please contact support.",
+        # Content filtering error messages
+        "content_blocked": "🔒 Message blocked due to: {reason}",
+        "content_warning": "⚠️ Warning: {reason}. Please avoid such content.",
+        "content_personal_data": "sharing of personal data",
+        "content_extremist": "extremist materials",
+        "content_illegal": "illegal materials",
     },
     "system_prompts": {
         "default_ai_prompt": "You are an empathetic AI assistant and companion. Your task is to provide emotional support and understanding. Respond kindly, supportively, and with understanding. Ask clarifying questions to better understand the user's feelings and needs. Avoid giving medical or legal advice. If the user is in a crisis situation, gently suggest seeking help from a specialist."

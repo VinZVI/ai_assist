@@ -27,7 +27,7 @@ class AntiSpamMiddleware(BaseAIMiddleware):
 
     # Хранилище для отслеживания действий пользователей
     _user_actions: ClassVar[dict[int, list[datetime]]] = defaultdict(list)
-    
+
     # Хранилище для отслеживания временных блокировок
     _user_blocks: ClassVar[dict[int, datetime]] = {}
 
@@ -64,9 +64,8 @@ class AntiSpamMiddleware(BaseAIMiddleware):
         telegram_user: TelegramUser | None = None
 
         # Проверяем разные типы событий для получения пользователя
-        if isinstance(event, Message) and event.from_user:
-            telegram_user = event.from_user
-        elif isinstance(event, CallbackQuery) and event.from_user:
+        if (isinstance(event, Message) and event.from_user) or \
+           (isinstance(event, CallbackQuery) and event.from_user):
             telegram_user = event.from_user
 
         if telegram_user:
@@ -74,10 +73,10 @@ class AntiSpamMiddleware(BaseAIMiddleware):
 
             # Получаем пользователя из контекста (если уже аутентифицирован)
             user: User | None = data.get("user")
-            
+
             # Проверяем, является ли пользователь администратором
             is_admin = data.get("is_admin", False)
-            
+
             # Администраторы не подвержены ограничениям
             if is_admin:
                 # Передаем управление следующему обработчику без проверки лимитов
@@ -115,7 +114,7 @@ class AntiSpamMiddleware(BaseAIMiddleware):
                                 error=str(e)
                             )
                         )
-                
+
                 # Не передаем управление следующему обработчику
                 return None
 
@@ -132,7 +131,7 @@ class AntiSpamMiddleware(BaseAIMiddleware):
             # Получаем конфигурацию
             config = get_config()
             actions_per_minute_limit = config.user_limits.spam_actions_per_minute
-            
+
             # Проверяем лимит действий в минуту
             if len(self._user_actions[user_id]) >= actions_per_minute_limit:
                 # Превышен лимит действий
@@ -148,7 +147,7 @@ class AntiSpamMiddleware(BaseAIMiddleware):
                             limit=actions_per_minute_limit,
                         )
                     )
-                    
+
                     # Блокируем пользователя на указанное время
                     block_duration = config.user_limits.spam_restriction_duration
                     self._user_blocks[user_id] = datetime.now(UTC) + timedelta(
@@ -202,14 +201,15 @@ class AntiSpamMiddleware(BaseAIMiddleware):
             bool: True если пользователь заблокирован, False если нет
         """
         if user_id in self._user_blocks:
+            block_until = self._user_blocks[user_id]
+            current_time = datetime.now(UTC)
             # Проверяем, истекла ли блокировка
-            if datetime.now(UTC) >= self._user_blocks[user_id]:
-                # Блокировка истекла, удаляем из списка
+            if current_time >= block_until:
+                # Блокировка истекла, удаляем запись
                 del self._user_blocks[user_id]
                 return False
-            else:
-                # Блокировка еще действует
-                return True
+            # Блокировка еще действует
+            return True
         return False
 
     @classmethod
