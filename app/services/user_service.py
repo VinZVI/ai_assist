@@ -16,6 +16,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.database import get_session
 from app.models.user import User, UserCreate, UserUpdate
+from app.services.cache_service import cache_service
 
 
 class UserService:
@@ -32,10 +33,21 @@ class UserService:
         Returns:
             User | None: Пользователь или None, если не найден
         """
-        async with get_session() as session:
-            stmt = select(User).where(User.telegram_id == telegram_id)
-            result = await session.execute(stmt)
-            return result.scalar_one_or_none()
+        # Пытаемся получить пользователя из кеша
+        user = await cache_service.get_user(telegram_id)
+
+        # Если нет в кеше, загружаем из БД
+        if not user:
+            async with get_session() as session:
+                stmt = select(User).where(User.telegram_id == telegram_id)
+                result = await session.execute(stmt)
+                user = result.scalar_one_or_none()
+
+                # Если пользователь найден в БД, кешируем его
+                if user:
+                    await cache_service.set_user(user)
+
+        return user
 
     @staticmethod
     async def create_user(user_data: UserCreate) -> User:
@@ -93,6 +105,10 @@ class UserService:
             user.updated_at = datetime.now(UTC)
             await session.commit()
             await session.refresh(user)
+
+            # Обновляем кеш
+            await cache_service.set_user(user)
+
             logger.info(f"Пользователь обновлен: {user.telegram_id}")
             return user
 
@@ -122,6 +138,10 @@ class UserService:
             user.updated_at = datetime.now(UTC)
             await session.commit()
             await session.refresh(user)
+
+            # Обновляем кеш
+            await cache_service.set_user(user)
+
             logger.info(
                 f"Эмоциональный профиль обновлен для пользователя: {telegram_id}"
             )
@@ -153,6 +173,10 @@ class UserService:
             user.updated_at = datetime.now(UTC)
             await session.commit()
             await session.refresh(user)
+
+            # Обновляем кеш
+            await cache_service.set_user(user)
+
             logger.info(
                 f"Предпочтения поддержки обновлены для пользователя: {telegram_id}"
             )
@@ -284,7 +308,7 @@ class UserService:
         """
         try:
             # Не блокируем ответ пользователю, выполняем обновление в фоне
-            _task = asyncio.create_task(UserService._update_user_activity(user_id))
+            asyncio.create_task(UserService._update_user_activity(user_id))
         except Exception as e:
             logger.error(
                 f"Ошибка при запуске фонового обновления активности пользователя {user_id}: {e}"
@@ -320,8 +344,23 @@ class UserService:
 user_service = UserService()
 
 
+# Module-level function for backward compatibility
+async def get_or_update_user(message: Message) -> User | None:
+    """
+    Получение или создание пользователя на основе сообщения.
+
+    Args:
+        message: Сообщение от пользователя Telegram
+
+    Returns:
+        User | None: Пользователь или None, если не удалось создать/получить
+    """
+    return await UserService.get_or_update_user(message)
+
+
 # Экспорт для удобного использования
 __all__ = [
     "UserService",
+    "get_or_update_user",
     "user_service",
 ]
