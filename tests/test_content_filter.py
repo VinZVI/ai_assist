@@ -34,10 +34,10 @@ async def test_filter_clean_message(
     message.answer = AsyncMock()
 
     # Process the message
-    result = await content_filter_middleware._filter_content(message)
+    result = content_filter_middleware._filter_content(message.text)
 
-    # Verify the result - should be allowed (True)
-    assert result is True
+    # Verify the result - should be allowed
+    assert result["action"] == "allow"
     # Verify that no response was sent
     message.answer.assert_not_called()
 
@@ -47,18 +47,14 @@ async def test_filter_extremist_content(
     content_filter_middleware: ContentFilterMiddleware,
 ) -> None:
     """Test filtering extremist content."""
-    # Create a mock message with extremist content
-    message = MagicMock(spec=Message)
-    message.text = "I support terrorism and violence against innocent people."
-    message.answer = AsyncMock()
-
+    # Test the _filter_content method directly
+    text = "I support terrorism and violence against innocent people."
+    
     # Process the message
-    result = await content_filter_middleware._filter_content(message)
+    result = content_filter_middleware._filter_content(text)
 
-    # Verify the result - should be blocked (False)
-    assert result is False
-    # Verify that a response was sent
-    message.answer.assert_called_once()
+    # Verify the result - should be blocked
+    assert result["action"] == "block"
 
 
 @pytest.mark.asyncio
@@ -66,18 +62,14 @@ async def test_filter_illegal_content(
     content_filter_middleware: ContentFilterMiddleware,
 ) -> None:
     """Test filtering illegal content."""
-    # Create a mock message with illegal content
-    message = MagicMock(spec=Message)
-    message.text = "I want to buy some narcotics."
-    message.answer = AsyncMock()
-
+    # Test the _filter_content method directly
+    text = "I want to buy some narcotics."
+    
     # Process the message
-    result = await content_filter_middleware._filter_content(message)
+    result = content_filter_middleware._filter_content(text)
 
-    # Verify the result - should be blocked (False)
-    assert result is False
-    # Verify that a response was sent
-    message.answer.assert_called_once()
+    # Verify the result - should be blocked
+    assert result["action"] == "block"
 
 
 @pytest.mark.asyncio
@@ -85,18 +77,14 @@ async def test_filter_personal_data_warning(
     content_filter_middleware: ContentFilterMiddleware,
 ) -> None:
     """Test filtering content with personal data."""
-    # Create a mock message with personal data
-    message = MagicMock(spec=Message)
-    message.text = "My email is test@example.com and my phone is 12345678901."
-    message.answer = AsyncMock()
-
+    # Test the _filter_content method directly
+    text = "My email is test@example.com and my phone is 12345678901."
+    
     # Process the message
-    result = await content_filter_middleware._filter_content(message)
+    result = content_filter_middleware._filter_content(text)
 
-    # Verify the result - should be allowed (True) but with a warning
-    assert result is True
-    # Verify that a warning response was sent
-    message.answer.assert_called_once()
+    # Verify the result - should have a warning
+    assert result["action"] == "warn"
 
 
 @pytest.mark.asyncio
@@ -109,49 +97,54 @@ async def test_process_callback_query_ignored(
     callback_query.data = "some_callback_data"
     callback_query.answer = AsyncMock()
 
-    # Process the callback query
-    result = await content_filter_middleware.process_callback_query(callback_query, {})
+    # Create a mock handler
+    mock_handler = AsyncMock()
+
+    # Process the callback query using the middleware
+    await content_filter_middleware(mock_handler, callback_query, {})
 
     # Verify the result
-    assert result is True
+    mock_handler.assert_called_once_with(callback_query, {})
     # Verify that no response was sent
     callback_query.answer.assert_not_called()
 
 
 @pytest.mark.asyncio
-async def test_get_stats(content_filter_middleware: ContentFilterMiddleware) -> None:
+async def test_get_stats() -> None:
     """Test getting statistics."""
+    # Create a new instance to test with fresh stats
+    content_filter = ContentFilterMiddleware()
+
     # Get initial stats
-    initial_stats = content_filter_middleware.get_stats()
+    initial_stats = content_filter.get_content_filter_stats()
 
     # Verify the structure
-    assert "total_messages" in initial_stats
-    assert "blocked_messages" in initial_stats
-    assert "warning_messages" in initial_stats
-    assert "allowed_messages" in initial_stats
+    assert "messages_filtered" in initial_stats
+    assert "users_warned" in initial_stats
+    assert "messages_blocked" in initial_stats
 
     # All should be zero initially
-    assert initial_stats["total_messages"] == 0
-    assert initial_stats["blocked_messages"] == 0
-    assert initial_stats["warning_messages"] == 0
-    assert initial_stats["allowed_messages"] == 0
+    assert initial_stats["messages_filtered"] == 0
+    assert initial_stats["users_warned"] == 0
+    assert initial_stats["messages_blocked"] == 0
 
 
 @pytest.mark.asyncio
-async def test_reset_stats(content_filter_middleware: ContentFilterMiddleware) -> None:
+async def test_reset_stats() -> None:
     """Test resetting statistics."""
-    # Manually increment some stats
-    content_filter_middleware.stats["total_messages"] = 10
-    content_filter_middleware.stats["blocked_messages"] = 3
-    content_filter_middleware.stats["warning_messages"] = 2
-    content_filter_middleware.stats["allowed_messages"] = 5
+    # Create a new instance to test with
+    content_filter = ContentFilterMiddleware()
+
+    # Manually increment some stats using the class variable directly
+    ContentFilterMiddleware._content_filter_stats["messages_filtered"] = 10
+    ContentFilterMiddleware._content_filter_stats["users_warned"] = 3
+    ContentFilterMiddleware._content_filter_stats["messages_blocked"] = 5
 
     # Reset stats
-    content_filter_middleware.reset_stats()
+    content_filter.reset_content_filter_stats()
 
     # Verify all stats are zero
-    stats = content_filter_middleware.get_stats()
-    assert stats["total_messages"] == 0
-    assert stats["blocked_messages"] == 0
-    assert stats["warning_messages"] == 0
-    assert stats["allowed_messages"] == 0
+    stats = content_filter.get_content_filter_stats()
+    assert stats["messages_filtered"] == 0
+    assert stats["users_warned"] == 0
+    assert stats["messages_blocked"] == 0

@@ -9,14 +9,18 @@ import asyncio
 import time
 from collections import defaultdict, deque
 from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 from loguru import logger
 
+from app.config import get_config
+from app.database import get_session
 from app.middleware.anti_spam import AntiSpamMiddleware
 from app.middleware.message_counter import MessageCountingMiddleware
 from app.middleware.metrics import MetricsMiddleware
 from app.middleware.rate_limit import RateLimitMiddleware
+from app.models.user import User
 from app.services.health_check import health_check_service
 
 
@@ -25,6 +29,7 @@ class MonitoringService:
 
     def __init__(self) -> None:
         """Инициализация сервиса мониторинга."""
+        self.config = get_config()
         self.is_running = False
         self.monitoring_tasks: list[asyncio.Task] = []
         self.alert_handlers: list[Callable] = []
@@ -40,16 +45,20 @@ class MonitoringService:
         }
         self.start_time = time.time()
 
-    async def start_monitoring(self, interval: int = 60) -> None:
+    async def start_monitoring(self, interval: int | None = None) -> None:
         """
         Запуск мониторинга системы.
 
         Args:
-            interval: Интервал проверки в секундах
+            interval: Интервал проверки в секундах (если не указан, используется из конфигурации)
         """
         if self.is_running:
             logger.warning("Мониторинг уже запущен")
             return
+
+        # Используем интервал из конфигурации, если не указан явно
+        if interval is None:
+            interval = self.config.monitoring.health_check_interval
 
         self.is_running = True
         logger.info(f"Запуск мониторинга с интервалом {interval} секунд")
@@ -90,6 +99,32 @@ class MonitoringService:
 
         self.monitoring_tasks.clear()
 
+    async def _has_recent_activity(self) -> bool:
+        """
+        Проверка наличия недавней активности пользователей.
+
+        Returns:
+            bool: True если была активность за последние N часов, False если нет
+        """
+        try:
+            # Получаем время, после которого считается, что была активность
+            inactivity_hours = self.config.monitoring.health_check_inactivity_hours
+            cutoff_time = datetime.now(UTC) - timedelta(hours=inactivity_hours)
+
+            # Проверяем, есть ли пользователи с активностью после cutoff_time
+            async with get_session() as session:
+                from sqlalchemy import select
+
+                stmt = select(User).where(User.last_activity_at > cutoff_time)
+                result = await session.execute(stmt)
+                users_with_recent_activity = result.scalars().all()
+
+                return len(users_with_recent_activity) > 0
+        except Exception as e:
+            logger.error(f"Ошибка при проверке недавней активности: {e}")
+            # В случае ошибки лучше выполнить проверку здоровья, чтобы быть уверенным
+            return True
+
     async def _periodic_health_check(self, interval: int) -> None:
         """
         Периодическая проверка здоровья системы.
@@ -99,23 +134,31 @@ class MonitoringService:
         """
         while self.is_running:
             try:
-                # Выполняем проверку здоровья
-                health_result = await health_check_service.perform_health_check()
+                # Проверяем, была ли недавняя активность
+                has_recent_activity = await self._has_recent_activity()
 
-                # Сохраняем результат в историю
-                self.health_status_history.append(health_result)
+                if not has_recent_activity:
+                    # Выполняем проверку здоровья только если не было активности
+                    health_result = await health_check_service.perform_health_check()
 
-                # Ограничиваем размер истории
-                if len(self.health_status_history) > 100:
-                    self.health_status_history = self.health_status_history[-50:]
+                    # Сохраняем результат в историю
+                    self.health_status_history.append(health_result)
 
-                # Проверяем, нужно ли отправлять уведомление
-                if health_result["status"] in ["unhealthy", "degraded", "error"]:
-                    await self._send_alert(health_result)
+                    # Ограничиваем размер истории
+                    if len(self.health_status_history) > 100:
+                        self.health_status_history = self.health_status_history[-50:]
 
-                logger.debug(
-                    f"Проверка здоровья завершена. Статус: {health_result['status']}"
-                )
+                    # Проверяем, нужно ли отправлять уведомление
+                    if health_result["status"] in ["unhealthy", "degraded", "error"]:
+                        await self._send_alert(health_result)
+
+                    logger.info(
+                        f"Проверка здоровья завершена. Статус: {health_result['status']} (выполнена из-за отсутствия активности)"
+                    )
+                else:
+                    logger.debug(
+                        "Пропуск проверки здоровья из-за недавней активности пользователей"
+                    )
 
             except Exception as e:
                 logger.error(f"Ошибка при периодической проверке здоровья: {e}")

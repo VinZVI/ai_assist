@@ -87,7 +87,7 @@ class MemoryCache:
         if key in self._cache:
             del self._cache[key]
 
-    def get_stats(self) -> dict[str, int]:
+    def get_stats(self) -> dict[str, int | float]:
         """
         Получение статистики кеша.
 
@@ -154,7 +154,7 @@ class CacheService:
 
         # Если нет в memory cache, проверяем Redis cache
         if self.redis_cache:
-            user = await self.redis_cache.get(telegram_id)
+            user = await self.redis_cache.get_user(telegram_id)
             if user:
                 # Кешируем в memory cache для будущих запросов
                 await self.memory_cache.set(user)
@@ -200,15 +200,17 @@ class CacheService:
         stats = {"memory_cache": self.memory_cache.get_stats()}
 
         if self.redis_cache:
-            stats["redis_cache"] = "initialized"
+            stats["redis_cache"] = self.redis_cache.get_stats()  # type: ignore
         else:
-            stats["redis_cache"] = "not_initialized"
+            stats["redis_cache"] = {"status": "not_initialized"}  # type: ignore
 
         return stats
 
     def reset_cache_stats(self) -> None:
         """Сброс статистики кеша."""
         self.memory_cache.reset_stats()
+        if self.redis_cache:
+            self.redis_cache.reset_stats()
 
 
 # Глобальный экземпляр сервиса кеширования

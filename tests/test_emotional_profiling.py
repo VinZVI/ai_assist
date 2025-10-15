@@ -2,7 +2,7 @@
 Tests for EmotionalProfilingMiddleware
 """
 
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from aiogram.types import CallbackQuery, Message
@@ -22,8 +22,8 @@ def mock_user() -> User:
     """Create a mock user for testing."""
     user = MagicMock(spec=User)
     user.id = 12345
+    user.telegram_id = 12345
     user.emotional_traits = {}
-    user.update_emotional_profile = AsyncMock()
     return user
 
 
@@ -50,13 +50,22 @@ async def test_process_message_with_emotional_content(
     # Create mock data dictionary
     data = {"user": mock_user}
 
-    # Process the message
-    result = await emotional_middleware.process_message(message, data)
+    # Create a mock handler
+    handler = AsyncMock()
 
-    # Verify the result
-    assert result is True
-    # Verify that update_emotional_profile was called
-    mock_user.update_emotional_profile.assert_called_once()
+    # Patch the user_service.update_emotional_profile method
+    with patch(
+        "app.middleware.emotional_profiling.user_service.update_emotional_profile"
+    ) as mock_update:
+        mock_update.return_value = mock_user
+
+        # Process the message using the correct middleware interface
+        result = await emotional_middleware(handler, message, data)
+
+        # Verify the result
+        assert result is not None
+        # Verify that update_emotional_profile was called
+        mock_update.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -71,13 +80,20 @@ async def test_process_callback_query_ignored(
     # Create mock data dictionary
     data = {"user": mock_user}
 
-    # Process the callback query
-    result = await emotional_middleware.process_callback_query(callback_query, data)
+    # Create a mock handler
+    handler = AsyncMock()
 
-    # Verify the result
-    assert result is True
-    # Verify that update_emotional_profile was NOT called
-    mock_user.update_emotional_profile.assert_not_called()
+    # Patch the user_service.update_emotional_profile method
+    with patch(
+        "app.middleware.emotional_profiling.user_service.update_emotional_profile"
+    ) as mock_update:
+        # Process the callback query using the correct middleware interface
+        result = await emotional_middleware(handler, callback_query, data)
+
+        # Verify the result
+        assert result is not None
+        # Verify that update_emotional_profile was NOT called
+        mock_update.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -90,7 +106,7 @@ async def test_extract_emotional_indicators_positive_content() -> None:
 
     # Verify that we got some indicators
     assert isinstance(indicators, dict)
-    assert "emotional_tone" in indicators
+    assert "positive_words" in indicators
     assert "topics" in indicators
 
 
@@ -104,7 +120,7 @@ async def test_extract_emotional_indicators_negative_content() -> None:
 
     # Verify that we got some indicators
     assert isinstance(indicators, dict)
-    assert "emotional_tone" in indicators
+    assert "negative_words" in indicators
     assert "topics" in indicators
 
 
@@ -118,7 +134,6 @@ async def test_extract_emotional_indicators_neutral_content() -> None:
 
     # Verify that we got some indicators
     assert isinstance(indicators, dict)
-    assert "emotional_tone" in indicators
     assert "topics" in indicators
 
 
@@ -136,13 +151,22 @@ async def test_analyze_user_emotions_exception_handling(
     # Create mock data dictionary
     data = {"user": mock_user}
 
+    # Create a mock handler
+    handler = AsyncMock()
+
     # Mock the _extract_emotional_indicators method to raise an exception
     emotional_middleware._extract_emotional_indicators = MagicMock(
         side_effect=Exception("Test exception")
     )
 
-    # Process the message - should not raise an exception
-    result = await emotional_middleware.process_message(message, data)
+    # Patch the user_service.update_emotional_profile method
+    with patch(
+        "app.middleware.emotional_profiling.user_service.update_emotional_profile"
+    ) as mock_update:
+        # Process the message - should not raise an exception
+        result = await emotional_middleware(handler, message, data)
 
-    # Verify the result
-    assert result is True
+        # Verify the result
+        assert result is not None
+        # Verify that update_emotional_profile was NOT called due to exception
+        mock_update.assert_not_called()

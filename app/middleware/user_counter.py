@@ -34,12 +34,12 @@ class MessageCountingMiddleware(BaseAIMiddleware):
 
     # Буфер для пакетных обновлений
     _batch_buffer: ClassVar[dict[int, datetime]] = {}
-    _batch_timer: ClassVar[Any] = None
     _batch_interval: ClassVar[int] = 30  # Интервал пакетных обновлений в секундах
 
     def __init__(self) -> None:
         """Инициализация MessageCountingMiddleware."""
         super().__init__()
+        self._batch_timer = None  # Instance variable instead of ClassVar
         logger.info(get_log_text("middleware.user_counter_middleware_initialized"))
 
     async def __call__(
@@ -191,6 +191,5 @@ class MessageCountingMiddleware(BaseAIMiddleware):
         }
         # Очищаем буфер пакетных обновлений
         cls._batch_buffer.clear()
-        if cls._batch_timer:
-            cls._batch_timer.cancel()
-            cls._batch_timer = None
+        # Note: _batch_timer is now an instance variable, so it cannot be reset here
+        # Each instance will manage its own _batch_timer

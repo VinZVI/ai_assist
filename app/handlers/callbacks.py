@@ -102,7 +102,9 @@ async def start_chat(callback: CallbackQuery, user: User) -> None:
             )
         await callback.answer()
     except Exception as e:
-        logger.error(get_log_text("callbacks.callback_error").format(error=e))
+        logger.error(
+            get_log_text("callbacks.callback_error").format(user_id=user.id, error=e)
+        )
         await callback.answer(get_text("errors.general_error", user_lang))
 
 
@@ -131,7 +133,9 @@ async def show_user_stats(callback: CallbackQuery, user: User) -> None:
         else:
             await callback.answer()
     except Exception as e:
-        logger.error(get_log_text("callbacks.callback_error").format(error=e))
+        logger.error(
+            get_log_text("callbacks.callback_error").format(user_id=user.id, error=e)
+        )
         await callback.answer(get_text("errors.general_error", user_lang))
 
 
@@ -146,8 +150,14 @@ async def show_help(callback: CallbackQuery, user: User) -> None:
 
         # Create help text
         help_text = f"*{get_text('help.title', user_lang)}*\n\n"
-        # Fix: get_text("help.commands", user_lang) returns a single string, not a list of tuples
-        help_text += get_text("help.commands", user_lang)
+        # Fix: get_text("help.commands", user_lang) returns a list of tuples, not a string
+        commands = get_text("help.commands", user_lang)
+        if isinstance(commands, list):
+            for command, description in commands:
+                help_text += f"• `{command}` - {description}\n"
+        else:
+            # Fallback in case the format changes
+            help_text += str(commands)
 
         new_keyboard = create_help_keyboard(user_lang)
 
@@ -160,7 +170,9 @@ async def show_help(callback: CallbackQuery, user: User) -> None:
         else:
             await callback.answer()
     except Exception as e:
-        logger.error(get_log_text("callbacks.callback_error").format(error=e))
+        logger.error(
+            get_log_text("callbacks.callback_error").format(user_id=user.id, error=e)
+        )
         await callback.answer(get_text("errors.general_error", user_lang))
 
 
@@ -208,7 +220,9 @@ async def show_settings_menu(callback: CallbackQuery, user: User) -> None:
         else:
             await callback.answer()
     except Exception as e:
-        logger.error(get_log_text("callbacks.callback_error").format(error=e))
+        logger.error(
+            get_log_text("callbacks.callback_error").format(user_id=user.id, error=e)
+        )
         await callback.answer(get_text("errors.general_error", user_lang))
 
 
@@ -233,7 +247,9 @@ async def show_language_settings(callback: CallbackQuery, user: User) -> None:
         else:
             await callback.answer()
     except Exception as e:
-        logger.error(get_log_text("callbacks.callback_error").format(error=e))
+        logger.error(
+            get_log_text("callbacks.callback_error").format(user_id=user.id, error=e)
+        )
         await callback.answer(get_text("errors.general_error", user_lang))
 
 
@@ -262,7 +278,9 @@ async def show_premium_info(callback: CallbackQuery, user: User) -> None:
         else:
             await callback.answer()
     except Exception as e:
-        logger.error(get_log_text("callbacks.callback_error").format(error=e))
+        logger.error(
+            get_log_text("callbacks.callback_error").format(user_id=user.id, error=e)
+        )
         await callback.answer(get_text("errors.general_error", user_lang))
 
 
@@ -318,7 +336,9 @@ async def handle_premium_purchase(callback: CallbackQuery, user: User) -> None:
             )
 
     except Exception as e:
-        logger.error(get_log_text("callbacks.callback_error").format(error=e))
+        logger.error(
+            get_log_text("callbacks.callback_error").format(user_id=user.id, error=e)
+        )
         await callback.answer(get_text("errors.general_error", user_lang))
 
 

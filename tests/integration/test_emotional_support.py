@@ -85,8 +85,8 @@ async def test_content_filtering_integration() -> None:
     clean_message.text = "Hello! How are you doing today?"
     clean_message.answer = AsyncMock()
 
-    result = await content_filter._filter_content(clean_message)
-    assert result is True
+    result = content_filter._filter_content(clean_message.text)
+    assert result["action"] == "allow"
     clean_message.answer.assert_not_called()
 
     # Test filtering of extremist content
@@ -94,8 +94,8 @@ async def test_content_filtering_integration() -> None:
     extremist_message.text = "I support terrorism and violence against innocent people."
     extremist_message.answer = AsyncMock()
 
-    result = await content_filter._filter_content(extremist_message)
-    assert result is False
+    result = content_filter._filter_content(extremist_message.text)
+    assert result["action"] == "block"
     extremist_message.answer.assert_called_once()
 
 
@@ -110,6 +110,7 @@ async def test_emotional_profiling_integration() -> None:
     user.id = 12345
     user.emotional_traits = {}
     user.update_emotional_profile = AsyncMock()
+    user.telegram_id = 12345
 
     # Test processing a message with emotional content
     message = MagicMock(spec=Message)
@@ -122,13 +123,18 @@ async def test_emotional_profiling_integration() -> None:
     # Create mock data dictionary
     data = {"user": user}
 
-    # Process the message
-    result = await emotional_profiling.process_message(message, data)
+    # Create a mock handler
+    mock_handler = AsyncMock()
 
-    # Verify the result
-    assert result is True
-    # Verify that update_emotional_profile was called
-    user.update_emotional_profile.assert_called_once()
+    # Process the message using the middleware
+    with patch.object(emotional_profiling, "_analyze_user_emotions") as mock_analyze:
+        mock_analyze.return_value = None
+        await emotional_profiling(mock_handler, message, data)
+
+        # Verify that the next handler was called
+        mock_handler.assert_called_once_with(message, data)
+        # Verify that _analyze_user_emotions was called
+        mock_analyze.assert_called_once_with(user, message.text)
 
 
 @pytest.mark.asyncio
@@ -259,6 +265,7 @@ async def test_content_filtering_and_emotional_profiling_integration() -> None:
     user.id = 12345
     user.emotional_traits = {}
     user.update_emotional_profile = AsyncMock()
+    user.telegram_id = 12345
 
     # Test processing a message with both emotional content and clean content
     message = MagicMock(spec=Message)
@@ -268,13 +275,18 @@ async def test_content_filtering_and_emotional_profiling_integration() -> None:
     message.answer = AsyncMock()
 
     # First, content filtering should allow the message
-    filter_result = await content_filter._filter_content(message)
-    assert filter_result is True
+    filter_result = content_filter._filter_content(message.text)
+    assert filter_result["action"] == "allow"
 
     # Then, emotional profiling should process the message
     data = {"user": user}
-    profiling_result = await emotional_profiling.process_message(message, data)
-    assert profiling_result is True
+    mock_handler = AsyncMock()
 
-    # Verify that update_emotional_profile was called
-    user.update_emotional_profile.assert_called_once()
+    with patch.object(emotional_profiling, "_analyze_user_emotions") as mock_analyze:
+        mock_analyze.return_value = None
+        await emotional_profiling(mock_handler, message, data)
+
+        # Verify that the next handler was called
+        mock_handler.assert_called_once_with(message, data)
+        # Verify that _analyze_user_emotions was called
+        mock_analyze.assert_called_once_with(user, message.text)

@@ -5,9 +5,9 @@ Tests for emotional support AI prompts
 import pytest
 
 from app.lexicon.ai_prompts import (
-    create_system_message,
     create_crisis_intervention_prompt,
     create_mature_content_prompt,
+    create_system_message,
 )
 
 

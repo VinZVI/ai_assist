@@ -7,7 +7,7 @@
 
 import asyncio
 import json
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import Any, Optional
 
 from loguru import logger
@@ -17,13 +17,26 @@ from app.models.user import User
 
 # Try to import redis, but handle if it's not available
 try:
-    import redis.asyncio as redis
+    import redis.asyncio as redis_asyncio
 
+    redis_client_module = redis_asyncio
     REDIS_AVAILABLE = True
 except ImportError:
-    redis = None
-    REDIS_AVAILABLE = False
-    logger.warning("Redis not available, Redis cache will be disabled")
+    try:
+        import redis
+
+        # Check if asyncio is available in redis
+        if hasattr(redis, "asyncio"):
+            redis_client_module = redis.asyncio
+            REDIS_AVAILABLE = True
+        else:
+            redis_client_module = None
+            REDIS_AVAILABLE = False
+            logger.warning("Redis asyncio not available, Redis cache will be disabled")
+    except ImportError:
+        redis_client_module = None
+        REDIS_AVAILABLE = False
+        logger.warning("Redis not available, Redis cache will be disabled")
 
 
 def serialize_datetime(dt: datetime | None) -> str | None:
@@ -37,6 +50,16 @@ def deserialize_datetime(dt_str: str | None) -> datetime | None:
         return None
     try:
         return datetime.fromisoformat(dt_str)
+    except ValueError:
+        return None
+
+
+def deserialize_date(date_str: str | None) -> date | None:
+    """Deserialize ISO format string to date object."""
+    if not date_str:
+        return None
+    try:
+        return date.fromisoformat(date_str)
     except ValueError:
         return None
 
@@ -64,21 +87,40 @@ class RedisCache:
         self.ttl = ttl
         self.redis_client: Any | None = None  # Using Any to avoid type issues
         self._lock = asyncio.Lock()
+        # Stats tracking
+        self._hits = 0
+        self._misses = 0
 
     async def initialize(self) -> None:
         """Инициализация подключения к Redis."""
-        if not REDIS_AVAILABLE or not self.redis_url:
+        if not REDIS_AVAILABLE or not self.redis_url or redis_client_module is None:
             self.redis_client = None
             return
 
         try:
-            self.redis_client = redis.from_url(self.redis_url)
+            # Try to connect with the full URL first (with username/password)
+            self.redis_client = redis_client_module.from_url(self.redis_url)
             # Проверяем подключение
-            await self.redis_client.ping()
+            if self.redis_client is not None:
+                await self.redis_client.ping()
             logger.info(f"Redis cache initialized with URL: {self.redis_url}")
         except Exception as e:
-            logger.error(f"Failed to initialize Redis cache: {e}")
-            self.redis_client = None
+            # If that fails, try to connect with just the password (simple auth)
+            try:
+                config = get_config()
+                if config.cache.redis_password:
+                    password_url = f"redis://:{config.cache.redis_password}@{config.cache.redis_host}:{config.cache.redis_port}"
+                    self.redis_client = redis_client_module.from_url(password_url)
+                    if self.redis_client is not None:
+                        await self.redis_client.ping()
+                    logger.info(
+                        f"Redis cache initialized with password-only URL: {password_url}"
+                    )
+                else:
+                    raise e
+            except Exception:
+                logger.error(f"Failed to initialize Redis cache: {e}")
+                self.redis_client = None
 
     async def get_user(self, telegram_id: int) -> User | None:
         """
@@ -96,6 +138,7 @@ class RedisCache:
         try:
             user_data_str = await self.redis_client.get(f"user:{telegram_id}")
             if user_data_str:
+                self._hits += 1
                 user_data = json.loads(user_data_str)
                 # Создаем объект User из данных
                 user = User(
@@ -109,12 +152,16 @@ class RedisCache:
                     is_active=user_data.get("is_active", True),
                     daily_message_count=user_data.get("daily_message_count", 0),
                     total_messages=user_data.get("total_messages", 0),
-                    last_message_date=user_data.get("last_message_date"),
+                    last_message_date=deserialize_date(
+                        user_data.get("last_message_date")
+                    ),
                     created_at=deserialize_datetime(user_data.get("created_at")),
                     updated_at=deserialize_datetime(user_data.get("updated_at")),
                 )
                 return user
+            self._misses += 1
         except Exception as e:
+            self._misses += 1
             logger.error(f"Error getting user from Redis cache: {e}")
         return None
 
@@ -175,6 +222,30 @@ class RedisCache:
         if REDIS_AVAILABLE and self.redis_client:
             await self.redis_client.close()
             logger.info("Redis cache connection closed")
+
+    def get_stats(self) -> dict[str, Any]:
+        """
+        Получение статистики Redis кеша.
+
+        Returns:
+            dict: Статистика кеша
+        """
+        total_requests = self._hits + self._misses
+        hit_rate = (self._hits / total_requests * 100) if total_requests > 0 else 0
+
+        return {
+            "hits": self._hits,
+            "misses": self._misses,
+            "hit_rate": round(hit_rate, 2),
+            "status": "available"
+            if REDIS_AVAILABLE and self.redis_client
+            else "not_available",
+        }
+
+    def reset_stats(self) -> None:
+        """Сброс статистики кеша."""
+        self._hits = 0
+        self._misses = 0
 
 
 # Глобальный экземпляр Redis кеша

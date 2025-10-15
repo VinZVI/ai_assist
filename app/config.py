@@ -204,15 +204,38 @@ class PaymentConfig(BaseSettings):
     model_config = {"extra": "ignore", "env_file": ".env", "env_file_encoding": "utf-8"}
 
 
+class MonitoringConfig(BaseSettings):
+    """Конфигурация мониторинга."""
+
+    health_check_inactivity_hours: int = Field(
+        default=6, validation_alias="HEALTH_CHECK_INACTIVITY_HOURS"
+    )
+    health_check_interval: int = Field(
+        default=60, validation_alias="HEALTH_CHECK_INTERVAL"
+    )
+
+    model_config = {"extra": "ignore", "env_file": ".env", "env_file_encoding": "utf-8"}
+
+
 class CacheConfig(BaseSettings):
     """Конфигурация кэширования."""
 
     ttl: int = Field(default=3600, validation_alias="CACHE_TTL")
-    redis_url: str = Field(
-        default="redis://localhost:6379", validation_alias="REDIS_URL"
-    )
+    redis_host: str = Field(default="localhost", validation_alias="REDIS_HOST")
+    redis_port: int = Field(default=6379, validation_alias="REDIS_PORT")
+    redis_username: str | None = Field(default=None, validation_alias="REDIS_USERNAME")
+    redis_password: str | None = Field(default=None, validation_alias="REDIS_PASSWORD")
 
     model_config = {"extra": "ignore", "env_file": ".env", "env_file_encoding": "utf-8"}
+
+    @property
+    def redis_url(self) -> str:
+        """Построение URL Redis из отдельных параметров."""
+        if self.redis_username and self.redis_password:
+            return f"redis://{self.redis_username}:{self.redis_password}@{self.redis_host}:{self.redis_port}"
+        if self.redis_password:
+            return f"redis://:{self.redis_password}@{self.redis_host}:{self.redis_port}"
+        return f"redis://{self.redis_host}:{self.redis_port}"
 
 
 class ConversationConfig(BaseSettings):
@@ -271,6 +294,7 @@ class AppConfig(BaseSettings):
     conversation: ConversationConfig = Field(default_factory=ConversationConfig)
     admin: AdminConfig = Field(default_factory=AdminConfig)
     payment: PaymentConfig = Field(default_factory=PaymentConfig)
+    monitoring: MonitoringConfig = Field(default_factory=MonitoringConfig)
 
     # Дополнительные настройки
     debug: bool = Field(default=False, validation_alias="DEBUG")

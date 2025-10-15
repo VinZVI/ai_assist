@@ -25,11 +25,11 @@ class LoadTester:
         """
         self.base_url = base_url
         self.client = httpx.AsyncClient()
-        self.results: List[Dict[str, Any]] = []
+        self.results: list[dict[str, Any]] = []
 
     async def test_health_endpoint(
         self, concurrent_requests: int = 100
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Тестирование эндпоинта здоровья.
 
@@ -107,7 +107,7 @@ class LoadTester:
 
     async def _make_health_request(
         self, request_id: int
-    ) -> Dict[str, Union[int, float, bool, str]]:
+    ) -> dict[str, int | float | bool | str]:
         """
         Выполнение одного запроса к эндпоинту здоровья.
 
@@ -143,7 +143,7 @@ class LoadTester:
 
     async def test_metrics_endpoint(
         self, concurrent_requests: int = 50
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Тестирование эндпоинта метрик.
 
@@ -221,7 +221,7 @@ class LoadTester:
 
     async def _make_metrics_request(
         self, request_id: int
-    ) -> Dict[str, Union[int, float, bool, str]]:
+    ) -> dict[str, int | float | bool | str]:
         """
         Выполнение одного запроса к эндпоинту метрик.
 
@@ -255,7 +255,7 @@ class LoadTester:
                 "error": str(e),
             }
 
-    async def run_comprehensive_test(self) -> List[Dict[str, Any]]:
+    async def run_comprehensive_test(self) -> list[dict[str, Any]]:
         """
         Запуск комплексного нагрузочного тестирования.
 

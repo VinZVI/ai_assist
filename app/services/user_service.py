@@ -378,7 +378,7 @@ class UserService:
             # Не блокируем ответ пользователю, выполняем обновление в фоне
             task = asyncio.create_task(UserService._update_user_activity(user_id))
             # Store reference to prevent it from being garbage collected
-            if not hasattr(UserService, '_background_tasks'):
+            if not hasattr(UserService, "_background_tasks"):
                 UserService._background_tasks = set()
             UserService._background_tasks.add(task)
             task.add_done_callback(UserService._background_tasks.discard)
