@@ -21,6 +21,7 @@ from app.models.conversation import (
 )
 
 # Импорт всех моделей
+from app.models.payment import Payment
 from app.models.user import (
     User,
     UserBase,
@@ -46,6 +47,7 @@ __all__ = [
     # Enums
     "MessageRole",
     # Модели SQLAlchemy
+    "Payment",
     "User",
     # Pydantic схемы для User
     "UserBase",

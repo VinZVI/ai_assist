@@ -83,7 +83,7 @@ class Payment(Base):
     )
 
     # Отношения
-    user = relationship("User", back_populates="payments")
+    user: Mapped["User"] = relationship("User", back_populates="payments")
 
     # Индексы
     __table_args__ = (

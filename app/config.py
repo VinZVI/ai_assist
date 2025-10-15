@@ -43,7 +43,9 @@ class DatabaseConfig(BaseSettings):
 class TelegramConfig(BaseSettings):
     """Конфигурация Telegram бота."""
 
-    bot_token: str = Field(validation_alias="BOT_TOKEN")
+    bot_token: str = Field(
+        default="your_telegram_bot_token_here", validation_alias="BOT_TOKEN"
+    )
     webhook_url: str | None = Field(default=None, validation_alias="WEBHOOK_URL")
     webhook_secret: str | None = Field(default=None, validation_alias="WEBHOOK_SECRET")
     use_polling: bool = Field(default=True, validation_alias="USE_POLLING")
