@@ -12,7 +12,7 @@ from app.models.user import User as UserModel
 
 
 @pytest.mark.asyncio
-async def test_start_command_with_middleware_user():
+async def test_start_command_with_middleware_user() -> None:
     """Тест команды /start с пользователем из middleware."""
     # Создаем тестового пользователя Telegram
     telegram_user = User(

@@ -252,6 +252,8 @@ async def close_db() -> None:
 
     if _db_manager._engine:
         await _db_manager._engine.dispose()
+        _db_manager._engine = None
+        _db_manager._session_factory = None
         logger.info(get_log_text("database.db_closed"))
 
 
@@ -305,10 +307,39 @@ async def create_tables() -> None:
 
 async def drop_tables() -> None:
     """Удаление таблиц."""
+    # Проверяем, что мы в debug режиме
+    config = get_config()
+    if not config.debug:
+        msg = "Удаление таблиц разрешено только в debug режиме!"
+        raise RuntimeError(msg)
+
     async with _db_manager.get_engine().begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
+
+
+def get_engine() -> AsyncEngine:
+    """Получение экземпляра движка базы данных."""
+    return _db_manager.get_engine()
 
 
 def get_session_factory() -> async_sessionmaker[AsyncSession]:
     """Получение фабрики сессий."""
     return _db_manager.get_session_factory()
+
+
+__all__ = [
+    "Base",
+    "DatabaseManager",
+    "check_connection",
+    "close_db",
+    "create_database_if_not_exists",
+    "create_engine",
+    "create_session_factory",
+    "create_tables",
+    "create_tables_if_not_exist",
+    "drop_tables",
+    "get_engine",
+    "get_session",
+    "get_session_factory",
+    "init_db",
+]

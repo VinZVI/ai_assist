@@ -8,7 +8,7 @@ import pytest
 from aiogram import Dispatcher
 
 
-def test_middleware_registration():
+def test_middleware_registration() -> None:
     """Тест регистрации middleware без дублирования логов."""
     # Патчим logger.info чтобы отслеживать вызовы
     with (

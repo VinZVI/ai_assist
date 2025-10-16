@@ -170,13 +170,14 @@ class RateLimitMiddleware(BaseAIMiddleware):
             bool: True если следует применять ограничение, False если нет
         """
         # Применяем ограничение к текстовым сообщениям (не командам) и callback-запросам
-        if isinstance(event, Message):
-            # Проверяем, есть ли текст у сообщения
-            if hasattr(event, "text") and event.text:
-                # Исключаем команды (сообщения, начинающиеся с /)
-                if not event.text.startswith("/"):
-                    return True
-        elif isinstance(event, CallbackQuery):
+        if (
+            isinstance(event, Message)
+            and hasattr(event, "text")
+            and event.text
+            and not event.text.startswith("/")
+        ):
+            return True
+        if isinstance(event, CallbackQuery):
             # Применяем ограничение к callback-запросам
             return True
         return False
@@ -192,12 +193,13 @@ class RateLimitMiddleware(BaseAIMiddleware):
             bool: True если следует считать в лимит, False если нет
         """
         # Считаем только текстовые сообщения (не команды)
-        if isinstance(event, Message):
-            # Проверяем, есть ли текст у сообщения
-            if hasattr(event, "text") and event.text:
-                # Исключаем команды (сообщения, начинающиеся с /)
-                if not event.text.startswith("/"):
-                    return True
+        if (
+            isinstance(event, Message)
+            and hasattr(event, "text")
+            and event.text
+            and not event.text.startswith("/")
+        ):
+            return True
         # Callback-запросы и команды не считаются в лимит сообщений
         return False
 

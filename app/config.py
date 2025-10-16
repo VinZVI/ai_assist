@@ -193,6 +193,24 @@ class UserLimitsConfig(BaseSettings):
 
     model_config = {"extra": "ignore", "env_file": ".env", "env_file_encoding": "utf-8"}
 
+    @field_validator("free_messages_limit")
+    @classmethod
+    def validate_free_messages_limit(cls, v: int) -> int:
+        """Валидация лимита бесплатных сообщений."""
+        if v < 0:
+            raise ValueError(
+                ConfigErrorMessages.INVALID_FREE_MESSAGES_LIMIT_NON_NEGATIVE
+            )
+        return v
+
+    @field_validator("premium_price")
+    @classmethod
+    def validate_premium_price(cls, v: int) -> int:
+        """Валидация цены премиум подписки."""
+        if v <= 0:
+            raise ValueError(ConfigErrorMessages.INVALID_PREMIUM_PRICE)
+        return v
+
 
 class PaymentConfig(BaseSettings):
     """Конфигурация платежей."""

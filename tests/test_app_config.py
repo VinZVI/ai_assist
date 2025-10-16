@@ -5,7 +5,7 @@ Test script to verify that AppConfig has the admin field.
 from app.config import get_config
 
 
-def test_app_config_has_admin_field():
+def test_app_config_has_admin_field() -> None:
     """Test that AppConfig has the admin field."""
     config = get_config()
     print(f"Config type: {type(config)}")

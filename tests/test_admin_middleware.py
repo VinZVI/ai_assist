@@ -12,13 +12,13 @@ from app.middleware.admin import AdminMiddleware
 
 
 @pytest.fixture
-def admin_middleware():
+def admin_middleware() -> AdminMiddleware:
     """Фикстура для создания экземпляра AdminMiddleware."""
     return AdminMiddleware()
 
 
 @pytest.fixture
-def mock_config():
+def mock_config() -> MagicMock:
     """Фикстура для мока конфигурации."""
     # Создаем мок для AdminConfig
     admin_config = MagicMock()
@@ -32,7 +32,9 @@ def mock_config():
 
 
 @pytest.mark.asyncio
-async def test_admin_middleware_message_admin(admin_middleware, mock_config):
+async def test_admin_middleware_message_admin(
+    admin_middleware: AdminMiddleware, mock_config: MagicMock
+) -> None:
     """Тест AdminMiddleware для сообщения от администратора."""
     # Мокаем конфигурацию
     with patch("app.middleware.admin.get_config", return_value=mock_config):
@@ -57,7 +59,9 @@ async def test_admin_middleware_message_admin(admin_middleware, mock_config):
 
 
 @pytest.mark.asyncio
-async def test_admin_middleware_message_non_admin(admin_middleware, mock_config):
+async def test_admin_middleware_message_non_admin(
+    admin_middleware: AdminMiddleware, mock_config: MagicMock
+) -> None:
     """Тест AdminMiddleware для сообщения от обычного пользователя."""
     # Мокаем конфигурацию
     with patch("app.middleware.admin.get_config", return_value=mock_config):
@@ -82,7 +86,9 @@ async def test_admin_middleware_message_non_admin(admin_middleware, mock_config)
 
 
 @pytest.mark.asyncio
-async def test_admin_middleware_callback_query_admin(admin_middleware, mock_config):
+async def test_admin_middleware_callback_query_admin(
+    admin_middleware: AdminMiddleware, mock_config: MagicMock
+) -> None:
     """Тест AdminMiddleware для callback query от администратора."""
     # Мокаем конфигурацию
     with patch("app.middleware.admin.get_config", return_value=mock_config):
@@ -107,7 +113,9 @@ async def test_admin_middleware_callback_query_admin(admin_middleware, mock_conf
 
 
 @pytest.mark.asyncio
-async def test_admin_middleware_callback_query_non_admin(admin_middleware, mock_config):
+async def test_admin_middleware_callback_query_non_admin(
+    admin_middleware: AdminMiddleware, mock_config: MagicMock
+) -> None:
     """Тест AdminMiddleware для callback query от обычного пользователя."""
     # Мокаем конфигурацию
     with patch("app.middleware.admin.get_config", return_value=mock_config):
@@ -132,7 +140,9 @@ async def test_admin_middleware_callback_query_non_admin(admin_middleware, mock_
 
 
 @pytest.mark.asyncio
-async def test_admin_middleware_no_user(admin_middleware, mock_config):
+async def test_admin_middleware_no_user(
+    admin_middleware: AdminMiddleware, mock_config: MagicMock
+) -> None:
     """Тест AdminMiddleware для события без информации о пользователе."""
     # Мокаем конфигурацию
     with patch("app.middleware.admin.get_config", return_value=mock_config):

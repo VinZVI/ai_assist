@@ -35,7 +35,7 @@ class AuthMiddleware(BaseAIMiddleware):
         # Инициализация Redis кеша
         import asyncio
 
-        _task = asyncio.create_task(self._initialize_redis_cache())
+        self._redis_init_task = asyncio.create_task(self._initialize_redis_cache())
         logger.info(get_log_text("middleware.auth_middleware_initialized"))
 
     async def _initialize_redis_cache(self) -> None:

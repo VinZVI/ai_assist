@@ -87,23 +87,31 @@ class MemoryCache:
         if key in self._cache:
             del self._cache[key]
 
-    def get_stats(self) -> dict[str, int | float]:
+    def get_stats(self) -> dict[str, Any]:
         """
-        Получение статистики кеша.
+        Получение статистики кэширования.
 
         Returns:
-            dict: Статистика кеша
+            dict: Статистика кэширования
         """
-        total_requests = self._hits + self._misses
-        hit_rate = (self._hits / total_requests * 100) if total_requests > 0 else 0
-
-        return {
+        stats: dict[str, Any] = {
+            "total_requests": self._hits + self._misses,
             "hits": self._hits,
             "misses": self._misses,
-            "hit_rate": round(hit_rate, 2),
-            "current_size": len(self._cache),
-            "max_size": self._max_size,
+            "hit_rate": self._hits / (self._hits + self._misses)
+            if (self._hits + self._misses) > 0
+            else 0,
+            "cache_size": len(self._cache),
+            "max_size": self.max_size,
         }
+
+        # Добавляем статистику Redis кэша, если он инициализирован
+        if self.redis_cache:
+            stats["redis_cache"] = self.redis_cache.get_stats()  # type: ignore[no-untyped-call]
+        else:
+            stats["redis_cache"] = {"status": "not_initialized"}  # type: ignore[no-untyped-call]
+
+        return stats
 
     def reset_stats(self) -> None:
         """Сброс статистики кеша."""
@@ -200,9 +208,9 @@ class CacheService:
         stats = {"memory_cache": self.memory_cache.get_stats()}
 
         if self.redis_cache:
-            stats["redis_cache"] = self.redis_cache.get_stats()  # type: ignore
+            stats["redis_cache"] = self.redis_cache.get_stats()  # type: ignore[no-untyped-call]
         else:
-            stats["redis_cache"] = {"status": "not_initialized"}  # type: ignore
+            stats["redis_cache"] = {"status": "not_initialized"}  # type: ignore[no-untyped-call]
 
         return stats
 

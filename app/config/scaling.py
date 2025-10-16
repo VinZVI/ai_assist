@@ -5,8 +5,6 @@
 @created: 2025-10-15
 """
 
-from typing import List
-
 from pydantic import BaseModel, Field
 
 

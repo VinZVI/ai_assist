@@ -66,7 +66,7 @@ async def handle_language_command(message: Message, user: User) -> None:
 
 
 @language_router.callback_query(F.data.startswith("select_language:"))
-async def handle_language_selection(callback: CallbackQuery, user: User) -> None:
+async def handle_language_selection(callback: CallbackQuery, user: User) -> None:  # noqa: ARG001
     """
     Обработчик выбора языка через callback.
 

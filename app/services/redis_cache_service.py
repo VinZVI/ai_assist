@@ -17,26 +17,21 @@ from app.models.user import User
 
 # Try to import redis, but handle if it's not available
 try:
-    import redis.asyncio as redis_asyncio
+    import redis
 
-    redis_client_module = redis_asyncio
-    REDIS_AVAILABLE = True
-except ImportError:
-    try:
-        import redis
-
-        # Check if asyncio is available in redis
-        if hasattr(redis, "asyncio"):
-            redis_client_module = redis.asyncio
-            REDIS_AVAILABLE = True
-        else:
-            redis_client_module = None
-            REDIS_AVAILABLE = False
-            logger.warning("Redis asyncio not available, Redis cache will be disabled")
-    except ImportError:
+    # Use getattr to access asyncio module to avoid Pyright warnings
+    redis_asyncio = getattr(redis, "asyncio", None)
+    if redis_asyncio is not None:
+        redis_client_module = redis_asyncio
+        REDIS_AVAILABLE = True
+    else:
         redis_client_module = None
         REDIS_AVAILABLE = False
-        logger.warning("Redis not available, Redis cache will be disabled")
+        logger.warning("Redis asyncio not available, Redis cache will be disabled")
+except ImportError:
+    redis_client_module = None
+    REDIS_AVAILABLE = False
+    logger.warning("Redis not available, Redis cache will be disabled")
 
 
 def serialize_datetime(dt: datetime | None) -> str | None:
@@ -117,7 +112,7 @@ class RedisCache:
                         f"Redis cache initialized with password-only URL: {password_url}"
                     )
                 else:
-                    raise e
+                    raise
             except Exception:
                 logger.error(f"Failed to initialize Redis cache: {e}")
                 self.redis_client = None
@@ -140,25 +135,22 @@ class RedisCache:
             if user_data_str:
                 self._hits += 1
                 user_data = json.loads(user_data_str)
-                # Создаем объект User из данных
-                user = User(
-                    id=user_data["id"],
-                    telegram_id=user_data["telegram_id"],
+                # Создаем и возвращаем объект User из данных
+                return User(
+                    id=int(user_data.get("id")),
+                    telegram_id=int(user_data.get("telegram_id")),
                     username=user_data.get("username"),
-                    first_name=user_data["first_name"],
+                    first_name=user_data.get("first_name"),
                     last_name=user_data.get("last_name"),
-                    language_code=user_data.get("language_code", "ru"),
+                    language_code=user_data.get("language_code"),
                     is_premium=user_data.get("is_premium", False),
-                    is_active=user_data.get("is_active", True),
-                    daily_message_count=user_data.get("daily_message_count", 0),
-                    total_messages=user_data.get("total_messages", 0),
+                    daily_message_count=int(user_data.get("daily_message_count", 0)),
                     last_message_date=deserialize_date(
                         user_data.get("last_message_date")
                     ),
                     created_at=deserialize_datetime(user_data.get("created_at")),
                     updated_at=deserialize_datetime(user_data.get("updated_at")),
                 )
-                return user
             self._misses += 1
         except Exception as e:
             self._misses += 1

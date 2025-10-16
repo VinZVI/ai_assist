@@ -79,11 +79,9 @@ class MessageCountingMiddleware(BaseAIMiddleware):
         Returns:
             bool: True если сообщение должно быть посчитано, False если нет
         """
-        # Только текстовые сообщения от пользователей
-        if isinstance(event, Message) and event.text:
-            # Исключаем команды (сообщения, начинающиеся с /)
-            if not event.text.startswith("/"):
-                return True
+        # Только текстовые сообщения от пользователей (не команды)
+        if isinstance(event, Message) and event.text and not event.text.startswith("/"):
+            return True
         return False
 
     async def _increment_user_message_count(self, data: dict[str, Any]) -> None:

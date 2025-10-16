@@ -16,10 +16,11 @@ from app.config import get_config
 from app.database import get_session
 from app.lexicon.gettext import get_log_text
 from app.middleware.base import BaseAIMiddleware
-from app.models.user import User
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
+
+    from app.models.user import User
 
 
 class MessageCountingMiddleware(BaseAIMiddleware):

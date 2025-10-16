@@ -6,11 +6,12 @@
 """
 
 import asyncio
+import contextlib
 import time
 from collections import defaultdict, deque
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from loguru import logger
 
@@ -92,10 +93,8 @@ class MonitoringService:
         for task in self.monitoring_tasks:
             if not task.done():
                 task.cancel()
-                try:
+                with contextlib.suppress(asyncio.CancelledError):
                     await task
-                except asyncio.CancelledError:
-                    pass
 
         self.monitoring_tasks.clear()
 
@@ -390,14 +389,13 @@ class MonitoringService:
         Получение сводки аналитики.
 
         Returns:
-            Dict[str, Any]: Сводка аналитики
+            dict[str, Any]: Сводка аналитики
         """
         try:
             # Получаем последние записи аналитики
             analytics_history = self.get_metrics_history("analytics", 1)
             if analytics_history:
-                latest_analytics = analytics_history[0]["data"]
-                return latest_analytics
+                return analytics_history[0]["data"]
 
             # Если нет данных, возвращаем пустую структуру
             return self._collect_analytics()

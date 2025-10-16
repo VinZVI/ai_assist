@@ -49,7 +49,7 @@ async def test_filter_extremist_content(
     """Test filtering extremist content."""
     # Test the _filter_content method directly
     text = "I support terrorism and violence against innocent people."
-    
+
     # Process the message
     result = content_filter_middleware._filter_content(text)
 
@@ -64,7 +64,7 @@ async def test_filter_illegal_content(
     """Test filtering illegal content."""
     # Test the _filter_content method directly
     text = "I want to buy some narcotics."
-    
+
     # Process the message
     result = content_filter_middleware._filter_content(text)
 
@@ -79,7 +79,7 @@ async def test_filter_personal_data_warning(
     """Test filtering content with personal data."""
     # Test the _filter_content method directly
     text = "My email is test@example.com and my phone is 12345678901."
-    
+
     # Process the message
     result = content_filter_middleware._filter_content(text)
 

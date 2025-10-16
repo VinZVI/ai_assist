@@ -13,7 +13,7 @@ from app.models.user import User as UserModel
 
 
 @pytest.mark.asyncio
-async def test_auth_middleware_user_creation():
+async def test_auth_middleware_user_creation() -> None:
     """Тест создания пользователя через AuthMiddleware."""
     # Создаем моки
     bot = AsyncMock()
@@ -66,7 +66,7 @@ async def test_auth_middleware_user_creation():
         captured_user = None
 
         # Обработчик для проверки, что пользователь добавлен в контекст
-        async def test_handler(message: Message, user: UserModel):
+        async def test_handler(_message: Message, user: UserModel) -> bool:
             nonlocal handler_called, captured_user
             handler_called = True
             captured_user = user
@@ -93,7 +93,7 @@ async def test_auth_middleware_user_creation():
 
 
 @pytest.mark.asyncio
-async def test_auth_middleware_user_retrieval():
+async def test_auth_middleware_user_retrieval() -> None:
     """Тест получения существующего пользователя через AuthMiddleware."""
     # Создаем моки
     bot = AsyncMock()
@@ -147,7 +147,7 @@ async def test_auth_middleware_user_retrieval():
         captured_user = None
 
         # Обработчик для проверки, что пользователь добавлен в контекст
-        async def test_handler(message: Message, user: UserModel):
+        async def test_handler(_message: Message, user: UserModel) -> bool:
             nonlocal handler_called, captured_user
             handler_called = True
             captured_user = user

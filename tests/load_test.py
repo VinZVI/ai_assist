@@ -7,7 +7,7 @@
 
 import asyncio
 import time
-from typing import Any, Dict, List, Union
+from typing import Any, Union
 
 import httpx
 from loguru import logger

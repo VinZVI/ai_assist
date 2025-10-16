@@ -124,7 +124,7 @@ async def health_check() -> JSONResponse:
         # Получаем статистику middleware
         anti_spam_stats = AntiSpamMiddleware.get_anti_spam_stats()
         content_filter_stats = ContentFilterMiddleware.get_content_filter_stats()
-        emotional_stats = {}  # Placeholder for emotional profiling stats
+        # emotional_stats = {}  # Placeholder for emotional profiling stats (removed as unused)
         message_count_stats = MessageCountingMiddleware.get_message_count_stats()
         metrics_stats = MetricsMiddleware.get_metrics_stats()
         rate_limit_stats = RateLimitMiddleware.get_rate_limit_stats()

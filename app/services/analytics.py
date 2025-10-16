@@ -6,10 +6,11 @@
 """
 
 import asyncio
+import contextlib
 import time
 from collections import defaultdict
-from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from datetime import UTC, datetime, timedelta
+from typing import Any, Optional
 
 from loguru import logger
 
@@ -54,10 +55,8 @@ class AnalyticsService:
 
         if self.collection_task and not self.collection_task.done():
             self.collection_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self.collection_task
-            except asyncio.CancelledError:
-                pass
 
     async def _periodic_analytics_collection(self, interval: int) -> None:
         """
@@ -96,7 +95,7 @@ class AnalyticsService:
         Сбор аналитики по всем аспектам работы бота.
 
         Returns:
-            Dict[str, Any]: Собранные данные аналитики
+            dict[str, Any]: Собранные данные аналитики
         """
         try:
             # Получаем сводку аналитики из сервиса мониторинга
@@ -113,10 +112,8 @@ class AnalyticsService:
                 "error_analysis": await self._analyze_errors(),
             }
 
-            # Объединяем данные
-            combined_data = {**analytics_summary, **additional_data}
-
-            return combined_data
+            # Объединяем данные и возвращаем
+            return {**analytics_summary, **additional_data}
 
         except Exception as e:
             logger.error(f"Ошибка при сборе аналитики: {e}")
@@ -127,7 +124,7 @@ class AnalyticsService:
         Вычисление времени работы системы.
 
         Returns:
-            Dict[str, Any]: Информация о времени работы
+            dict[str, Any]: Информация о времени работы
         """
         try:
             # Получаем аналитику из сервиса мониторинга
@@ -159,7 +156,7 @@ class AnalyticsService:
         Анализ вовлеченности пользователей.
 
         Returns:
-            Dict[str, Any]: Анализ вовлеченности
+            dict[str, Any]: Анализ вовлеченности
         """
         try:
             # Получаем аналитику из сервиса мониторинга
@@ -176,8 +173,8 @@ class AnalyticsService:
             active_users = user_activity.get("active_users", 0)
             messages_processed = user_activity.get("messages_processed", 0)
 
-            # Вычисляем метрики вовлеченности
-            engagement_metrics = {
+            # Вычисляем метрики вовлеченности и возвращаем
+            return {
                 "total_messages": total_messages,
                 "free_user_messages": free_messages,
                 "premium_user_messages": premium_messages,
@@ -190,8 +187,6 @@ class AnalyticsService:
                 else 0,
                 "message_volume_trend": await self._analyze_message_volume_trend(),
             }
-
-            return engagement_metrics
         except Exception as e:
             logger.error(f"Ошибка при анализе вовлеченности: {e}")
             return {"error": str(e)}
@@ -201,7 +196,7 @@ class AnalyticsService:
         Анализ тренда объема сообщений.
 
         Returns:
-            Dict[str, Any]: Анализ тренда объема сообщений
+            dict[str, Any]: Анализ тренда объема сообщений
         """
         try:
             # Получаем историю метрик сообщений
@@ -252,7 +247,7 @@ class AnalyticsService:
         Анализ паттернов сообщений.
 
         Returns:
-            Dict[str, Any]: Анализ паттернов сообщений
+            dict[str, Any]: Анализ паттернов
         """
         try:
             # Получаем аналитику из сервиса мониторинга
@@ -260,38 +255,22 @@ class AnalyticsService:
             message_count = analytics_summary.get("middleware", {}).get(
                 "message_count", {}
             )
-            anti_spam = analytics_summary.get("middleware", {}).get("anti_spam", {})
-            rate_limit = analytics_summary.get("middleware", {}).get("rate_limit", {})
 
-            # Анализируем паттерны
-            patterns = {
-                "spam_detection": {
-                    "actions_blocked": anti_spam.get("actions_blocked", 0),
-                    "users_blocked": anti_spam.get("users_blocked", 0),
-                    "spam_rate": anti_spam.get("actions_blocked", 0)
-                    / message_count.get("total_messages", 1)
-                    if message_count.get("total_messages", 0) > 0
-                    else 0,
-                },
-                "rate_limiting": {
-                    "requests_limited": rate_limit.get("requests_limited", 0),
-                    "users_limited": rate_limit.get("users_limited", 0),
-                    "limit_rate": rate_limit.get("requests_limited", 0)
-                    / message_count.get("total_messages", 1)
-                    if message_count.get("total_messages", 0) > 0
-                    else 0,
-                },
-                "user_distribution": {
-                    "free_users": message_count.get("free_user_messages", 0),
-                    "premium_users": message_count.get("premium_user_messages", 0),
-                    "premium_ratio": message_count.get("premium_user_messages", 0)
-                    / message_count.get("total_messages", 1)
-                    if message_count.get("total_messages", 0) > 0
-                    else 0,
-                },
+            total_messages = message_count.get("total_messages", 0)
+            free_messages = message_count.get("free_user_messages", 0)
+            premium_messages = message_count.get("premium_user_messages", 0)
+
+            # Анализируем паттерны и возвращаем
+            return {
+                "total_messages": total_messages,
+                "free_user_ratio": free_messages / total_messages
+                if total_messages > 0
+                else 0,
+                "premium_user_ratio": premium_messages / total_messages
+                if total_messages > 0
+                else 0,
+                "message_volume_trend": await self._analyze_message_volume_trend(),
             }
-
-            return patterns
         except Exception as e:
             logger.error(f"Ошибка при анализе паттернов сообщений: {e}")
             return {"error": str(e)}
@@ -301,31 +280,35 @@ class AnalyticsService:
         Анализ трендов производительности.
 
         Returns:
-            Dict[str, Any]: Анализ трендов производительности
+            dict[str, Any]: Анализ трендов
         """
         try:
             # Получаем аналитику из сервиса мониторинга
             analytics_summary = monitoring_service.get_analytics_summary()
             performance = analytics_summary.get("performance", {})
 
-            # Анализируем тренды
-            trends = {
-                "requests_per_second": performance.get("requests_per_second", 0),
-                "avg_response_time": performance.get("avg_response_time", 0),
-                "error_rate": performance.get("total_errors", 0)
+            requests_per_second = performance.get("requests_per_second", 0)
+            avg_response_time = performance.get("avg_response_time", 0)
+            error_rate = (
+                performance.get("total_errors", 0)
                 / performance.get("total_requests", 1)
                 if performance.get("total_requests", 0) > 0
-                else 0,
-                "uptime_percentage": (
-                    performance.get("uptime_seconds", 0)
-                    / (time.time() - monitoring_service.start_time)
-                )
-                * 100
-                if time.time() > monitoring_service.start_time
-                else 100,
-            }
+                else 0
+            )
 
-            return trends
+            # Анализируем тренды и возвращаем
+            return {
+                "requests_per_second": requests_per_second,
+                "avg_response_time": avg_response_time,
+                "error_rate": error_rate,
+                "performance_score": max(
+                    0,
+                    100
+                    - (avg_response_time * 10)
+                    - (error_rate * 100)
+                    - max(0, (requests_per_second - 100) / 10),
+                ),
+            }
         except Exception as e:
             logger.error(f"Ошибка при анализе трендов производительности: {e}")
             return {"error": str(e)}
@@ -335,7 +318,7 @@ class AnalyticsService:
         Анализ ошибок.
 
         Returns:
-            Dict[str, Any]: Анализ ошибок
+            dict[str, Any]: Отчет по аналитике
         """
         try:
             # Получаем аналитику из сервиса мониторинга
@@ -343,8 +326,8 @@ class AnalyticsService:
             performance = analytics_summary.get("performance", {})
             middleware_metrics = analytics_summary.get("middleware", {})
 
-            # Анализируем ошибки
-            error_analysis = {
+            # Анализируем ошибки и возвращаем
+            return {
                 "total_errors": performance.get("total_errors", 0),
                 "error_rate": performance.get("total_errors", 0)
                 / performance.get("total_requests", 1)
@@ -366,21 +349,19 @@ class AnalyticsService:
                     else 0,
                 },
             }
-
-            return error_analysis
         except Exception as e:
             logger.error(f"Ошибка при анализе ошибок: {e}")
             return {"error": str(e)}
 
     def get_analytics_report(self, period_hours: int = 24) -> dict[str, Any]:
         """
-        Получение отчета по аналитике за указанный период.
+        Получение отчета по аналитике.
 
         Args:
-            period_hours: Период в часах
+            period_hours: Период анализа в часах
 
         Returns:
-            Dict[str, Any]: Отчет по аналитике
+            dict[str, Any]: Сводка
         """
         try:
             # Вычисляем время начала периода
@@ -400,8 +381,8 @@ class AnalyticsService:
                     "period_hours": period_hours,
                 }
 
-            # Генерируем отчет
-            report = {
+            # Генерируем и возвращаем отчет
+            return {
                 "period_hours": period_hours,
                 "report_generated": datetime.now().isoformat(),
                 "total_data_points": len(period_data),
@@ -409,8 +390,6 @@ class AnalyticsService:
                 "trends": self._generate_trends(period_data),
                 "recommendations": self._generate_recommendations(period_data),
             }
-
-            return report
         except Exception as e:
             logger.error(f"Ошибка при генерации отчета: {e}")
             return {"error": str(e), "period_hours": period_hours}
@@ -423,7 +402,7 @@ class AnalyticsService:
             period_data: Данные за период
 
         Returns:
-            Dict[str, Any]: Сводка
+            dict[str, Any]: Сводка
         """
         try:
             if not period_data:
@@ -449,22 +428,19 @@ class AnalyticsService:
             period_data: Данные за период
 
         Returns:
-            Dict[str, Any]: Тренды
+            dict[str, Any]: Тренды
         """
         try:
             if len(period_data) < 2:
                 return {"trend_analysis": "Недостаточно данных для анализа трендов"}
 
-            # Анализируем изменения между первыми и последними данными
-            first_data = period_data[0]["data"]
-            last_data = period_data[-1]["data"]
-
+            # Возвращаем информацию о периодах с timezone
             return {
                 "period_start": datetime.fromtimestamp(
-                    period_data[0]["timestamp"]
+                    period_data[0]["timestamp"], UTC
                 ).isoformat(),
                 "period_end": datetime.fromtimestamp(
-                    period_data[-1]["timestamp"]
+                    period_data[-1]["timestamp"], UTC
                 ).isoformat(),
                 "data_points": len(period_data),
             }
@@ -480,7 +456,7 @@ class AnalyticsService:
             period_data: Данные за период
 
         Returns:
-            List[str]: Рекомендации
+            list[str]: Рекомендации
         """
         try:
             recommendations = []

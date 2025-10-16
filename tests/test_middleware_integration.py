@@ -5,6 +5,8 @@
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from aiogram import Dispatcher
+from aiogram.types import Message, User
 
 from app.middleware.auth import AuthMiddleware
 from app.models.user import User as UserModel
@@ -12,11 +14,9 @@ from app.services.user_service import get_or_update_user
 
 
 @pytest.mark.asyncio
-async def test_middleware_and_handler_integration():
+async def test_middleware_and_handler_integration() -> None:
     """Тест интеграции middleware и обработчиков."""
     # Создаем тестового пользователя Telegram
-    from aiogram.types import Message, User
-
     telegram_user = User(
         id=123456789,
         is_bot=False,
@@ -65,7 +65,7 @@ async def test_middleware_and_handler_integration():
         mock_session.refresh.assert_called_once()
 
 
-def test_auth_middleware_initialization():
+def test_auth_middleware_initialization() -> None:
     """Тест инициализации AuthMiddleware."""
     # Создаем middleware
     middleware = AuthMiddleware()
