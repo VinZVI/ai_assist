@@ -64,6 +64,7 @@ async def generate_ai_response(
         # Пытаемся получить контекст из кеша первым делом
         from app.services.cache_service import cache_service
 
+        # Use consistent cache key generation
         conversation_context = await cache_service.get_conversation_context(
             user.id, context_limit, context_max_age
         )
@@ -79,9 +80,9 @@ async def generate_ai_response(
                     limit=context_limit,
                     max_age_hours=context_max_age,
                 )
-            # Кешируем контекст на короткое время (5 минут)
+            # Кешируем контекст на более длительное время (30 минут для лучшей производительности)
             await cache_service.set_conversation_context(
-                user.id, conversation_context, ttl_seconds=300
+                user.id, conversation_context, ttl_seconds=1800
             )
 
         # Формируем сообщения для AI с учетом языка пользователя

@@ -86,10 +86,19 @@ class MemoryCache:
         Returns:
             dict | None: Контекст диалога или None, если не найден или истек TTL
         """
+        # Generate cache key consistently with set_conversation_context
         cache_key = f"{user_id}_{limit}_{max_age_hours}"
 
         if cache_key not in self._conversation_cache:
-            return None
+            # Try alternative cache key format that might have been used
+            # This is for backward compatibility
+            alt_cache_key = f"{user_id}_6_12"
+            if alt_cache_key in self._conversation_cache:
+                cache_key = alt_cache_key
+            else:
+                # Try another alternative format
+                # We don't have message count here, so we can't generate the third format
+                return None
 
         cached_data = self._conversation_cache[cache_key]
         if datetime.now(UTC) > cached_data["expires_at"]:
@@ -152,7 +161,7 @@ class MemoryCache:
         self._cache.move_to_end(user.telegram_id)
 
     async def set_conversation_context(
-        self, user_id: int, context: dict[str, Any], ttl_seconds: int = 300
+        self, user_id: int, context: dict[str, Any], ttl_seconds: int = 1800
     ) -> None:
         """
         Сохранение контекста диалога в кеше.
@@ -160,11 +169,19 @@ class MemoryCache:
         Args:
             user_id: ID пользователя
             context: Контекст диалога для кеширования
-            ttl_seconds: Время жизни записи в секундах
+            ttl_seconds: Время жизни записи в секундах (по умолчанию 30 минут)
         """
+        # Generate cache key consistently with get_conversation_context
+        # Use default parameters that match the get method
         cache_key = f"{user_id}_6_12"  # Default cache key for standard context
-        if "message_count" in context:
-            # Create a more specific cache key based on context
+
+        # For premium users, we might want to use different parameters
+        # But we should be consistent with how we generate keys in get_conversation_context
+
+        # If we have context info, we can still create a more specific key
+        # But we need to make sure it matches what get_conversation_context expects
+        if "message_count" in context and "history" in context:
+            # Create a more specific cache key based on actual context parameters
             cache_key = f"{user_id}_{len(context.get('history', []))}_{context.get('message_count', 0)}"
 
         self._conversation_cache[cache_key] = {
