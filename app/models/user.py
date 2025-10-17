@@ -256,19 +256,20 @@ class User(Base):
         if self.is_blocked:
             return False
 
-        # Получаем конфигурацию для лимитов
-        config = get_config()
-
-        # Для премиум пользователей используем премиум лимит
-        if self.is_premium_active():
-            premium_limit = getattr(config.user_limits, "premium_message_limit", 100)
-            return self.daily_message_count < premium_limit
-
         # Сброс счетчика если прошел день
         today = date.today()
         if self.last_message_date is not None and self.last_message_date < today:
             return True
 
+        # Получаем конфигурацию для лимитов
+        config = get_config()
+
+        # Для премиум пользователей используем премиум лимит из конфигурации
+        if self.is_premium_active():
+            premium_limit = getattr(config.user_limits, "premium_message_limit", 100)
+            return self.daily_message_count < premium_limit
+
+        # Для обычных пользователей используем переданный лимит
         return self.daily_message_count < free_limit
 
     def reset_daily_count_if_needed(self) -> bool:

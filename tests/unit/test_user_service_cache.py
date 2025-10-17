@@ -40,6 +40,7 @@ async def test_update_emotional_profile_updates_cache() -> None:
 
         # Мокаем cache_service
         with patch("app.services.user_service.cache_service") as mock_cache_service:
+            mock_cache_service.get_user = AsyncMock(return_value=test_user)
             mock_cache_service.set_user = AsyncMock()
 
             # Вызываем тестируемый метод
@@ -51,12 +52,8 @@ async def test_update_emotional_profile_updates_cache() -> None:
             # Note: We can't directly check emotional_profile since it's updated in place
             # and we're working with a mock object
 
-            # Проверяем, что был сделан запрос к базе данных
-            mock_session_context.execute.assert_called_once()
-            executed_stmt = mock_session_context.execute.call_args[0][0]
-            assert str(executed_stmt) == str(
-                select(User).where(User.telegram_id == 123456789)
-            )
+            # Проверяем, что кэш был проверен
+            mock_cache_service.get_user.assert_called_once_with(123456789)
 
             # Проверяем, что кэш был обновлен
             mock_cache_service.set_user.assert_called_once_with(test_user)

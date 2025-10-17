@@ -120,15 +120,15 @@ class TestUserModel:
 
     def test_can_send_message_method(self) -> None:
         """Тест метода can_send_message."""
-        # Use a fixed date for consistent testing
-        fixed_date = date(2025, 10, 7)
+        # Use today's date for consistent testing
+        today = date.today()
 
-        # Премиум пользователь
+        # Премиум пользователь в пределах лимита
         premium_user = User(
             telegram_id=1,
             is_premium=True,
-            daily_message_count=100,
-            last_message_date=fixed_date,
+            daily_message_count=99,  # Less than premium limit of 100
+            last_message_date=today,
         )
         assert premium_user.can_send_message() is True
 
@@ -137,7 +137,7 @@ class TestUserModel:
             telegram_id=2,
             is_premium=False,
             daily_message_count=5,
-            last_message_date=fixed_date,
+            last_message_date=today,
         )
         assert regular_user.can_send_message() is True
 
@@ -146,7 +146,7 @@ class TestUserModel:
             telegram_id=3,
             is_premium=False,
             daily_message_count=20,
-            last_message_date=fixed_date,
+            last_message_date=today,
         )
         assert limited_user.can_send_message() is False
 

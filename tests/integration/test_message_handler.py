@@ -25,7 +25,6 @@ from app.config import AppConfig
 from app.handlers.message import (
     create_system_message,
     generate_ai_response,
-    get_recent_conversation_history,
     handle_text_message,
     sanitize_telegram_message,  # Add the import for our new function
     save_conversation,
@@ -34,6 +33,7 @@ from app.models.conversation import Conversation, ConversationStatus, MessageRol
 from app.models.user import User
 from app.services.ai_manager import AIProviderError
 from app.services.ai_providers.base import AIResponse, ConversationMessage
+from app.services.conversation_service import get_recent_conversation_history
 from app.services.user_service import get_or_update_user
 
 
