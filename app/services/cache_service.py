@@ -267,6 +267,17 @@ class MemoryCache:
         if user_id in self._conversation_context_cache:
             del self._conversation_context_cache[user_id]
 
+    async def delete_pending_conversation_data(self, user_id: int) -> None:
+        """
+        Удаление данных ожидающего диалога из кеша.
+
+        Args:
+            user_id: ID пользователя
+        """
+        # Удаляем только данные для сохранения в БД
+        if user_id in self._conversation_context_cache:
+            del self._conversation_context_cache[user_id]
+
     async def set_user_activity(self, user_id: int) -> None:
         """
         Сохранение времени последней активности пользователя.

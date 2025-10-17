@@ -340,12 +340,62 @@ async def save_all_pending_conversations() -> None:
     которые накопились в кэше, но еще не были сохранены в БД.
     """
     try:
+        from app.database import get_session
         from app.services.cache_service import cache_service
 
-        # Пока просто логируем, что функция вызвана
-        # В реальной реализации здесь должна быть логика для обработки всех
-        # накопленных данных в кэше
-        logger.info("Проверка наличия данных для сохранения в БД")
+        # Получаем все данные из кэша, которые ожидают сохранения
+        # We need to access the memory cache directly
+        pending_data = cache_service.memory_cache._conversation_context_cache.copy()
+
+        if not pending_data:
+            logger.info("Нет данных для сохранения в БД")
+            return
+
+        logger.info(f"Сохранение {len(pending_data)} записей из кэша в БД")
+
+        # Сохраняем каждую запись
+        for user_id, data_entry in pending_data.items():
+            # Проверяем, не истекло ли время жизни данных
+            if datetime.now(UTC) > data_entry["expires_at"]:
+                logger.debug(f"Данные для пользователя {user_id} истекли, пропускаем")
+                # Удаляем устаревшие данные из кэша
+                await cache_service.memory_cache.delete_pending_conversation_data(
+                    user_id
+                )
+                continue
+
+            data = data_entry["data"]
+            try:
+                async with get_session() as session:
+                    result = await save_conversation(
+                        session=session,
+                        user_id=user_id,
+                        user_message=data["user_message"],
+                        ai_response=data["ai_response"],
+                        ai_model=data["ai_model"],
+                        tokens_used=data["tokens_used"],
+                        response_time=data["response_time"],
+                    )
+                    if result:
+                        logger.info(
+                            f"Успешно сохранены данные для пользователя {user_id}"
+                        )
+                        # Удаляем сохраненные данные из кэша
+                        await (
+                            cache_service.memory_cache.delete_pending_conversation_data(
+                                user_id
+                            )
+                        )
+                    else:
+                        logger.error(
+                            f"Ошибка при сохранении данных для пользователя {user_id}"
+                        )
+            except Exception as e:
+                logger.error(
+                    f"❌ Ошибка при сохранении данных для пользователя {user_id}: {e}"
+                )
+
+        logger.info("Завершено сохранение всех ожидающих диалогов")
 
     except Exception as e:
         logger.error(f"❌ Ошибка при сохранении ожидающих диалогов: {e}")

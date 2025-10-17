@@ -231,6 +231,18 @@ class AIAssistantBot:
         logger.info(get_log_text("main.bot_shutdown_started"))
 
         try:
+            # Сохранение всех ожидающих диалогов из кэша
+            try:
+                from app.services.conversation_service import (
+                    save_all_pending_conversations,
+                )
+
+                logger.info("Сохранение всех ожидающих диалогов из кэша...")
+                await save_all_pending_conversations()
+                logger.info("Завершено сохранение всех ожидающих диалогов")
+            except Exception as e:
+                logger.error(f"Ошибка при сохранении ожидающих диалогов: {e}")
+
             # Остановка мониторинга и аналитики
             await monitoring_service.stop_monitoring()
             await analytics_service.stop_analytics_collection()
@@ -405,6 +417,16 @@ async def lifespan() -> AsyncGenerator[None, None]:
         await bot_app.startup()
         yield
     finally:
+        # Сохранение всех ожидающих диалогов из кэша перед завершением
+        try:
+            from app.services.conversation_service import save_all_pending_conversations
+
+            logger.info("Сохранение всех ожидающих диалогов из кэша...")
+            await save_all_pending_conversations()
+            logger.info("Завершено сохранение всех ожидающих диалогов")
+        except Exception as e:
+            logger.error(f"Ошибка при сохранении ожидающих диалогов: {e}")
+
         await bot_app.shutdown()
 
 
