@@ -33,7 +33,7 @@ class MemoryCache:
         self._hits = 0
         self._misses = 0
         self._stats_cache: dict[str, Any] = {}
-        self._conversation_cache: dict[int, dict[str, Any]] = {}
+        self._conversation_cache: dict[str, dict[str, Any]] = {}
         self._conversation_context_cache: dict[
             int, dict[str, Any]
         ] = {}  # Dedicated conversation context cache

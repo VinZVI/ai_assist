@@ -7,7 +7,7 @@
 """
 
 from datetime import UTC, datetime, timedelta
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from loguru import logger
 from sqlalchemy import and_, desc, select
@@ -82,7 +82,7 @@ async def get_conversation_context(
     user_id: int,
     limit: int = 6,
     max_age_hours: int = 12,
-) -> dict[str, any]:
+) -> dict[str, Any]:
     """
     Получение контекста диалога пользователя для более точной генерации ответов.
 
