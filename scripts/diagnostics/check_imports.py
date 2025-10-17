@@ -18,6 +18,8 @@ try:
     # Telegram бот
     from aiogram import Bot, Dispatcher
     from aiogram.types import Message
+    from app.services.conversation_service import ConversationService
+    from app.services.user_service import UserService
 
     from app.config import get_config
     from app.database import get_session, init_database
@@ -31,8 +33,6 @@ try:
 
     # Сервисы
     from app.services.ai_manager import get_ai_manager
-    from app.services.conversation_service import ConversationService
-    from app.services.user_service import UserService
     from app.utils.logging import setup_logging
 
 

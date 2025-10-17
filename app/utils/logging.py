@@ -86,7 +86,10 @@ def console_formatter(record: dict[str, Any]) -> str:
     module_str = f"{module_name}:{record['line']}"
 
     # Простое форматирование без сложных переносов строк для избежания проблем с цветами
-    return f"{emoji} {time_str} | {level_str} | {module_str:<20} | {record['message']}"
+    # Добавляем \n в конце для обеспечения переноса каждой записи на новую строку
+    return (
+        f"{emoji} {time_str} | {level_str} | {module_str:<20} | {record['message']}\n"
+    )
 
 
 def setup_logging(

@@ -3,7 +3,7 @@
 @description: Модель пользователя Telegram бота с поддержкой премиум статуса
 @dependencies: sqlalchemy, datetime, pydantic
 @created: 2025-09-07
-@updated: 2025-09-12
+@updated: 2025-10-15
 """
 
 from datetime import UTC, date, datetime
@@ -22,15 +22,19 @@ from sqlalchemy import (
     Index,
     Integer,
     String,
+    Text,
     func,
     select,
 )
+from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from app.config import get_config
 from app.database import Base, get_session
 
 if TYPE_CHECKING:
     from app.models.conversation import Conversation
+    from app.models.payment import Payment
 
 
 class User(Base):
@@ -153,10 +157,36 @@ class User(Base):
         comment="Время последней активности",
     )
 
+    # Поля для персонализированной эмоциональной поддержки
+    emotional_profile: Mapped[dict[str, Any] | None] = mapped_column(
+        JSON,
+        nullable=True,
+        comment="Профиль эмоциональных предпочтений пользователя",
+    )
+
+    support_preferences: Mapped[dict[str, Any] | None] = mapped_column(
+        JSON,
+        nullable=True,
+        comment="Предпочтения в типе поддержки",
+    )
+
+    communication_style: Mapped[str | None] = mapped_column(
+        String(50),
+        nullable=True,
+        comment="Предпочтительный стиль общения",
+    )
+
     # Отношения
     # Use string annotation for forward reference to avoid circular import
     conversations: Mapped[list["Conversation"]] = relationship(
         "Conversation",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="select",
+    )
+
+    payments: Mapped[list["Payment"]] = relationship(
+        "Payment",
         back_populates="user",
         cascade="all, delete-orphan",
         lazy="select",
@@ -226,14 +256,20 @@ class User(Base):
         if self.is_blocked:
             return False
 
-        if self.is_premium_active():
-            return True
-
         # Сброс счетчика если прошел день
         today = date.today()
         if self.last_message_date is not None and self.last_message_date < today:
             return True
 
+        # Получаем конфигурацию для лимитов
+        config = get_config()
+
+        # Для премиум пользователей используем премиум лимит из конфигурации
+        if self.is_premium_active():
+            premium_limit = getattr(config.user_limits, "premium_message_limit", 100)
+            return self.daily_message_count < premium_limit
+
+        # Для обычных пользователей используем переданный лимит
         return self.daily_message_count < free_limit
 
     def reset_daily_count_if_needed(self) -> bool:
@@ -251,6 +287,26 @@ class User(Base):
         self.daily_message_count += 1
         self.total_messages = (self.total_messages or 0) + 1
         self.last_message_date = datetime.now(UTC).date()
+
+    def update_emotional_profile(self, profile_data: dict[str, Any]) -> None:
+        """Обновление эмоционального профиля пользователя."""
+        if self.emotional_profile is None:
+            self.emotional_profile = {}
+        self.emotional_profile.update(profile_data)
+
+    def update_support_preferences(self, preferences: dict[str, Any]) -> None:
+        """Обновление предпочтений в типе поддержки."""
+        if self.support_preferences is None:
+            self.support_preferences = {}
+        self.support_preferences.update(preferences)
+
+    def get_emotional_profile(self) -> dict[str, Any]:
+        """Получение эмоционального профиля пользователя."""
+        return self.emotional_profile or {}
+
+    def get_support_preferences(self) -> dict[str, Any]:
+        """Получение предпочтений в типе поддержки."""
+        return self.support_preferences or {}
 
 
 # Pydantic схемы для валидации и сериализации
@@ -299,6 +355,9 @@ class UserUpdate(BaseModel):
     daily_message_count: int | None = Field(None, ge=0)
     premium_expires_at: datetime | None = None
     last_message_date: date | None = None
+    emotional_profile: dict[str, Any] | None = None
+    support_preferences: dict[str, Any] | None = None
+    communication_style: str | None = Field(None, max_length=50)
 
 
 class UserResponse(UserBase):
@@ -312,6 +371,9 @@ class UserResponse(UserBase):
     is_blocked: bool
     created_at: datetime
     last_activity_at: datetime | None
+    emotional_profile: dict[str, Any] | None
+    support_preferences: dict[str, Any] | None
+    communication_style: str | None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -336,65 +398,7 @@ __all__ = [
     "UserResponse",
     "UserStats",
     "UserUpdate",
-    "get_or_update_user",
 ]
-
-
-async def get_or_update_user(message: Message) -> User | None:
-    """Получение или создание пользователя на основе сообщения Telegram.
-
-    Args:
-        message: Сообщение от пользователя Telegram
-
-    Returns:
-        User объект или None в случае ошибки
-    """
-    if not message.from_user:
-        logger.warning("Получено сообщение без информации о пользователе")
-        return None
-
-    try:
-        async with get_session() as session:
-            # Проверяем существование пользователя
-            stmt = select(User).where(User.telegram_id == message.from_user.id)
-            result = await session.execute(stmt)
-            user = result.scalar_one_or_none()
-
-            if user:
-                # Обновляем информацию о пользователе
-                user.username = message.from_user.username
-                user.first_name = message.from_user.first_name
-                user.last_name = message.from_user.last_name
-                user.last_activity_at = datetime.now(UTC)
-
-                # Сброс дневного счетчика если прошел день
-                if user.reset_daily_count_if_needed():
-                    user.daily_message_count = 0
-                    user.last_message_date = datetime.now(UTC).date()
-            else:
-                # Создаем нового пользователя
-                user = User(
-                    telegram_id=message.from_user.id,
-                    username=message.from_user.username,
-                    first_name=message.from_user.first_name,
-                    last_name=message.from_user.last_name,
-                    language_code=message.from_user.language_code or "ru",
-                    last_activity_at=datetime.now(UTC),
-                    last_message_date=datetime.now(UTC).date(),
-                )
-                session.add(user)
-
-            await session.commit()
-            await session.refresh(user)
-
-            logger.info(
-                f"👤 Пользователь {'обновлен' if user.id else 'создан'}: {user.get_display_name()}"
-            )
-            return user
-
-    except Exception as e:
-        logger.exception("Ошибка при получении/создании пользователя", exc_info=e)
-        return None
 
 
 # Add this at the end of the file to resolve the forward reference

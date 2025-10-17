@@ -12,8 +12,8 @@ from loguru import logger
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
 
-from app.constants import ConfigErrorMessages, ConfigMagicValues
-from app.log_lexicon import CONFIG_LOADED_SUCCESS
+from app.constants.config import ConfigErrorMessages, ConfigMagicValues
+from app.lexicon.gettext import get_log_text
 
 
 class DatabaseConfig(BaseSettings):
@@ -29,7 +29,9 @@ class DatabaseConfig(BaseSettings):
     )
 
     # Настройки пула соединений
-    database_pool_size: int = Field(default=10, validation_alias="DATABASE_POOL_SIZE")
+    database_pool_size: int = Field(
+        default=20, validation_alias="DATABASE_POOL_SIZE"
+    )  # Увеличиваем с 10 до 20
     database_timeout: int = Field(default=30, validation_alias="DATABASE_TIMEOUT")
 
     model_config = {"extra": "ignore", "env_file": ".env", "env_file_encoding": "utf-8"}
@@ -43,7 +45,9 @@ class DatabaseConfig(BaseSettings):
 class TelegramConfig(BaseSettings):
     """Конфигурация Telegram бота."""
 
-    bot_token: str = Field(validation_alias="BOT_TOKEN")
+    bot_token: str = Field(
+        default="your_telegram_bot_token_here", validation_alias="BOT_TOKEN"
+    )
     webhook_url: str | None = Field(default=None, validation_alias="WEBHOOK_URL")
     webhook_secret: str | None = Field(default=None, validation_alias="WEBHOOK_SECRET")
     use_polling: bool = Field(default=True, validation_alias="USE_POLLING")
@@ -72,62 +76,6 @@ class TelegramConfig(BaseSettings):
         return v
 
 
-class DeepSeekConfig(BaseSettings):
-    """Конфигурация DeepSeek API."""
-
-    deepseek_api_key: str = Field(
-        default="your_deepseek_api_key_here", validation_alias="DEEPSEEK_API_KEY"
-    )
-    deepseek_base_url: str = Field(
-        default="https://api.deepseek.com", validation_alias="DEEPSEEK_BASE_URL"
-    )
-    deepseek_model: str = Field(
-        default="deepseek-chat", validation_alias="DEEPSEEK_MODEL"
-    )
-    deepseek_max_tokens: int = Field(
-        default=1000, validation_alias="DEEPSEEK_MAX_TOKENS"
-    )
-    deepseek_temperature: float = Field(
-        default=0.7, validation_alias="DEEPSEEK_TEMPERATURE"
-    )
-    deepseek_timeout: int = Field(default=30, validation_alias="DEEPSEEK_TIMEOUT")
-
-    model_config = {"extra": "ignore", "env_file": ".env", "env_file_encoding": "utf-8"}
-
-    @field_validator("deepseek_api_key")
-    @classmethod
-    def validate_api_key(cls, v: str) -> str:
-        """Валидация API ключа DeepSeek."""
-        # Проверяем, что ключ не пустой и не placeholder
-        if v in {"", "your_deepseek_api_key_here"} or v is None:
-            raise ValueError(ConfigErrorMessages.INVALID_DEEPSEEK_API_KEY)
-        return v
-
-    def is_configured(self) -> bool:
-        """Проверка, настроен ли DeepSeek."""
-        return self.deepseek_api_key not in ["your_deepseek_api_key_here", "", None]
-
-    @field_validator("deepseek_temperature")
-    @classmethod
-    def validate_temperature(cls, v: float) -> float:
-        """Валидация температуры генерации."""
-        min_temp = ConfigMagicValues.DEEPSEEK_MIN_TEMPERATURE
-        max_temp = ConfigMagicValues.DEEPSEEK_MAX_TEMPERATURE
-        if not min_temp <= v <= max_temp:
-            raise ValueError(ConfigErrorMessages.INVALID_DEEPSEEK_TEMPERATURE)
-        return v
-
-    @field_validator("deepseek_max_tokens")
-    @classmethod
-    def validate_max_tokens(cls, v: int) -> int:
-        """Валидация максимального количества токенов."""
-        min_tokens = ConfigMagicValues.DEEPSEEK_MIN_MAX_TOKENS
-        max_tokens = ConfigMagicValues.DEEPSEEK_MAX_MAX_TOKENS_DEEPSEEK
-        if v < min_tokens or v > max_tokens:
-            raise ValueError(ConfigErrorMessages.INVALID_DEEPSEEK_MAX_TOKENS)
-        return v
-
-
 class OpenRouterConfig(BaseSettings):
     """Конфигурация OpenRouter API."""
 
@@ -137,8 +85,8 @@ class OpenRouterConfig(BaseSettings):
     openrouter_base_url: str = Field(
         default="https://openrouter.ai/api/v1", validation_alias="OPENROUTER_BASE_URL"
     )
-    openrouter_model: str = Field(
-        default="anthropic/claude-3-haiku", validation_alias="OPENROUTER_MODEL"
+    openrouter_models: list[str] = Field(
+        default=["openrouter/default-model"], validation_alias="OPENROUTER_MODEL"
     )
     openrouter_max_tokens: int = Field(
         default=1000, validation_alias="OPENROUTER_MAX_TOKENS"
@@ -165,6 +113,27 @@ class OpenRouterConfig(BaseSettings):
             raise ValueError(ConfigErrorMessages.INVALID_OPENROUTER_API_KEY)
         return v
 
+    @field_validator("openrouter_models", mode="before")
+    @classmethod
+    def validate_models(cls, v: str | list[str]) -> list[str]:
+        """Валидация списка моделей OpenRouter."""
+        if isinstance(v, str):
+            # Try to parse as JSON array
+            import json
+
+            try:
+                parsed = json.loads(
+                    v.replace("'", '"')
+                )  # Replace single quotes with double
+                if isinstance(parsed, list):
+                    return parsed
+            except json.JSONDecodeError:
+                # If JSON parsing fails, treat as single model
+                return [v.strip().strip('"')]
+        elif isinstance(v, list):
+            return v
+        return ["openrouter/default-model"]
+
     def is_configured(self) -> bool:
         """Проверка, настроен ли OpenRouter."""
         return self.openrouter_api_key != "your_openrouter_api_key_here"
@@ -184,7 +153,7 @@ class OpenRouterConfig(BaseSettings):
     def validate_max_tokens(cls, v: int) -> int:
         """Валидация максимального количества токенов."""
         min_tokens = ConfigMagicValues.OPENROUTER_MIN_MAX_TOKENS
-        max_tokens = ConfigMagicValues.DEEPSEEK_MAX_MAX_TOKENS_OPENROUTER
+        max_tokens = ConfigMagicValues.OPENROUTER_MAX_MAX_TOKENS
         if v < min_tokens or v > max_tokens:  # OpenRouter поддерживает больше токенов
             raise ValueError(ConfigErrorMessages.INVALID_OPENROUTER_MAX_TOKENS)
         return v
@@ -194,248 +163,171 @@ class AIProviderConfig(BaseSettings):
     """Конфигурация провайдеров AI."""
 
     primary_provider: str = Field(
-        default="deepseek", validation_alias="AI_PRIMARY_PROVIDER"
-    )
-    fallback_provider: str = Field(
-        default="openrouter", validation_alias="AI_FALLBACK_PROVIDER"
+        default="openrouter", validation_alias="AI_PRIMARY_PROVIDER"
     )
     enable_fallback: bool = Field(default=True, validation_alias="AI_ENABLE_FALLBACK")
-    max_retries_per_provider: int = Field(
-        default=3, validation_alias="AI_MAX_RETRIES_PER_PROVIDER"
-    )
-    provider_timeout: int = Field(default=30, validation_alias="AI_PROVIDER_TIMEOUT")
 
     model_config = {"extra": "ignore", "env_file": ".env", "env_file_encoding": "utf-8"}
-
-    @field_validator("primary_provider", "fallback_provider")
-    @classmethod
-    def validate_provider(cls, v: str) -> str:
-        """Валидация названия провайдера."""
-        allowed_providers = ["deepseek", "openrouter"]
-        if v not in allowed_providers:
-            raise ValueError(ConfigErrorMessages.INVALID_AI_PROVIDER)
-        return v
-
-    @field_validator("max_retries_per_provider")
-    @classmethod
-    def validate_retries(cls, v: int) -> int:
-        """Валидация количества попыток."""
-        min_retries = ConfigMagicValues.AI_PROVIDER_MAX_RETRIES_MIN
-        max_retries = ConfigMagicValues.AI_PROVIDER_MAX_RETRIES_MAX
-        if v < min_retries or v > max_retries:
-            message = ConfigErrorMessages.INVALID_AI_PROVIDER_RETRIES_FORMAT.format(
-                min_retries=min_retries, max_retries=max_retries
-            )
-            raise ValueError(message)
-        return v
 
 
 class UserLimitsConfig(BaseSettings):
     """Конфигурация лимитов пользователей."""
 
-    free_messages_limit: int = Field(default=10, validation_alias="FREE_MESSAGES_LIMIT")
-    premium_price: int = Field(default=99, validation_alias="PREMIUM_PRICE")
+    free_messages_limit: int = Field(default=5, validation_alias="FREE_MESSAGES_LIMIT")
     premium_duration_days: int = Field(
         default=30, validation_alias="PREMIUM_DURATION_DAYS"
     )
+    premium_price: int = Field(default=100, validation_alias="PREMIUM_PRICE")
+    premium_message_limit: int = Field(
+        default=100, validation_alias="PREMIUM_MESSAGE_LIMIT"
+    )
+
+    # New configuration parameters for anti-spam and rate limiting
+    spam_actions_per_minute: int = Field(
+        default=20, validation_alias="SPAM_ACTIONS_PER_MINUTE"
+    )
+    spam_restriction_duration: int = Field(
+        default=10, validation_alias="SPAM_RESTRICTION_DURATION"
+    )
+    daily_message_limit: int = Field(default=20, validation_alias="DAILY_MESSAGE_LIMIT")
 
     model_config = {"extra": "ignore", "env_file": ".env", "env_file_encoding": "utf-8"}
 
     @field_validator("free_messages_limit")
     @classmethod
-    def validate_free_limit(cls, v: int) -> int:
+    def validate_free_messages_limit(cls, v: int) -> int:
         """Валидация лимита бесплатных сообщений."""
         if v < 0:
-            message = ConfigErrorMessages.INVALID_FREE_MESSAGES_LIMIT_NON_NEGATIVE
-            raise ValueError(message)
+            raise ValueError(
+                ConfigErrorMessages.INVALID_FREE_MESSAGES_LIMIT_NON_NEGATIVE
+            )
         return v
 
     @field_validator("premium_price")
     @classmethod
     def validate_premium_price(cls, v: int) -> int:
-        """Валидация цены премиум доступа."""
+        """Валидация цены премиум подписки."""
         if v <= 0:
             raise ValueError(ConfigErrorMessages.INVALID_PREMIUM_PRICE)
         return v
 
 
+class PaymentConfig(BaseSettings):
+    """Конфигурация платежей."""
+
+    enabled: bool = Field(default=True, validation_alias="PAYMENT_ENABLED")
+    provider: str = Field(default="telegram_stars", validation_alias="PAYMENT_PROVIDER")
+    test_mode: bool = Field(default=False, validation_alias="PAYMENT_TEST_MODE")
+
+    model_config = {"extra": "ignore", "env_file": ".env", "env_file_encoding": "utf-8"}
+
+
+class MonitoringConfig(BaseSettings):
+    """Конфигурация мониторинга."""
+
+    health_check_inactivity_hours: int = Field(
+        default=6, validation_alias="HEALTH_CHECK_INACTIVITY_HOURS"
+    )
+    health_check_interval: int = Field(
+        default=60, validation_alias="HEALTH_CHECK_INTERVAL"
+    )
+
+    model_config = {"extra": "ignore", "env_file": ".env", "env_file_encoding": "utf-8"}
+
+
+class CacheConfig(BaseSettings):
+    """Конфигурация кэширования."""
+
+    ttl: int = Field(default=3600, validation_alias="CACHE_TTL")
+    redis_host: str = Field(default="localhost", validation_alias="REDIS_HOST")
+    redis_port: int = Field(default=6379, validation_alias="REDIS_PORT")
+    redis_username: str | None = Field(default=None, validation_alias="REDIS_USERNAME")
+    redis_password: str | None = Field(default=None, validation_alias="REDIS_PASSWORD")
+
+    model_config = {"extra": "ignore", "env_file": ".env", "env_file_encoding": "utf-8"}
+
+    @property
+    def redis_url(self) -> str:
+        """Построение URL Redis из отдельных параметров."""
+        if self.redis_username and self.redis_password:
+            return f"redis://{self.redis_username}:{self.redis_password}@{self.redis_host}:{self.redis_port}"
+        if self.redis_password:
+            return f"redis://:{self.redis_password}@{self.redis_host}:{self.redis_port}"
+        return f"redis://{self.redis_host}:{self.redis_port}"
+
+
+class ConversationConfig(BaseSettings):
+    """Конфигурация диалогов."""
+
+    enable_saving: bool = Field(
+        default=True, validation_alias="CONVERSATION_ENABLE_SAVING"
+    )
+    cache_ttl: int = Field(default=600, validation_alias="CONVERSATION_CACHE_TTL")
+    user_activity_update_interval: int = Field(
+        default=300, validation_alias="USER_ACTIVITY_UPDATE_INTERVAL"
+    )
+
+    model_config = {"extra": "ignore", "env_file": ".env", "env_file_encoding": "utf-8"}
+
+
 class AdminConfig(BaseSettings):
     """Конфигурация администраторов."""
 
-    admin_user_id: int = Field(validation_alias="ADMIN_USER_ID")
-    admin_user_ids: str | None = Field(default=None, validation_alias="ADMIN_USER_IDS")
+    admin_user_id: int = Field(default=123456789, validation_alias="ADMIN_USER_ID")
+    admin_user_ids: str = Field(default="", validation_alias="ADMIN_USER_IDS")
 
     model_config = {"extra": "ignore", "env_file": ".env", "env_file_encoding": "utf-8"}
 
     @field_validator("admin_user_id")
     @classmethod
-    def validate_admin_id(cls, v: int) -> int:
+    def validate_admin_user_id(cls, v: int) -> int:
         """Валидация ID администратора."""
         if v <= 0:
             raise ValueError(ConfigErrorMessages.INVALID_ADMIN_USER_ID_POSITIVE)
         return v
 
     def get_admin_ids(self) -> list[int]:
-        """Получение списка всех ID администраторов."""
+        """Получение списка ID администраторов."""
         admin_ids = [self.admin_user_id]
 
         if self.admin_user_ids:
-            try:
-                additional_ids = [
-                    int(uid.strip())
-                    for uid in self.admin_user_ids.split(",")
-                    if uid.strip()
-                ]
-                admin_ids.extend(additional_ids)
-            except ValueError:
-                # Логируем ошибку, но не падаем
-                pass
+            # Разбиваем строку по запятым и конвертируем в int
+            additional_ids = [
+                int(user_id.strip())
+                for user_id in self.admin_user_ids.split(",")
+                if user_id.strip().isdigit()
+            ]
+            admin_ids.extend(additional_ids)
 
-        return list(set(admin_ids))  # Убираем дубликаты
-
-
-class PaymentConfig(BaseSettings):
-    """Конфигурация платежей."""
-
-    payment_provider: str = Field(
-        default="telegram_stars", validation_alias="PAYMENT_PROVIDER"
-    )
-    payment_provider_token: str | None = Field(
-        default=None, validation_alias="PAYMENT_PROVIDER_TOKEN"
-    )
-
-    model_config = {"extra": "ignore", "env_file": ".env", "env_file_encoding": "utf-8"}
-
-    @field_validator("payment_provider")
-    @classmethod
-    def validate_provider(cls, v: str) -> str:
-        """Валидация провайдера платежей."""
-        allowed_providers = ["telegram_stars", "yookassa"]
-        if v not in allowed_providers:
-            raise ValueError(ConfigErrorMessages.INVALID_PAYMENT_PROVIDER)
-        return v
-
-
-class RedisConfig(BaseSettings):
-    """Конфигурация Redis (опционально)."""
-
-    redis_url: str | None = Field(default=None, validation_alias="REDIS_URL")
-    cache_ttl: int = Field(default=3600, validation_alias="CACHE_TTL")
-
-    model_config = {"extra": "ignore", "env_file": ".env", "env_file_encoding": "utf-8"}
-
-    @field_validator("cache_ttl")
-    @classmethod
-    def validate_ttl(cls, v: int) -> int:
-        """Валидация времени жизни кеша."""
-        if v <= 0:
-            raise ValueError(ConfigErrorMessages.INVALID_CACHE_TTL)
-        return v
-
-
-class MonitoringConfig(BaseSettings):
-    """Конфигурация мониторинга."""
-
-    enable_request_logging: bool = Field(
-        default=False, validation_alias="ENABLE_REQUEST_LOGGING"
-    )
-    enable_metrics: bool = Field(default=False, validation_alias="ENABLE_METRICS")
-    sentry_dsn: str | None = Field(default=None, validation_alias="SENTRY_DSN")
-
-    model_config = {"extra": "ignore", "env_file": ".env", "env_file_encoding": "utf-8"}
-
-
-class RateLimitConfig(BaseSettings):
-    """Конфигурация ограничения скорости запросов."""
-
-    rate_limit_per_minute: int = Field(
-        default=60, validation_alias="RATE_LIMIT_PER_MINUTE"
-    )
-    rate_limit_block_time: int = Field(
-        default=300, validation_alias="RATE_LIMIT_BLOCK_TIME"
-    )
-
-    model_config = {"extra": "ignore", "env_file": ".env", "env_file_encoding": "utf-8"}
-
-    @field_validator("rate_limit_per_minute", "rate_limit_block_time")
-    @classmethod
-    def validate_positive(cls, v: int) -> int:
-        """Валидация положительных значений."""
-        if v <= 0:
-            raise ValueError(ConfigErrorMessages.INVALID_RATE_LIMIT_VALUE)
-        return v
+        # Удаляем дубликаты и возвращаем список
+        return list(set(admin_ids))
 
 
 class AppConfig(BaseSettings):
-    """Главная конфигурация приложения."""
+    """Основная конфигурация приложения."""
 
-    # Основные настройки
+    # Компоненты конфигурации
+    database: DatabaseConfig = Field(default_factory=DatabaseConfig)
+    telegram: TelegramConfig = Field(default_factory=TelegramConfig)
+    openrouter: OpenRouterConfig = Field(default_factory=OpenRouterConfig)
+    ai_provider: AIProviderConfig = Field(default_factory=AIProviderConfig)
+    user_limits: UserLimitsConfig = Field(default_factory=UserLimitsConfig)
+    cache: CacheConfig = Field(default_factory=CacheConfig)
+    conversation: ConversationConfig = Field(default_factory=ConversationConfig)
+    admin: AdminConfig = Field(default_factory=AdminConfig)
+    payment: PaymentConfig = Field(default_factory=PaymentConfig)
+    monitoring: MonitoringConfig = Field(default_factory=MonitoringConfig)
+
+    # Дополнительные настройки
     debug: bool = Field(default=False, validation_alias="DEBUG")
     log_level: str = Field(default="INFO", validation_alias="LOG_LEVEL")
-    secret_key: str = Field(validation_alias="SECRET_KEY")
-    timezone: str = Field(default="Europe/Moscow", validation_alias="TIMEZONE")
-    auto_reload: bool = Field(default=True, validation_alias="AUTO_RELOAD")
-    show_debug_info: bool = Field(default=False, validation_alias="SHOW_DEBUG_INFO")
 
-    # Вложенные конфигурации (создаются лениво)
-    database: DatabaseConfig | None = None
-    telegram: TelegramConfig | None = None
-    deepseek: DeepSeekConfig | None = None
-    openrouter: OpenRouterConfig | None = None
-    ai_provider: AIProviderConfig | None = None
-    user_limits: UserLimitsConfig | None = None
-    admin: AdminConfig | None = None
-    payment: PaymentConfig | None = None
-    redis: RedisConfig | None = None
-    monitoring: MonitoringConfig | None = None
-    rate_limit: RateLimitConfig | None = None
+    model_config = {"extra": "ignore", "env_file": ".env", "env_file_encoding": "utf-8"}
 
-    def __init__(self, **data: dict[str, Any]) -> None:
+    def __init__(self, **data: Any) -> None:
+        """Инициализация конфигурации с логированием."""
         super().__init__(**data)
-        # Создаем экземпляры вложенных конфигураций
-        # Используем те же параметры, что и у родительской конфигурации
-        nested_config_params: dict[str, Any] = {}
-        if "_env_file" in data:
-            nested_config_params["_env_file"] = data["_env_file"]
-
-        self.database = DatabaseConfig(**nested_config_params)
-        self.telegram = TelegramConfig(**nested_config_params)
-        self.deepseek = DeepSeekConfig(**nested_config_params)
-        self.openrouter = OpenRouterConfig(**nested_config_params)
-        self.ai_provider = AIProviderConfig(**nested_config_params)
-        self.user_limits = UserLimitsConfig(**nested_config_params)
-        self.admin = AdminConfig(**nested_config_params)
-        self.payment = PaymentConfig(**nested_config_params)
-        self.redis = RedisConfig(**nested_config_params)
-        self.monitoring = MonitoringConfig(**nested_config_params)
-        self.rate_limit = RateLimitConfig(**nested_config_params)
-
-    @field_validator("log_level")
-    @classmethod
-    def validate_log_level(cls, v: str) -> str:
-        """Валидация уровня логирования."""
-        allowed_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
-        v_upper = v.upper()
-        if v_upper not in allowed_levels:
-            raise ValueError(ConfigErrorMessages.INVALID_LOG_LEVEL)
-        return v_upper
-
-    @field_validator("secret_key")
-    @classmethod
-    def validate_secret_key(cls, v: str) -> str:
-        """Валидация секретного ключа."""
-        if not v or v == "your_secret_key_here":
-            raise ValueError(ConfigErrorMessages.INVALID_SECRET_KEY)
-        if len(v) < ConfigMagicValues.MIN_SECRET_KEY_LENGTH:
-            raise ValueError(ConfigErrorMessages.SECRET_KEY_TOO_SHORT)
-        return v
-
-    model_config = {
-        "env_file": None,  # Don't load .env file by default
-        "env_file_encoding": "utf-8",
-        "case_sensitive": False,
-        "extra": "ignore",  # Игнорируем дополнительные поля из .env
-    }
+        logger.info(get_log_text("config.config_loaded_success"))
 
 
 class ConfigManager:
@@ -452,15 +344,7 @@ class ConfigManager:
     def get_config(self) -> AppConfig:
         """Получение экземпляра конфигурации приложения."""
         if self._config is None:
-            # Загружаем .env файл если он существует
-            env_file = Path(".env")
-            if env_file.exists():
-                self._config = AppConfig(_env_file=str(env_file))
-            else:
-                self._config = AppConfig()
-
-            logger.info(CONFIG_LOADED_SUCCESS)
-
+            self._config = AppConfig()
         return self._config
 
     def reset_config(self) -> None:
@@ -473,23 +357,25 @@ _config_manager = ConfigManager()
 
 
 def get_config() -> AppConfig:
-    """Получение экземпляра конфигурации приложения."""
+    """
+    Получение глобальной конфигурации приложения (Singleton).
+
+    Returns:
+        AppConfig: Объект конфигурации приложения
+    """
     return _config_manager.get_config()
 
 
-# Экспорт для удобного использования
 __all__ = [
     "AIProviderConfig",
     "AdminConfig",
     "AppConfig",
+    "CacheConfig",
+    "ConfigManager",
     "DatabaseConfig",
-    "DeepSeekConfig",
-    "MonitoringConfig",
     "OpenRouterConfig",
-    "PaymentConfig",
-    "RateLimitConfig",
-    "RedisConfig",
     "TelegramConfig",
     "UserLimitsConfig",
+    "_config_manager",
     "get_config",
 ]

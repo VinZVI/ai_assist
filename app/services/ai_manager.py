@@ -11,7 +11,7 @@ from typing import Any, ClassVar
 from loguru import logger
 
 from app.config import get_config
-from app.services.ai_providers import DeepSeekProvider, OpenRouterProvider
+from app.services.ai_providers import OpenRouterProvider
 from app.services.ai_providers.base import (
     AIProviderError,
     AIResponse,
@@ -38,10 +38,9 @@ class AIManager:
 
     def __init__(self) -> None:
         self._config = get_config()
-        # Initialize providers
+        # Initialize providers - only OpenRouter now
         self._providers = {
             "openrouter": OpenRouterProvider(),
-            "deepseek": DeepSeekProvider(),
         }
         # Initialize provider stats
         for provider_name in self._providers:
@@ -97,89 +96,68 @@ class AIManager:
         # Увеличиваем счетчик запросов
         self._stats["requests_total"] += 1
 
-        # Определяем порядок провайдеров
-        providers_order = list(self._providers.keys())
-        if prefer_provider and prefer_provider in providers_order:
-            # Перемещаем предпочитаемый провайдер в начало
-            providers_order.remove(prefer_provider)
-            providers_order.insert(0, prefer_provider)
+        # Only one provider now - OpenRouter
+        provider_name = "openrouter"
+        provider = self._providers[provider_name]
 
-        # Пробуем каждый провайдер по порядку
-        last_exception = None
-        for provider_name in providers_order:
-            provider = self._providers[provider_name]
+        # Проверяем настройку провайдера
+        if not provider.is_configured():
+            logger.debug(f"⏭️ Провайдер {provider_name} не настроен, пропускаем")
+            msg = "OpenRouter API не настроен. Проверьте OPENROUTER_API_KEY в .env"
+            raise APIAuthenticationError(
+                msg,
+                provider_name,
+                "not_configured",
+            )
 
-            # Проверяем настройку провайдера
-            if not provider.is_configured():
-                logger.debug(f"⏭️ Провайдер {provider_name} не настроен, пропускаем")
-                continue
+        try:
+            # Увеличиваем счетчик запросов к провайдеру
+            self._provider_stats[provider_name]["requests"] += 1
 
-            try:
-                # Увеличиваем счетчик запросов к провайдеру
-                self._provider_stats[provider_name]["requests"] += 1
+            # Генерируем ответ
+            start_time = datetime.now(UTC)
+            response = await provider.generate_response(
+                messages=messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+            )
+            response_time = (datetime.now(UTC) - start_time).total_seconds()
 
-                # Генерируем ответ
-                start_time = datetime.now(UTC)
-                response = await provider.generate_response(
-                    messages=messages,
-                    temperature=temperature,
-                    max_tokens=max_tokens,
-                )
-                response_time = (datetime.now(UTC) - start_time).total_seconds()
+            # Обновляем статистику успеха
+            self._stats["requests_successful"] += 1
+            self._provider_stats[provider_name]["successes"] += 1
 
-                # Обновляем статистику успеха
-                self._stats["requests_successful"] += 1
-                self._provider_stats[provider_name]["successes"] += 1
+            # Сохраняем в кеш
+            if use_cache:
+                self._cache[messages_hash] = {
+                    "response": response,
+                    "timestamp": datetime.now(UTC),
+                }
 
-                # Сохраняем в кеш
-                if use_cache:
-                    self._cache[messages_hash] = {
-                        "response": response,
-                        "timestamp": datetime.now(UTC),
-                    }
+            logger.info(
+                f"🤖 Ответ получен от {provider_name}: "
+                f"{len(response.content)} символов, "
+                f"{response.tokens_used} токенов, "
+                f"{response_time:.2f}с"
+            )
 
-                logger.info(
-                    f"🤖 Ответ получен от {provider_name}: "
-                    f"{len(response.content)} символов, "
-                    f"{response.tokens_used} токенов, "
-                    f"{response_time:.2f}с"
-                )
+            return response
 
-                return response
+        except (
+            APIAuthenticationError,
+            APIConnectionError,
+            APIQuotaExceededError,
+            APIRateLimitError,
+        ) as e:
+            # Обновляем статистику ошибок
+            self._stats["requests_failed"] += 1
+            self._provider_stats[provider_name]["failures"] += 1
 
-            except (
-                APIAuthenticationError,
-                APIConnectionError,
-                APIQuotaExceededError,
-                APIRateLimitError,
-            ) as e:
-                # Обновляем статистику ошибок
-                self._stats["requests_failed"] += 1
-                self._provider_stats[provider_name]["failures"] += 1
-
-                logger.warning(f"⚠️ Ошибка провайдера {provider_name}: {e}")
-                last_exception = e
-
-                # Если это не последний провайдер, пробуем следующий
-                if provider_name != providers_order[-1]:
-                    self._stats["fallback_used"] += 1
-                    logger.info("🔄 Переключаемся на резервный провайдер")
-                    continue
-                # Это был последний провайдер
-                logger.error("💥 Все провайдеры недоступны")
-                raise AIProviderError(
-                    f"Все AI провайдеры недоступны: {e!s}",
-                    provider_name,
-                ) from e
-
-        # Если ни один провайдер не сработал
-        unknown_error_message = "Неизвестная ошибка провайдеров"
-        if last_exception:
+            logger.error(f"💥 Ошибка провайдера {provider_name}: {e}")
             raise AIProviderError(
-                f"Все AI провайдеры недоступны: {last_exception!s}",
-                "unknown",
-            ) from last_exception
-        raise AIProviderError(unknown_error_message, "unknown")
+                f"AI провайдер недоступен: {e!s}",
+                provider_name,
+            ) from e
 
     async def generate_simple_response(self, prompt: str) -> AIResponse:
         """

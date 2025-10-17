@@ -39,12 +39,12 @@ ENV PYTHONPATH=/app
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-# Экспонируем порт (если нужен webhook)
-EXPOSE 8000
+# Экспонируем порты (8000 для webhook, 8080 для web server)
+EXPOSE 8000 8080
 
 # Healthcheck
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD python -c "from app.config import get_config; get_config()" || exit 1
 
-# Команда запуска
+# Команда запуска (по умолчанию запускаем бота)
 CMD ["python", "main.py"]

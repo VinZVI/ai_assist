@@ -15,7 +15,6 @@ from loguru import logger
 from app.config import (
     AdminConfig,
     DatabaseConfig,
-    DeepSeekConfig,
     TelegramConfig,
     UserLimitsConfig,
     _config_manager,
@@ -59,35 +58,6 @@ class TestConfigValidation:
         config = TelegramConfig(BOT_TOKEN="123456789:ABCdefGHIjklMNOpqrsTUVwxyz")  # noqa: S106
         assert config.bot_token is not None
         logger.success("✅ Валидация TelegramConfig работает")
-
-    def test_deepseek_config_validation(self) -> None:
-        """Тест валидации DeepSeekConfig."""
-        # Тест с невалидным API ключом (placeholder)
-        with pytest.raises(
-            ValueError, match="DEEPSEEK_API_KEY must be set to a valid API key"
-        ):
-            DeepSeekConfig(DEEPSEEK_API_KEY="your_deepseek_api_key_here")
-
-        # Тест с невалидным API ключом (пустой)
-        with pytest.raises(
-            ValueError, match="DEEPSEEK_API_KEY must be set to a valid API key"
-        ):
-            DeepSeekConfig(DEEPSEEK_API_KEY="")
-
-        # Тест с валидным API ключом
-        config = DeepSeekConfig(DEEPSEEK_API_KEY="sk-test123456789")
-        assert config.deepseek_api_key == "sk-test123456789"
-
-        # Тест валидации температуры
-        with pytest.raises(
-            ValueError, match="DEEPSEEK_TEMPERATURE must be between 0.0 and 2.0"
-        ):
-            DeepSeekConfig(
-                DEEPSEEK_API_KEY="sk-test123456789",
-                DEEPSEEK_TEMPERATURE=3.0,  # Недопустимое значение
-            )
-
-        logger.success("✅ Валидация DeepSeekConfig работает")
 
     def test_database_config_url_building(self) -> None:
         """Тест построения URL базы данных."""
@@ -168,7 +138,6 @@ class TestConfigLoading:
         new_callable=mock_open,
         read_data="""
 BOT_TOKEN=123456789:ABCdefGHIjklMNOpqrsTUVwxyz
-DEEPSEEK_API_KEY=sk-test123456789
 SECRET_KEY=test_secret_key_with_32_characters_minimum
 ADMIN_USER_ID=123456789
 """,
@@ -186,7 +155,6 @@ ADMIN_USER_ID=123456789
             config = get_config()
 
             assert config.telegram.bot_token == "123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
-            assert config.deepseek.deepseek_api_key == "sk-test123456789"
             assert config.secret_key == "test_secret_key_with_32_characters_minimum"
             assert config.admin.admin_user_id == 123456789
 
@@ -221,7 +189,7 @@ class TestEnvironmentVariables:
         required_sections = [
             "Telegram Bot Configuration",
             "Database Configuration",
-            "DeepSeek API Configuration",
+            "OpenRouter API Configuration",
             "Application Configuration",
             "User Limits Configuration",
             "Admin Configuration",
@@ -235,7 +203,7 @@ class TestEnvironmentVariables:
         required_vars = [
             "BOT_TOKEN",
             "DATABASE_URL",
-            "DEEPSEEK_API_KEY",
+            "OPENROUTER_API_KEY",
             "SECRET_KEY",
             "ADMIN_USER_ID",
             "FREE_MESSAGES_LIMIT",

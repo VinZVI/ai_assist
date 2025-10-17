@@ -119,7 +119,7 @@ class Conversation(Base):
     ai_model: Mapped[str | None] = mapped_column(
         String(100),
         nullable=True,
-        default="deepseek-chat",
+        default="openrouter-model",
         comment="Модель ИИ, использованная для ответа",
     )
 

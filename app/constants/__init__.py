@@ -1,0 +1,53 @@
+"""
+@file: constants/__init__.py
+@description: Инициализация модуля констант
+@created: 2025-10-03
+"""
+
+# Импортируем основные классы констант для обратной совместимости
+from .config import ConfigErrorMessages, ConfigMagicValues
+from .errors import (
+    AI_ALL_PROVIDERS_FAILED,
+    AI_AUTH_ERROR,
+    AI_CONNECTION_ERROR,
+    AI_EMPTY_RESPONSE_ERROR,
+    AI_INVALID_RESPONSE_ERROR,
+    AI_PROVIDER_ERROR,
+    AI_QUOTA_ERROR,
+    AI_RATE_LIMIT_ERROR,
+    AI_TIMEOUT_ERROR,
+    CONVERSATION_HISTORY_ERROR,
+    CONVERSATION_SAVE_ERROR,
+    DB_CONNECTION_ERROR,
+    DB_INTEGRITY_ERROR,
+    DB_SQLALCHEMY_ERROR,
+    GENERAL_ERROR,
+    UNEXPECTED_ERROR,
+    USER_CREATION_ERROR,
+    USER_NOT_FOUND_ERROR,
+    USER_UPDATE_ERROR,
+)
+
+__all__ = [
+    "AI_ALL_PROVIDERS_FAILED",
+    "AI_AUTH_ERROR",
+    "AI_CONNECTION_ERROR",
+    "AI_EMPTY_RESPONSE_ERROR",
+    "AI_INVALID_RESPONSE_ERROR",
+    "AI_PROVIDER_ERROR",
+    "AI_QUOTA_ERROR",
+    "AI_RATE_LIMIT_ERROR",
+    "AI_TIMEOUT_ERROR",
+    "CONVERSATION_HISTORY_ERROR",
+    "CONVERSATION_SAVE_ERROR",
+    "DB_CONNECTION_ERROR",
+    "DB_INTEGRITY_ERROR",
+    "DB_SQLALCHEMY_ERROR",
+    "GENERAL_ERROR",
+    "UNEXPECTED_ERROR",
+    "USER_CREATION_ERROR",
+    "USER_NOT_FOUND_ERROR",
+    "USER_UPDATE_ERROR",
+    "ConfigErrorMessages",
+    "ConfigMagicValues",
+]

@@ -21,34 +21,11 @@ from loguru import logger
 from app.config import get_config
 from app.database import close_db, init_db
 from app.handlers import ROUTERS
-from app.log_lexicon import (
-    BOT_AI_MANAGER_CLOSE_TIMEOUT,
-    BOT_AI_MANAGER_CLOSED,
-    BOT_COMMANDS_SET,
-    BOT_CRITICAL_ERROR,
-    BOT_DB_CLOSE_TIMEOUT,
-    BOT_DB_CLOSED,
-    BOT_DB_INITIALIZING,
-    BOT_INITIALIZED,
-    BOT_KEYBOARD_INTERRUPT,
-    BOT_POLLING_STARTED,
-    BOT_POLLING_STOP_TIMEOUT,
-    BOT_POLLING_STOPPED,
-    BOT_PROGRAM_FINISHED,
-    BOT_REGISTERED_ROUTERS,
-    BOT_SESSION_CLOSE_TIMEOUT,
-    BOT_SESSION_CLOSED,
-    BOT_SHUTDOWN_COMPLETED,
-    BOT_SHUTDOWN_ERROR,
-    BOT_SHUTDOWN_STARTED,
-    BOT_SIGNAL_RECEIVED,
-    BOT_STARTED,
-    BOT_STARTING,
-    BOT_USER_INTERRUPTED,
-    BOT_WEBHOOK_SET,
-    BOT_WEBHOOK_STARTED,
-)
+from app.lexicon.gettext import get_log_text
 from app.services.ai_manager import close_ai_manager
+from app.services.analytics import analytics_service
+from app.services.monitoring import monitoring_service
+from app.services.redis_cache_service import initialize_redis_cache
 from app.utils.logging import setup_logging
 
 
@@ -77,45 +54,152 @@ class AIAssistantBot:
         """Создание диспетчера с middleware и обработчиками."""
         dp = Dispatcher()
 
-        # Регистрация middleware будет здесь
-        # self.register_middleware(dp)
+        # Регистрация middleware
+        self.register_middleware(dp)
 
         # Регистрация обработчиков
         self.register_handlers(dp)
 
         return dp
 
+    def register_middleware(self, dp: Dispatcher) -> None:
+        """Регистрация middleware."""
+        from app.middleware import (
+            AdminMiddleware,
+            AntiSpamMiddleware,
+            AuthMiddleware,
+            ContentFilterMiddleware,
+            ConversationMiddleware,
+            EmotionalProfilingMiddleware,
+            LoggingMiddleware,
+            MessageCountingMiddleware,
+            MetricsMiddleware,
+            RateLimitMiddleware,
+            UserLanguageMiddleware,
+        )
+
+        # Создаем единственные экземпляры middleware
+        logging_middleware = LoggingMiddleware()
+        auth_middleware = AuthMiddleware()
+        user_language_middleware = UserLanguageMiddleware()
+        anti_spam_middleware = AntiSpamMiddleware()
+        rate_limit_middleware = RateLimitMiddleware()
+        content_filter_middleware = ContentFilterMiddleware()
+        emotional_profiling_middleware = EmotionalProfilingMiddleware()
+        conversation_middleware = ConversationMiddleware()
+        message_counting_middleware = MessageCountingMiddleware()
+        metrics_middleware = MetricsMiddleware()
+        admin_middleware = AdminMiddleware()
+
+        # Регистрация middleware в правильном порядке
+        # 1. Логирование (первым для записи всех событий)
+        dp.message.middleware(logging_middleware)
+        dp.callback_query.middleware(logging_middleware)
+
+        # 2. Аутентификация (для получения пользователя)
+        dp.message.middleware(auth_middleware)
+        dp.callback_query.middleware(auth_middleware)
+
+        # 3. Проверка прав администратора
+        dp.message.middleware(admin_middleware)
+        dp.callback_query.middleware(admin_middleware)
+
+        # 4. Управление языком пользователя
+        dp.message.middleware(user_language_middleware)
+        dp.callback_query.middleware(user_language_middleware)
+
+        # 5. Защита от спама (после аутентификации)
+        dp.message.middleware(anti_spam_middleware)
+        dp.callback_query.middleware(anti_spam_middleware)
+
+        # 6. Ограничение частоты запросов (после аутентификации)
+        dp.message.middleware(rate_limit_middleware)
+        dp.callback_query.middleware(rate_limit_middleware)
+
+        # 7. Фильтрация контента (после аутентификации)
+        dp.message.middleware(content_filter_middleware)
+        dp.callback_query.middleware(content_filter_middleware)
+
+        # 8. Профилирование эмоций пользователя (после аутентификации)
+        dp.message.middleware(emotional_profiling_middleware)
+        dp.callback_query.middleware(emotional_profiling_middleware)
+
+        # 9. Сохранение диалогов
+        dp.message.middleware(conversation_middleware)
+        dp.callback_query.middleware(conversation_middleware)
+
+        # 10. Подсчет сообщений пользователей (только для сообщений)
+        dp.message.middleware(message_counting_middleware)
+        # Не регистрируем для callback_query, так как они не считаются в лимиты
+
+        # 11. Сбор метрик (последним для сбора полной информации)
+        dp.message.middleware(metrics_middleware)
+        dp.callback_query.middleware(metrics_middleware)
+
+        logger.info(get_log_text("main.bot_registered_middleware"))
+
     def register_handlers(self, dp: Dispatcher) -> None:
         """Регистрация всех обработчиков."""
         for router in ROUTERS:
             dp.include_router(router)
 
-        logger.info(BOT_REGISTERED_ROUTERS.format(count=len(ROUTERS)))
+        logger.info(
+            get_log_text("main.bot_registered_routers").format(count=len(ROUTERS))
+        )
 
     async def setup_bot_commands(self) -> None:
         """Настройка команд бота для меню."""
         if not self.bot:
+            logger.warning("Bot is not initialized, skipping command setup")
             return
 
-        commands = [
-            BotCommand(command="start", description="🚀 Начать работу с ботом"),
-            BotCommand(command="help", description="❓ Справка по командам"),
-            BotCommand(command="profile", description="👤 Мой профиль"),
-            BotCommand(command="limits", description="📊 Мои лимиты сообщений"),
-            BotCommand(command="premium", description="⭐ Премиум доступ"),
-        ]
+        try:
+            # Get command descriptions from lexicon (using Russian as default)
+            from app.lexicon.ru import LEXICON_RU
 
-        await self.bot.set_my_commands(commands)
-        logger.info(BOT_COMMANDS_SET)
+            help_commands = LEXICON_RU["help"]["commands"]
+
+            # Convert lexicon commands to BotCommand objects
+            commands = []
+            for command, description in help_commands:
+                # Remove the leading slash from command name for BotCommand
+                command_name = command.lstrip("/")
+                commands.append(
+                    BotCommand(command=command_name, description=description)
+                )
+
+            logger.info(f"Setting up {len(commands)} bot commands")
+            for cmd in commands:
+                logger.debug(f"Command: {cmd.command} - {cmd.description}")
+
+            await self.bot.set_my_commands(commands)
+            logger.success(get_log_text("main.bot_commands_set"))
+
+            # Verify commands were set
+            try:
+                set_commands = await self.bot.get_my_commands()
+                logger.info(f"Successfully set {len(set_commands)} commands")
+                for cmd in set_commands:
+                    logger.debug(f"Set command: {cmd.command} - {cmd.description}")
+            except Exception as verify_error:
+                logger.warning(f"Could not verify set commands: {verify_error}")
+
+        except Exception as e:
+            logger.error(f"Failed to set bot commands: {e}")
+            raise
 
     async def startup(self) -> None:
         """Инициализация бота и подключений."""
         try:
-            logger.info(BOT_STARTING)
+            logger.info(get_log_text("main.bot_starting"))
 
             # Инициализация базы данных
-            logger.info(BOT_DB_INITIALIZING)
+            logger.info(get_log_text("main.bot_db_initializing"))
             await init_db()
+
+            # Инициализация Redis кеша
+            logger.info("Initializing Redis cache...")
+            await initialize_redis_cache()
 
             # Создание бота и диспетчера
             self.bot = self.create_bot()
@@ -124,7 +208,7 @@ class AIAssistantBot:
             # Получение информации о боте
             bot_info = await self.bot.get_me()
             logger.info(
-                BOT_STARTED.format(
+                get_log_text("main.bot_started").format(
                     username=bot_info.username, full_name=bot_info.full_name
                 )
             )
@@ -132,51 +216,81 @@ class AIAssistantBot:
             # Настройка команд
             await self.setup_bot_commands()
 
-            logger.success(BOT_INITIALIZED)
+            # Запуск мониторинга и аналитики
+            await monitoring_service.start_monitoring()
+            await analytics_service.start_analytics_collection()
+
+            logger.success(get_log_text("main.bot_initialized"))
 
         except Exception as e:
-            logger.error(BOT_SHUTDOWN_ERROR.format(error=e))
+            logger.error(get_log_text("main.bot_shutdown_error").format(error=e))
             raise
 
     async def shutdown(self) -> None:
         """Корректное завершение работы бота."""
-        logger.info(BOT_SHUTDOWN_STARTED)
+        logger.info(get_log_text("main.bot_shutdown_started"))
 
         try:
+            # Сохранение всех ожидающих диалогов из кэша
+            try:
+                from app.services.conversation_service import (
+                    save_all_pending_conversations,
+                )
+
+                logger.info("Сохранение всех ожидающих диалогов из кэша...")
+                await save_all_pending_conversations()
+                logger.info("Завершено сохранение всех ожидающих диалогов")
+            except Exception as e:
+                logger.error(f"Ошибка при сохранении ожидающих диалогов: {e}")
+
+            # Остановка мониторинга и аналитики
+            await monitoring_service.stop_monitoring()
+            await analytics_service.stop_analytics_collection()
+
             # Остановка диспетчера с таймаутом
             if self.dp:
                 try:
                     await asyncio.wait_for(self.dp.stop_polling(), timeout=10.0)
-                    logger.info(BOT_POLLING_STOPPED)
+                    logger.info(get_log_text("main.bot_polling_stopped"))
                 except TimeoutError:
-                    logger.warning(BOT_POLLING_STOP_TIMEOUT)
+                    logger.warning(get_log_text("main.bot_polling_stop_timeout"))
+                except RuntimeError as e:
+                    # Handle case when polling was not started
+                    if "polling is not started" in str(e).lower():
+                        logger.info(get_log_text("main.bot_polling_not_started"))
+                    else:
+                        logger.warning(
+                            get_log_text("main.bot_error_stopping_polling").format(
+                                error=e
+                            )
+                        )
 
             # Закрытие сессии бота с таймаутом
             if self.bot:
                 try:
                     await asyncio.wait_for(self.bot.session.close(), timeout=5.0)
-                    logger.info(BOT_SESSION_CLOSED)
+                    logger.info(get_log_text("main.bot_session_closed"))
                 except TimeoutError:
-                    logger.warning(BOT_SESSION_CLOSE_TIMEOUT)
+                    logger.warning(get_log_text("main.bot_session_close_timeout"))
 
             # Закрытие подключения к БД с таймаутом
             try:
                 await asyncio.wait_for(close_db(), timeout=5.0)
-                logger.info(BOT_DB_CLOSED)
+                logger.info(get_log_text("main.bot_db_closed"))
             except TimeoutError:
-                logger.warning(BOT_DB_CLOSE_TIMEOUT)
+                logger.warning(get_log_text("main.bot_db_close_timeout"))
 
             # Закрытие AI менеджера с таймаутом
             try:
                 await asyncio.wait_for(close_ai_manager(), timeout=5.0)
-                logger.info(BOT_AI_MANAGER_CLOSED)
+                logger.info(get_log_text("main.bot_ai_manager_closed"))
             except TimeoutError:
-                logger.warning(BOT_AI_MANAGER_CLOSE_TIMEOUT)
+                logger.warning(get_log_text("main.bot_ai_manager_close_timeout"))
 
-            logger.success(BOT_SHUTDOWN_COMPLETED)
+            logger.success(get_log_text("main.bot_shutdown_completed"))
 
         except Exception as e:
-            logger.error(BOT_SHUTDOWN_ERROR.format(error=e))
+            logger.error(get_log_text("main.bot_shutdown_error").format(error=e))
 
     def setup_signal_handlers(self) -> None:
         """Настройка обработчиков сигналов для корректного завершения."""
@@ -190,7 +304,7 @@ class AIAssistantBot:
 
     def _signal_handler(self, signum, frame) -> None:  # noqa: ANN001
         """Обработчик сигналов завершения."""
-        logger.info(BOT_SIGNAL_RECEIVED.format(signal=signum))
+        logger.info(get_log_text("main.bot_signal_received").format(signal=signum))
         self._shutdown_event.set()
 
     async def run_polling(self) -> None:
@@ -199,7 +313,7 @@ class AIAssistantBot:
             msg = "Бот или диспетчер не инициализированы"
             raise RuntimeError(msg)
 
-        logger.info(BOT_POLLING_STARTED)
+        logger.info(get_log_text("main.bot_polling_started"))
 
         try:
             # Создаем задачу для polling
@@ -231,11 +345,13 @@ class AIAssistantBot:
                 try:
                     await polling_task
                 except Exception as e:
-                    logger.error(f"💥 Ошибка в polling: {e}")
+                    logger.error(
+                        get_log_text("main.bot_error_in_polling").format(error=e)
+                    )
                     raise
 
         except Exception as e:
-            logger.error(f"💥 Ошибка в run_polling: {e}")
+            logger.error(get_log_text("main.bot_error_in_run_polling").format(error=e))
             raise
 
     async def run_webhook(self) -> None:
@@ -248,7 +364,11 @@ class AIAssistantBot:
             msg = "Бот или диспетчер не инициализированы"
             raise RuntimeError(msg)
 
-        logger.info(BOT_WEBHOOK_STARTED.format(url=self.config.telegram.webhook_url))
+        logger.info(
+            get_log_text("main.bot_webhook_started").format(
+                url=self.config.telegram.webhook_url
+            )
+        )
 
         # Настройка webhook
         await self.bot.set_webhook(
@@ -258,7 +378,7 @@ class AIAssistantBot:
             drop_pending_updates=True,
         )
 
-        logger.info(BOT_WEBHOOK_SET)
+        logger.info(get_log_text("main.bot_webhook_set"))
 
     async def run(self) -> None:
         """Главный метод запуска бота."""
@@ -277,12 +397,12 @@ class AIAssistantBot:
                 # В режиме webhook нужно поддерживать приложение активным
                 await self._shutdown_event.wait()
 
-            logger.info("🛑 Начинаю корректное завершение работы...")
+            logger.info(get_log_text("main.bot_shutdown_initiated"))
 
         except KeyboardInterrupt:
-            logger.info(BOT_KEYBOARD_INTERRUPT)
+            logger.info(get_log_text("main.bot_keyboard_interrupt"))
         except Exception as e:
-            logger.error(BOT_CRITICAL_ERROR.format(error=e))
+            logger.error(get_log_text("main.bot_critical_error").format(error=e))
             raise
         finally:
             await self.shutdown()
@@ -297,6 +417,16 @@ async def lifespan() -> AsyncGenerator[None, None]:
         await bot_app.startup()
         yield
     finally:
+        # Сохранение всех ожидающих диалогов из кэша перед завершением
+        try:
+            from app.services.conversation_service import save_all_pending_conversations
+
+            logger.info("Сохранение всех ожидающих диалогов из кэша...")
+            await save_all_pending_conversations()
+            logger.info("Завершено сохранение всех ожидающих диалогов")
+        except Exception as e:
+            logger.error(f"Ошибка при сохранении ожидающих диалогов: {e}")
+
         await bot_app.shutdown()
 
 
@@ -324,15 +454,15 @@ async def main() -> None:
         await bot_app.run()
 
     except KeyboardInterrupt:
-        logger.info(BOT_USER_INTERRUPTED)
+        logger.info(get_log_text("main.bot_user_interrupted"))
     except Exception as e:
-        logger.error(BOT_CRITICAL_ERROR.format(error=e))
+        logger.error(get_log_text("main.bot_critical_error").format(error=e))
         if bot_app:
             with suppress(Exception):
                 await bot_app.shutdown()
         sys.exit(1)
     finally:
-        logger.info(BOT_PROGRAM_FINISHED)
+        logger.info(get_log_text("main.bot_program_finished"))
 
 
 if __name__ == "__main__":

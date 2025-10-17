@@ -1,159 +1,46 @@
 """
-@file: message.py
-@description: Обработчик текстовых сообщений для AI диалогов
-              с поддержкой множественных провайдеров
-@dependencies: aiogram, sqlalchemy, loguru, app.services.ai_manager
-@created: 2025-09-12
-@updated: 2025-09-20
+@file: handlers/message.py
+@description: Обработчик входящих сообщений от пользователей
+@dependencies: aiogram, sqlalchemy, loguru
+@created: 2025-09-07
+@updated: 2025-10-15
 """
 
-from datetime import UTC, datetime, timezone
+from collections.abc import Awaitable, Callable
+from contextlib import suppress as contextlib_suppress
+from datetime import UTC, datetime
+from typing import Optional
 
 from aiogram import F, Router
-from aiogram.types import Message
-from aiogram.utils.markdown import bold, italic
+from aiogram.types import Message, SuccessfulPayment
 from loguru import logger
-from sqlalchemy import desc, select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
 from app.config import get_config
+from app.constants.errors import (
+    AI_PROVIDER_ERROR,
+)
+from app.constants.errors import (
+    AI_QUOTA_ERROR as AI_QUOTA_ERROR_CONST,
+)
 from app.database import get_session
+from app.lexicon.ai_prompts import (
+    create_crisis_intervention_prompt,
+    create_mature_content_prompt,
+    create_system_message,
+)
+from app.lexicon.gettext import get_log_text, get_text
 from app.models.conversation import Conversation, ConversationStatus
-from app.models.user import User, get_or_update_user
+from app.models.user import User
 from app.services.ai_manager import AIProviderError, get_ai_manager
 from app.services.ai_providers.base import ConversationMessage
+from app.services.conversation_service import (
+    get_conversation_context,
+    save_conversation,
+)
 
 # Создаем роутер для обработчиков сообщений
 message_router = Router()
-
-
-async def get_recent_conversation_history(
-    session: AsyncSession,
-    user_id: int,
-    limit: int = 10,
-) -> list[ConversationMessage]:
-    """Получение истории последних сообщений пользователя."""
-    try:
-        from sqlalchemy import desc, select
-
-        from app.models.conversation import ConversationStatus
-
-        # Получаем последние завершенные сообщения
-        stmt = (
-            select(Conversation)
-            .where(
-                (Conversation.user_id == user_id)
-                & (Conversation.status == ConversationStatus.COMPLETED),
-            )
-            .order_by(desc(Conversation.created_at))
-            .limit(limit)
-        )
-
-        result = await session.execute(stmt)
-        conversations = result.scalars().all()
-
-        # Преобразуем в ConversationMessage
-        messages = []
-        for conv in reversed(conversations):  # Обращаем порядок для хронологии
-            # Добавляем сообщение пользователя
-            if conv.message_text:
-                messages.append(
-                    ConversationMessage(
-                        role="user",
-                        content=conv.message_text,
-                        timestamp=conv.created_at,
-                    ),
-                )
-
-            # Добавляем ответ ассистента
-            if conv.response_text:
-                messages.append(
-                    ConversationMessage(
-                        role="assistant",
-                        content=conv.response_text,
-                        timestamp=conv.processed_at or conv.created_at,
-                    ),
-                )
-
-        return messages[-limit:] if len(messages) > limit else messages
-
-    except Exception as e:
-        logger.error(f"❌ Ошибка при получении истории: {e}")
-        return []
-
-
-def create_system_message() -> ConversationMessage:
-    """Создание системного сообщения для AI."""
-    return ConversationMessage(
-        role="system",
-        content=(
-            "Ты - эмпатичный AI-помощник и компаньон. "
-            "Твоя задача - предоставлять эмоциональную поддержку и понимание. "
-            "Отвечай доброжелательно, поддерживающе и с пониманием. "
-            "Задавай уточняющие вопросы, чтобы лучше понять чувства "
-            "и потребности пользователя. "
-            "Избегай давать медицинские или юридические советы. "
-            "Если пользователь находится в кризисной ситуации, "
-            "мягко предложи обратиться к специалисту."
-        ),
-    )
-
-
-async def save_conversation(
-    session: AsyncSession,
-    user_id: int,
-    user_message: str,
-    ai_response: str,
-    ai_model: str,
-    tokens_used: int,
-    response_time: float,
-) -> bool:
-    """
-    Сохранение диалога в базе данных.
-
-    Args:
-        session: Сессия базы данных
-        user_id: ID пользователя
-        user_message: Сообщение пользователя
-        ai_response: Ответ AI
-        ai_model: Модель AI
-        tokens_used: Количество использованных токенов
-        response_time: Время ответа в секундах
-
-    Returns:
-        bool: True если успешно сохранено, False в случае ошибки
-    """
-    try:
-        # Создаем запись сообщения пользователя
-        user_conv = Conversation(
-            user_id=user_id,
-            message_text=user_message,
-            role="user",
-            status=ConversationStatus.COMPLETED,
-        )
-        session.add(user_conv)
-
-        # Создаем запись ответа AI
-        ai_conv = Conversation(
-            user_id=user_id,
-            message_text=user_message,
-            response_text=ai_response,
-            role="assistant",
-            status=ConversationStatus.COMPLETED,
-            ai_model=ai_model,
-            tokens_used=tokens_used,
-            response_time_ms=int(response_time * 1000),
-        )
-        session.add(ai_conv)
-
-        await session.commit()
-        logger.info(f"💾 Диалог сохранен для пользователя {user_id}")
-        return True
-
-    except Exception as e:
-        logger.exception(f"💥 Ошибка при сохранении диалога: {e}")
-        await session.rollback()
-        return False
 
 
 async def generate_ai_response(
@@ -170,19 +57,41 @@ async def generate_ai_response(
         ai_manager = get_ai_manager()
         start_time = datetime.now(UTC)
 
-        # Получаем историю диалога
-        async with get_session() as session:
-            conversation_history = await get_recent_conversation_history(
-                session,
-                user.id,
-                limit=6,  # Последние 3 обмена
+        # Определяем параметры контекста в зависимости от статуса премиум
+        context_limit = 12 if user.is_premium_active() else 6
+        context_max_age = 24 if user.is_premium_active() else 12
+
+        # Пытаемся получить контекст из кеша первым делом
+        from app.services.cache_service import cache_service
+
+        # Use consistent cache key generation
+        conversation_context = await cache_service.get_conversation_context(
+            user.id, context_limit, context_max_age
+        )
+
+        if not conversation_context:
+            # Если нет в кеше, загружаем из БД
+            async with get_session() as session:
+                from app.services.conversation_service import get_conversation_context
+
+                conversation_context = await get_conversation_context(
+                    session,
+                    user.id,
+                    limit=context_limit,
+                    max_age_hours=context_max_age,
+                )
+            # Кешируем контекст на более длительное время (30 минут для лучшей производительности)
+            await cache_service.set_conversation_context(
+                user.id, conversation_context, ttl_seconds=1800
             )
 
-        # Формируем сообщения для AI
-        messages = [create_system_message()]
+        # Формируем сообщения для AI с учетом языка пользователя
+        user_language = user.language_code or "ru"
+        messages = [create_system_message(user_language)]
 
-        # Добавляем историю
-        messages.extend(conversation_history)
+        # Добавляем контекст диалога
+        if conversation_context["history"]:
+            messages.extend(conversation_context["history"])
 
         # Добавляем текущее сообщение пользователя
         messages.append(
@@ -192,19 +101,56 @@ async def generate_ai_response(
             ),
         )
 
+        # Проверяем, нужно ли активировать специальные режимы
+        lower_message = user_message.lower()
+
+        # Проверка на кризисные ситуации
+        crisis_keywords = [
+            "самоубийство",
+            "убить себя",
+            "не могу жить",
+            "смерть",
+            "suicide",
+            "kill myself",
+            "can't live",
+            "death",
+        ]
+        if any(keyword in lower_message for keyword in crisis_keywords):
+            # Добавляем специальный промпт для кризисных ситуаций
+            crisis_prompt = create_crisis_intervention_prompt(user_language)
+            messages.insert(
+                1, ConversationMessage(role="system", content=crisis_prompt)
+            )
+
+        # Проверка на темы для взрослых
+        mature_keywords = ["секс", "интим", "эротика", "sex", "intimate", "erotic"]
+        if any(keyword in lower_message for keyword in mature_keywords):
+            # Добавляем специальный промпт для тем для взрослых
+            mature_prompt = create_mature_content_prompt(user_language)
+            messages.insert(
+                1, ConversationMessage(role="system", content=mature_prompt)
+            )
+
+        # Устанавливаем параметры генерации в зависимости от статуса премиум
+        temperature = 0.7 if user.is_premium_active() else 0.8
+        max_tokens = 1500 if user.is_premium_active() else 1000
+
         # Генерируем ответ с автоматическим fallback
         response = await ai_manager.generate_response(
             messages=messages,
-            temperature=0.8,  # Немного больше креативности для эмпатии
-            max_tokens=1000,
+            temperature=temperature,
+            max_tokens=max_tokens,
         )
 
         response_time = (datetime.now(UTC) - start_time).total_seconds()
 
         logger.info(
-            f"🤖 AI ответ получен от {response.provider}: "
-            f"{len(response.content)} символов, {response.tokens_used} токенов, "
-            f"{response.response_time:.2f}с",
+            get_log_text("message.message_ai_response").format(
+                provider=response.provider,
+                chars=len(response.content),
+                tokens=response.tokens_used,
+                duration=f"{response.response_time:.2f}",
+            )
         )
 
         return response.content, response.tokens_used, response.model, response_time
@@ -212,7 +158,10 @@ async def generate_ai_response(
     except AIProviderError as e:
         error_msg = str(e)
         provider = getattr(e, "provider", "unknown")
-        logger.error(f"❌ Ошибка AI провайдера {provider}: {error_msg}")
+        logger.error(AI_PROVIDER_ERROR.format(provider=provider, error=error_msg))
+
+        # Определяем язык пользователя для сообщений об ошибках
+        user_lang = user.language_code or "ru"
 
         # Проверяем на ошибки с балансом/квотой
         if any(
@@ -226,9 +175,7 @@ async def generate_ai_response(
             ]
         ):
             return (
-                "💳 Извините, у нас временные трудности с AI сервисом.\n"
-                "Мы уже работаем над решением этой проблемы.\n\n"
-                "🕰️ Попробуйте еще раз через несколько минут.",
+                get_text("errors.ai_quota_error", user_lang, provider=provider),
                 0,
                 "quota_error",
                 0.0,
@@ -237,9 +184,7 @@ async def generate_ai_response(
         # Проверяем критические ошибки (все провайдеры недоступны)
         if "все ai провайдеры недоступны" in error_msg.lower():
             return (
-                "😔 К сожалению, все наши AI сервисы временно недоступны.\n"
-                "Мы работаем над устранением проблемы.\n\n"
-                "🔄 Пожалуйста, попробуйте позже.",
+                get_text("errors.ai_all_providers_down", user_lang),
                 0,
                 "all_providers_down",
                 0.0,
@@ -247,76 +192,75 @@ async def generate_ai_response(
 
         # Возвращаем общий fallback ответ
         return (
-            "Извините, у меня временные технические трудности. "
-            "Я понимаю, что вам нужна поддержка. "
-            "Попробуйте написать еще раз через несколько минут.",
+            get_text("errors.ai_general_error", user_lang),
             0,
             "fallback",
             0.0,
         )
 
     except Exception:
-        logger.exception("💥 Неожиданная ошибка при генерации AI ответа")
+        logger.exception(
+            get_log_text("message.message_error").format(
+                user_id="unknown", error="Неожиданная ошибка при генерации AI ответа"
+            )
+        )
+        # Определяем язык пользователя для сообщений об ошибках
+        user_lang = user.language_code or "ru"
         return (
-            "Произошла неожиданная ошибка. Пожалуйста, попробуйте еще раз.",
+            get_text("errors.ai_unexpected_error", user_lang),
             0,
             "error",
             0.0,
         )
 
 
-@message_router.message(F.text)
-async def handle_text_message(message: Message) -> None:
+@message_router.message(F.text & ~F.text.startswith("/"))
+async def handle_text_message(
+    message: Message,
+    user: User,
+    user_lang: str = "ru",
+    save_conversation_func: Callable[..., Awaitable[None]] | None = None,
+) -> None:
     """Обработка входящих текстовых сообщений от пользователей."""
+    # Проверяем, что у сообщения есть текст
+    if not message.text:
+        return
+
     try:
-        logger.info(
-            f"📥 Получено сообщение от @{message.from_user.username}: {message.text[:50]}..."
-        )
-
-        # Проверяем наличие пользователя
-        user = await get_or_update_user(message)
-        if not user:
-            await message.answer(
-                "❌ Извините, возникла проблема с регистрацией. Попробуйте позже.",
-            )
-            return
-
-        # Проверяем лимиты
-        if not user.can_send_message():
-            await message.answer(
-                "📝 Вы исчерпали дневной лимит сообщений.\n"
-                "Завтра вы снова сможете общаться со мной!",
-            )
-            return
-
         # Проверяем длину сообщения
         if len(message.text) > 4000:
-            await message.answer(
-                "📝 Ваше сообщение слишком длинное (более 4000 символов).\n"
-                "Пожалуйста, сократите его.",
-            )
+            await message.answer(get_text("errors.message_too_long", user_lang))
+            return
+
+        # Проверяем лимиты пользователя
+        if not user.can_send_message(100 if user.is_premium_active() else 10):
+            await message.answer(get_text("errors.daily_limit_exceeded", user_lang))
             return
 
         # Отправляем статус "печатает"
-        await message.bot.send_chat_action(
-            chat_id=message.chat.id,
-            action="typing",
-        )
+        if message.bot:
+            await message.bot.send_chat_action(
+                chat_id=message.chat.id,
+                action="typing",
+            )
 
         # Генерируем ответ от AI
-        logger.info("Генерируем ответ от AI")
         (
             ai_response,
             tokens_used,
             model_name,
             response_time,
         ) = await generate_ai_response(user, message.text)
-        logger.info(f"Ответ от AI сгенерирован: {ai_response}")
 
-        # Сохраняем диалог
-        async with get_session() as session:
-            success = await save_conversation(
-                session=session,
+        # Санитизируем ответ AI для безопасной отправки в Telegram
+        sanitized_response = sanitize_telegram_message(ai_response)
+
+        # Отправляем ответ пользователю без parse_mode чтобы избежать ошибок парсинга
+        await message.answer(sanitized_response)
+
+        # Сохраняем диалог через middleware функцию если доступна
+        if save_conversation_func:
+            await save_conversation_func(
                 user_id=user.id,
                 user_message=message.text,
                 ai_response=ai_response,
@@ -325,36 +269,133 @@ async def handle_text_message(message: Message) -> None:
                 response_time=response_time,
             )
 
-            if not success:
-                logger.error(
-                    f"❌ Не удалось сохранить диалог для пользователя {user.id}"
-                )
-
-        # Отправляем ответ пользователю
-        response_text = (
-            f"{ai_response}\n\n"
-            f"{italic('⏱️ Время ответа:')} {response_time:.1f}с | "
-            f"{bold('🤖 Модель:')} {model_name}"
-        )
-
-        await message.answer(
-            response_text,
-            parse_mode="Markdown",
-        )
-
-        # Обновляем счетчик сообщений пользователя
+        # Увеличиваем счетчик сообщений пользователя
         user.increment_message_count()
-        # Сохраняем изменения в базе данных
-        async with get_session() as session:
-            session.add(user)
-            await session.commit()
+
+        # Логируем обработку сообщения
         logger.info(
-            f"📤 Ответ отправлен @{message.from_user.username} "
-            f"(токены: {tokens_used}, модель: {model_name})",
+            get_log_text("message.message_processed").format(
+                user_id=user.id,
+                chars=len(ai_response),
+                tokens=tokens_used,
+                model=model_name,
+                duration=f"{response_time:.2f}",
+            )
         )
 
-    except Exception:
-        logger.exception("💥 Ошибка при обработке текстового сообщения")
-        await message.answer(
-            "😔 Извините, произошла неожиданная ошибка. Попробуйте позже.",
+    except Exception as e:
+        logger.exception(
+            get_log_text("message.message_error").format(user_id=user.id, error=str(e))
         )
+
+        # Отправляем пользователю сообщение об ошибке
+        try:
+            await message.answer(get_text("errors.general_error", user_lang))
+        except Exception:
+            # Если не удалось отправить сообщение на языке пользователя, отправляем на русском
+            await message.answer(get_text("errors.general_error", "ru"))
+
+
+def sanitize_telegram_message(text: str) -> str:
+    """
+    Санитизирует текст для безопасной отправки в Telegram.
+
+    Args:
+        text: Текст для санитизации
+
+    Returns:
+        str: Санитизированный текст
+    """
+    # Удаляем или заменяем специальные теги, которые могут вызвать ошибки парсинга
+    # Удаляем специальные маркеры начала/конца предложения
+    text = text.replace("｜begin▁of▁sentence｜", "")
+    text = text.replace("｜end▁of▁sentence｜", "")
+
+    # Удаляем другие потенциально проблемные специальные символы
+    # Заменяем неразрывные пробелы на обычные пробелы
+    text = text.replace("\u00a0", " ")  # Неразрывный пробел
+    text = text.replace("\u2007", " ")  # Неразрывный пробел в числовой форме
+    text = text.replace("\u202f", " ")  # Узкий неразрывный пробел
+
+    # Дополнительно удаляем другие специальные символы, которые могут вызвать проблемы
+    text = text.replace("｜", "|")  # Заменяем вертикальные линии
+
+    # Удаляем потенциально опасные символы, которые могут вызвать ошибки парсинга
+    # Удаляем непечатаемые символы и специальные Unicode символы
+    import re
+
+    # Удаляем control characters кроме \n, \r, \t
+    text = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]", "", text)
+
+    # Удаляем символы, которые могут вызвать ошибки парсинга в Telegram
+    # Удаляем символы < и >, которые могут быть интерпретированы как HTML/XML теги
+    text = text.replace("<", "&lt;").replace(">", "&gt;")
+
+    # Удаляем символы &, которые могут быть интерпретированы как HTML entities
+    # Но оставляем существующие HTML entities
+    text = re.sub(r"&(?![a-zA-Z]+;|#\d+;|#x[a-fA-F0-9]+;)", "&amp;", text)
+
+    # Удаляем одиночные кавычки, которые могут вызвать проблемы
+    text = text.replace("`", "'")
+
+    # Удаляем звездочки, которые могут быть интерпретированы как Markdown
+    text = text.replace("*", "&#42;")
+
+    # Удаляем символы подчеркивания, которые могут быть интерпретированы как Markdown
+    text = text.replace("_", "&#95;")
+
+    # Ограничиваем длину сообщения до 4096 символов (лимит Telegram)
+    if len(text) > 4096:
+        text = text[:4093] + "..."
+
+    return text
+
+
+@message_router.message(F.successful_payment)
+async def handle_successful_payment(
+    message: Message, successful_payment: SuccessfulPayment, user: User
+) -> None:
+    """Обработка успешного платежа Telegram Stars."""
+    try:
+        if not message.from_user:
+            return
+
+        # Process payment
+        from app.config import get_config
+
+        config = get_config()
+
+        from aiogram import Bot
+
+        from app.services.payment_service import TelegramStarsPaymentService
+
+        bot = Bot(token=config.telegram.bot_token)
+        payment_service = TelegramStarsPaymentService(bot)
+
+        success = await payment_service.handle_successful_payment(
+            successful_payment, message.from_user.id
+        )
+
+        # Use the user object from middleware context instead of querying database
+        user_lang = user.language_code if user and user.language_code else "ru"
+
+        if success:
+            # Send confirmation message
+            await message.answer(get_text("premium.payment_success", user_lang))
+        else:
+            # Handle error
+            await message.answer(
+                get_text("errors.payment_processing_failed", user_lang)
+            )
+
+    except Exception as e:
+        from loguru import logger
+
+        logger.error(f"Error handling successful payment: {e}")
+        # Try to send error message in default language
+        with contextlib_suppress(Exception):
+            await message.answer(get_text("errors.general_error", "ru"))
+
+
+# Экспорт роутера
+__all__ = ["message_router"]

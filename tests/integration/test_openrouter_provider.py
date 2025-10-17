@@ -94,7 +94,7 @@ class TestOpenRouterAPIRequests:
             "id": "chatcmpl-test",
             "object": "chat.completion",
             "created": 1234567890,
-            "model": "anthropic/claude-3-haiku",
+            "model": "deepseek/deepseek-chat-v3.1:free",
             "choices": [
                 {
                     "index": 0,
@@ -117,7 +117,7 @@ class TestOpenRouterAPIRequests:
 
             assert isinstance(response, AIResponse)
             assert response.content == "Привет! У меня всё отлично, спасибо!"
-            assert response.model == "anthropic/claude-3-haiku"
+            assert response.model == "deepseek/deepseek-chat-v3.1:free"
             assert response.provider == "openrouter"
             assert response.tokens_used == 35
             assert response.cached is False
@@ -355,11 +355,9 @@ class TestOpenRouterResponseParsing:
         with patch("httpx.AsyncClient.post", return_value=mock_response):
             response = await provider.generate_response(mock_conversation_messages)
 
-            assert response.content == "Минимальный ответ"
-            assert (
-                response.tokens_used == 2
-            )  # len("Минимальный ответ".split()) * 1.3 ≈ 2
-            assert response.model == "anthropic/claude-3-haiku"  # From config
+        assert response.content == "Минимальный ответ"
+        assert response.tokens_used == 2  # len("Минимальный ответ".split()) * 1.3 ≈ 2
+        assert response.model == "openrouter/default-model"  # From config
 
     @pytest.mark.asyncio
     async def test_empty_content_handling(self, provider: OpenRouterProvider) -> None:
@@ -400,6 +398,46 @@ class TestOpenRouterResponseParsing:
 @pytest.mark.unit
 class TestOpenRouterHelperMethods:
     """Тесты вспомогательных методов OpenRouter провайдера."""
+
+    def test_current_model(self, mock_config: AppConfig) -> None:
+        """Тест получения текущей модели."""
+        provider = OpenRouterProvider()
+
+        # По умолчанию первая модель в списке
+        assert provider.current_model == "openrouter/default-model"
+
+    def test_get_next_model(self, mock_config: AppConfig) -> None:
+        """Тест получения следующей модели."""
+        provider = OpenRouterProvider()
+
+        # Сначала первая модель
+        assert provider.current_model == "openrouter/default-model"
+
+        # Получаем следующую модель
+        next_model = provider._get_next_model()
+        assert next_model == "qwen/qwen3-coder:free"
+        assert provider.current_model == "qwen/qwen3-coder:free"
+
+        # Получаем следующую модель
+        next_model = provider._get_next_model()
+        assert next_model == "deepseek/deepseek-r1-0528-qwen3-8b:free"
+        assert provider.current_model == "deepseek/deepseek-r1-0528-qwen3-8b:free"
+
+        # После последней модели возвращаемся к None
+        next_model = provider._get_next_model()
+        assert next_model is None
+
+    def test_reset_model_index(self, mock_config: AppConfig) -> None:
+        """Тест сброса индекса модели."""
+        provider = OpenRouterProvider()
+
+        # Переключаемся на следующую модель
+        provider._get_next_model()
+        assert provider.current_model == "qwen/qwen3-coder:free"
+
+        # Сбрасываем индекс
+        provider.reset_model_index()
+        assert provider.current_model == "openrouter/default-model"
 
     # def test_format_messages(self, mock_config):
     #     """Тест форматирования сообщений для API."""

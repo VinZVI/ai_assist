@@ -46,7 +46,7 @@ class TestDatabaseEngine:
             "postgresql+asyncpg://test:test@localhost/test"
         )
         mock_config.debug = False
-        mock_config.database.database_pool_size = 10
+        mock_config.database.database_pool_size = 20
         mock_config.database.database_timeout = 30
         mock_get_config.return_value = mock_config
 
@@ -62,7 +62,7 @@ class TestDatabaseEngine:
         mock_create_async_engine.assert_called_once_with(
             mock_config.database.database_url,
             pool_size=mock_config.database.database_pool_size,
-            max_overflow=20,
+            max_overflow=30,
             pool_timeout=mock_config.database.database_timeout,
             pool_recycle=3600,
             pool_pre_ping=True,
@@ -85,7 +85,7 @@ class TestDatabaseEngine:
             "postgresql+asyncpg://test:test@localhost/test"
         )
         mock_config.debug = True
-        mock_config.database.database_pool_size = 10
+        mock_config.database.database_pool_size = 20
         mock_config.database.database_timeout = 30
         mock_get_config.return_value = mock_config
 
@@ -99,7 +99,7 @@ class TestDatabaseEngine:
             mock_create_engine.assert_called_once_with(
                 mock_config.database.database_url,
                 pool_size=mock_config.database.database_pool_size,
-                max_overflow=20,
+                max_overflow=30,
                 pool_timeout=mock_config.database.database_timeout,
                 pool_recycle=3600,
                 pool_pre_ping=True,
@@ -280,13 +280,13 @@ class TestDatabaseConnection:
         # Проверяем результат
         assert result is False
 
-    @patch("app.database.get_session_factory")
-    async def test_get_session_success(self, mock_get_factory: MagicMock) -> None:
+    @patch("app.database._db_manager")
+    async def test_get_session_success(self, mock_db_manager: MagicMock) -> None:
         """Тест успешного создания и использования сессии."""
-        # Мокируем фабрику и сессию
+        # Мокируем менеджер базы данных, фабрику и сессию
         mock_factory = MagicMock()
         mock_session = AsyncMock()
-        mock_get_factory.return_value = mock_factory
+        mock_db_manager._session_factory = mock_factory
         mock_factory.return_value = mock_session
 
         # Используем контекстный менеджер
@@ -296,14 +296,15 @@ class TestDatabaseConnection:
         # Проверяем, что сессия была закрыта
         mock_session.close.assert_called_once()
 
-    @patch("app.database.get_session_factory")
+    @patch("app.database._db_manager")
     async def test_get_session_rollback_on_error(
-        self, mock_get_factory: MagicMock
+        self, mock_db_manager: MagicMock
     ) -> None:
         """Тест rollback при ошибке в сессии."""
+        # Мокаем менеджер базы данных и фабрику сессий
         mock_factory = MagicMock()
         mock_session = AsyncMock()
-        mock_get_factory.return_value = mock_factory
+        mock_db_manager._session_factory = mock_factory
         mock_factory.return_value = mock_session
 
         # Имитируем ошибку внутри контекстного менеджера
@@ -314,11 +315,12 @@ class TestDatabaseConnection:
                     assert session == mock_session
                     raise database_error
 
-    @patch("app.database.get_engine")
-    async def test_create_tables_success(self, mock_get_engine: MagicMock) -> None:
+    @patch("app.database._db_manager")
+    async def test_create_tables_success(self, mock_db_manager: MagicMock) -> None:
         """Тест успешного создания таблиц."""
+        # Мокаем движок базы данных
         mock_engine = AsyncMock()
-        mock_get_engine.return_value = mock_engine
+        mock_db_manager.get_engine.return_value = mock_engine
 
         # Мокаем асинхронный контекстный менеджер правильно
         mock_conn = AsyncMock()
@@ -336,11 +338,12 @@ class TestDatabaseConnection:
         mock_engine.begin.assert_called_once()
         mock_conn.run_sync.assert_called_once()
 
-    @patch("app.database.get_engine")
-    async def test_create_tables_failure(self, mock_get_engine: MagicMock) -> None:
+    @patch("app.database._db_manager")
+    async def test_create_tables_failure(self, mock_db_manager: MagicMock) -> None:
         """Тест неудачного создания таблиц."""
+        # Мокаем движок базы данных
         mock_engine = AsyncMock()
-        mock_get_engine.return_value = mock_engine
+        mock_db_manager.get_engine.return_value = mock_engine
 
         # Мокаем асинхронный контекстный менеджер с ошибкой
         mock_begin_context = AsyncMock()
@@ -355,17 +358,18 @@ class TestDatabaseConnection:
                 await create_tables()
 
     @patch("app.database.get_config")
-    @patch("app.database.get_engine")
+    @patch("app.database._db_manager")
     async def test_drop_tables_debug_mode(
-        self, mock_get_engine: MagicMock, mock_get_config: MagicMock
+        self, mock_db_manager: MagicMock, mock_get_config: MagicMock
     ) -> None:
         """Тест удаления таблиц в debug режиме."""
         mock_config = MagicMock()
         mock_config.debug = True
         mock_get_config.return_value = mock_config
 
+        # Мокаем движок базы данных
         mock_engine = AsyncMock()
-        mock_get_engine.return_value = mock_engine
+        mock_db_manager.get_engine.return_value = mock_engine
 
         # Мокаем асинхронный контекстный менеджер правильно
         mock_conn = AsyncMock()
@@ -383,9 +387,10 @@ class TestDatabaseConnection:
         mock_engine.begin.assert_called_once()
         mock_conn.run_sync.assert_called_once()
 
+    @patch("app.database._db_manager")
     @patch("app.database.get_config")
     async def test_drop_tables_production_mode(
-        self, mock_get_config: MagicMock
+        self, mock_get_config: MagicMock, mock_db_manager: MagicMock
     ) -> None:
         """Тест запрета удаления таблиц в production режиме."""
         mock_config = MagicMock()

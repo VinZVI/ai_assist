@@ -7,12 +7,9 @@
 """
 
 from .inline import (
-    create_back_button,
-    create_confirmation_keyboard,
     create_help_keyboard,
     create_language_keyboard,
     create_main_menu_keyboard,
-    create_payment_keyboard,
     create_premium_features_keyboard,
     create_premium_keyboard,
     create_settings_keyboard,
@@ -20,12 +17,9 @@ from .inline import (
 )
 
 __all__ = [
-    "create_back_button",
-    "create_confirmation_keyboard",
     "create_help_keyboard",
     "create_language_keyboard",
     "create_main_menu_keyboard",
-    "create_payment_keyboard",
     "create_premium_features_keyboard",
     "create_premium_keyboard",
     "create_settings_keyboard",
