@@ -50,69 +50,6 @@ class UserService:
         return user
 
     @staticmethod
-    async def create_user(user_data: UserCreate) -> User:
-        """
-        Создание нового пользователя.
-
-        Args:
-            user_data: Данные для создания пользователя
-
-        Returns:
-            User: Созданный пользователь
-
-        Raises:
-            IntegrityError: Если пользователь с таким Telegram ID уже существует
-        """
-        async with get_session() as session:
-            user = User(
-                telegram_id=user_data.telegram_id,
-                username=user_data.username,
-                first_name=user_data.first_name,
-                last_name=user_data.last_name,
-                language_code=user_data.language_code,
-            )
-            session.add(user)
-            await session.commit()
-            await session.refresh(user)
-            logger.info(f"Пользователь создан: {user.telegram_id}")
-            return user
-
-    @staticmethod
-    async def update_user(telegram_id: int, user_data: UserUpdate) -> User | None:
-        """
-        Обновление данных пользователя.
-
-        Args:
-            telegram_id: ID пользователя в Telegram
-            user_data: Данные для обновления
-
-        Returns:
-            User | None: Обновленный пользователь или None, если не найден
-        """
-        async with get_session() as session:
-            stmt = select(User).where(User.telegram_id == telegram_id)
-            result = await session.execute(stmt)
-            user = result.scalar_one_or_none()
-
-            if not user:
-                return None
-
-            # Обновляем поля пользователя
-            update_data = user_data.model_dump(exclude_unset=True)
-            for field, value in update_data.items():
-                setattr(user, field, value)
-
-            user.updated_at = datetime.now(UTC)
-            await session.commit()
-            await session.refresh(user)
-
-            # Обновляем кеш
-            await cache_service.set_user(user)
-
-            logger.info(f"Пользователь обновлен: {user.telegram_id}")
-            return user
-
-    @staticmethod
     async def update_emotional_profile(
         telegram_id: int, profile_data: dict[str, Any]
     ) -> User | None:
@@ -253,11 +190,16 @@ class UserService:
     @staticmethod
     async def get_user_stats() -> dict[str, int]:
         """
-        Получение статистики пользователей.
+        Получение статистики пользователей с использованием кеширования.
 
         Returns:
             dict: Статистика пользователей
         """
+        # Пытаемся получить статистику из кеша
+        cached_stats = await cache_service.get_user_stats()
+        if cached_stats:
+            return cached_stats
+
         async with get_session() as session:
             # Общее количество пользователей
             total_users_stmt = select(User)
@@ -274,16 +216,21 @@ class UserService:
             premium_users_result = await session.execute(premium_users_stmt)
             premium_users = len(premium_users_result.scalars().all())
 
-            return {
+            stats = {
                 "total_users": total_users,
                 "active_users": active_users,
                 "premium_users": premium_users,
             }
 
+            # Кешируем статистику на 5 минут
+            await cache_service.set_user_stats(stats)
+
+            return stats
+
     @staticmethod
     async def get_or_update_user(message: Message) -> User | None:
         """
-        Получение или создание пользователя на основе сообщения.
+        Получение или создание пользователя на основе сообщения с оптимизацией кеширования.
 
         Args:
             message: Сообщение от пользователя Telegram
@@ -295,6 +242,22 @@ class UserService:
             return None
 
         telegram_user = message.from_user
+
+        # Сначала проверяем кеш
+        user = await cache_service.get_user(telegram_user.id)
+        if user:
+            # Обновляем время последней активности в фоне без блокировки
+            task = asyncio.create_task(
+                UserService._update_user_activity_background_cached(user.telegram_id)
+            )
+            # Store reference to prevent it from being garbage collected
+            if not hasattr(UserService, "_background_tasks"):
+                UserService._background_tasks = set()
+            UserService._background_tasks.add(task)
+            task.add_done_callback(UserService._background_tasks.discard)
+            return user
+
+        # Если нет в кеше, обращаемся к БД
         async with get_session() as session:
             try:
                 # Пытаемся найти пользователя по telegram_id
@@ -338,6 +301,9 @@ class UserService:
                         await session.commit()
                         await session.refresh(user)
 
+                        # Обновляем кеш
+                        await cache_service.set_user(user)
+
                     return user
                 # Создаем нового пользователя
                 user_data = UserCreate(
@@ -357,6 +323,10 @@ class UserService:
                 session.add(user)
                 await session.commit()
                 await session.refresh(user)
+
+                # Кешируем нового пользователя
+                await cache_service.set_user(user)
+
                 return user
 
             except Exception as e:
@@ -367,30 +337,56 @@ class UserService:
                 return None
 
     @staticmethod
-    async def update_user_activity_background(user_id: int) -> None:
+    async def _update_user_activity_background_cached(user_telegram_id: int) -> None:
         """
-        Обновление активности пользователя в фоновом режиме.
+        Внутренний метод для обновления активности пользователя с использованием кеша.
 
         Args:
-            user_id: ID пользователя в системе
+            user_telegram_id: Telegram ID пользователя
         """
         try:
-            # Не блокируем ответ пользователю, выполняем обновление в фоне
-            task = asyncio.create_task(UserService._update_user_activity(user_id))
-            # Store reference to prevent it from being garbage collected
-            if not hasattr(UserService, "_background_tasks"):
-                UserService._background_tasks = set()
-            UserService._background_tasks.add(task)
-            task.add_done_callback(UserService._background_tasks.discard)
+            # Получаем пользователя из кеша
+            user = await cache_service.get_user(user_telegram_id)
+            if user:
+                from datetime import UTC, datetime
+
+                current_time = datetime.now(UTC)
+
+                user.last_activity_at = current_time
+                user.updated_at = current_time
+                # Обновляем кеш
+                await cache_service.set_user(user)
+
+                # Обновляем время активности в кеше
+                await cache_service.set_user_activity(user_telegram_id)
+
+                # Обновляем статистику пользователей в кеше
+                user_stats = await cache_service.get_user_stats()
+                if user_stats:
+                    user_stats["last_activity_check"] = current_time.isoformat()
+                    user_stats["has_recent_activity"] = True
+                    # Сохраняем время последней активности в статистике
+                    user_stats["last_activity"] = current_time.isoformat()
+                    await cache_service.set_user_stats(
+                        user_stats, ttl_seconds=1800
+                    )  # 30 minutes
+
+                # Обновляем в БД в фоне
+                task = asyncio.create_task(UserService._update_user_in_db(user.id))
+                # Store reference to prevent it from being garbage collected
+                if not hasattr(UserService, "_background_tasks"):
+                    UserService._background_tasks = set()
+                UserService._background_tasks.add(task)
+                task.add_done_callback(UserService._background_tasks.discard)
         except Exception as e:
             logger.error(
-                f"Ошибка при запуске фонового обновления активности пользователя {user_id}: {e}"
+                f"Ошибка при фоновом обновлении активности пользователя {user_telegram_id}: {e}"
             )
 
     @staticmethod
-    async def _update_user_activity(user_id: int) -> None:
+    async def _update_user_in_db(user_id: int) -> None:
         """
-        Внутренний метод для обновления активности пользователя.
+        Внутренний метод для обновления пользователя в БД.
 
         Args:
             user_id: ID пользователя в системе
@@ -406,11 +402,9 @@ class UserService:
                     user.updated_at = datetime.now(UTC)
                     session.add(user)
                     await session.commit()
-                    logger.debug(f"Активность пользователя {user_id} обновлена в фоне")
+                    logger.debug(f"Активность пользователя {user_id} обновлена в БД")
         except Exception as e:
-            logger.error(
-                f"Ошибка при фоновом обновлении активности пользователя {user_id}: {e}"
-            )
+            logger.error(f"Ошибка при обновлении пользователя {user_id} в БД: {e}")
 
 
 # Глобальный экземпляр сервиса

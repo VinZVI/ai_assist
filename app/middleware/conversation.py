@@ -16,7 +16,10 @@ from app.config import get_config
 from app.database import get_session
 from app.lexicon.gettext import get_log_text
 from app.middleware.base import BaseAIMiddleware
-from app.services.conversation_service import save_conversation
+from app.services.conversation_service import (
+    save_conversation,
+    save_conversation_context_from_cache,
+)
 
 
 class ConversationMiddleware(BaseAIMiddleware):
@@ -73,7 +76,7 @@ class ConversationMiddleware(BaseAIMiddleware):
         response_time: float,
     ) -> bool:
         """
-        Сохранение диалога через контекст middleware.
+        Сохранение диалога через контекст middleware с использованием кэша и проверки неактивности.
 
         Args:
             user_id: ID пользователя
@@ -93,33 +96,30 @@ class ConversationMiddleware(BaseAIMiddleware):
         if not config.conversation.enable_saving:
             return True
 
-        async with get_session() as session:
-            success = await save_conversation(
-                session=session,
-                user_id=user_id,
-                user_message=user_message,
-                ai_response=ai_response,
-                ai_model=ai_model,
-                tokens_used=tokens_used,
-                response_time=response_time,
-            )
+        # Используем новый метод сохранения из кэша с проверкой неактивности
+        from app.services.cache_service import cache_service
 
-            if success:
-                self._conversation_stats["conversations_saved"] += 1
-                logger.info(
-                    get_log_text("middleware.conversation_saved").format(
-                        user_id=user_id
-                    )
-                )
-            else:
-                self._conversation_stats["conversations_save_errors"] += 1
-                logger.error(
-                    get_log_text("middleware.conversation_save_error").format(
-                        user_id=user_id
-                    )
-                )
+        # Обновляем время активности пользователя в кэше
+        await cache_service.set_user_activity(user_id)
 
-            return success
+        # Сохраняем данные диалога в кэше для последующего сохранения в БД
+        conversation_data = {
+            "user_message": user_message,
+            "ai_response": ai_response,
+            "ai_model": ai_model,
+            "tokens_used": tokens_used,
+            "response_time": response_time,
+        }
+
+        # Сохраняем в кэш с TTL из конфигурации (время неактивности пользователя)
+        await cache_service.set_conversation_data(
+            user_id, conversation_data, ttl_seconds=config.conversation.cache_ttl
+        )
+
+        logger.info(
+            get_log_text("middleware.conversation_cached").format(user_id=user_id)
+        )
+        return True
 
     async def _process_conversation_save(self, data: dict[str, Any]) -> None:
         """
@@ -134,31 +134,31 @@ class ConversationMiddleware(BaseAIMiddleware):
         if not config.conversation.enable_saving:
             return
 
-        async with get_session() as session:
-            success = await save_conversation(
-                session=session,
-                user_id=conversation_data["user_id"],
-                user_message=conversation_data["user_message"],
-                ai_response=conversation_data["ai_response"],
-                ai_model=conversation_data["ai_model"],
-                tokens_used=conversation_data["tokens_used"],
-                response_time=conversation_data["response_time"],
-            )
+        # Используем новый метод сохранения из кэша с проверкой неактивности
+        success = await save_conversation_context_from_cache(
+            user_id=conversation_data["user_id"],
+            user_message=conversation_data["user_message"],
+            ai_response=conversation_data["ai_response"],
+            ai_model=conversation_data["ai_model"],
+            tokens_used=conversation_data["tokens_used"],
+            response_time=conversation_data["response_time"],
+            cache_ttl=config.conversation.cache_ttl,
+        )
 
-            if success:
-                self._conversation_stats["conversations_saved"] += 1
-                logger.info(
-                    get_log_text("middleware.conversation_saved").format(
-                        user_id=conversation_data["user_id"]
-                    )
+        if success:
+            self._conversation_stats["conversations_saved"] += 1
+            logger.info(
+                get_log_text("middleware.conversation_saved").format(
+                    user_id=conversation_data["user_id"]
                 )
-            else:
-                self._conversation_stats["conversations_save_errors"] += 1
-                logger.error(
-                    get_log_text("middleware.conversation_save_error").format(
-                        user_id=conversation_data["user_id"]
-                    )
+            )
+        else:
+            self._conversation_stats["conversations_save_errors"] += 1
+            logger.error(
+                get_log_text("middleware.conversation_save_error").format(
+                    user_id=conversation_data["user_id"]
                 )
+            )
 
     @classmethod
     def get_conversation_stats(cls) -> dict[str, int]:

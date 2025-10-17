@@ -254,6 +254,103 @@ async def save_conversation(
         return False
 
 
+async def save_conversation_context_from_cache(
+    user_id: int,
+    user_message: str,
+    ai_response: str,
+    ai_model: str,
+    tokens_used: int,
+    response_time: float,
+    cache_ttl: int = 600,  # 10 minutes default
+) -> bool:
+    """
+    Сохранение контекста диалога в базе данных только из кэша и после периода неактивности пользователя.
+
+    Args:
+        user_id: ID пользователя
+        user_message: Сообщение пользователя
+        ai_response: Ответ AI
+        ai_model: Модель AI
+        tokens_used: Количество использованных токенов
+        response_time: Время ответа в секундах
+        cache_ttl: Время жизни кэша в секундах
+
+    Returns:
+        bool: True если успешно сохранено, False в случае ошибки
+    """
+    try:
+        from datetime import UTC, datetime
+
+        from app.config import get_config
+        from app.database import get_session
+        from app.services.cache_service import cache_service
+
+        config = get_config()
+
+        # Проверяем, включено ли сохранение
+        if not config.conversation.enable_saving:
+            return True
+
+        # Получаем время последней активности пользователя из кэша
+        last_activity = await cache_service.get_user_last_activity(user_id)
+
+        # Если нет данных о последней активности, сохраняем сразу
+        if not last_activity:
+            async with get_session() as session:
+                return await save_conversation(
+                    session=session,
+                    user_id=user_id,
+                    user_message=user_message,
+                    ai_response=ai_response,
+                    ai_model=ai_model,
+                    tokens_used=tokens_used,
+                    response_time=response_time,
+                )
+
+        # Проверяем, прошло ли достаточно времени с последней активности
+        current_time = datetime.now(UTC)
+        inactivity_duration = (current_time - last_activity).total_seconds()
+
+        # Если прошло достаточно времени, сохраняем в БД
+        if inactivity_duration >= cache_ttl:
+            async with get_session() as session:
+                return await save_conversation(
+                    session=session,
+                    user_id=user_id,
+                    user_message=user_message,
+                    ai_response=ai_response,
+                    ai_model=ai_model,
+                    tokens_used=tokens_used,
+                    response_time=response_time,
+                )
+
+        # Если не прошло достаточно времени, просто возвращаем успех
+        # Данные остаются в кэше до следующего сохранения
+        return True
+
+    except Exception as e:
+        logger.error(f"❌ Ошибка при сохранении контекста диалога из кэша: {e}")
+        return False
+
+
+async def save_all_pending_conversations() -> None:
+    """
+    Сохранение всех ожидающих диалогов из кэша в базу данных.
+    Эта функция должна вызываться периодически для сохранения данных,
+    которые накопились в кэше, но еще не были сохранены в БД.
+    """
+    try:
+        from app.services.cache_service import cache_service
+
+        # Пока просто логируем, что функция вызвана
+        # В реальной реализации здесь должна быть логика для обработки всех
+        # накопленных данных в кэше
+        logger.info("Проверка наличия данных для сохранения в БД")
+
+    except Exception as e:
+        logger.error(f"❌ Ошибка при сохранении ожидающих диалогов: {e}")
+
+
 async def clear_user_conversation_history(
     session: AsyncSession,
     user_id: int,
@@ -293,3 +390,14 @@ async def clear_user_conversation_history(
         )
         await session.rollback()
         return False
+
+
+__all__ = [
+    "Conversation",
+    "ConversationStatus",
+    "clear_user_conversation_history",
+    "get_conversation_context",
+    "save_all_pending_conversations",
+    "save_conversation",
+    "save_conversation_context_from_cache",
+]

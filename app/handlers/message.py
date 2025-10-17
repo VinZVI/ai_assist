@@ -61,13 +61,27 @@ async def generate_ai_response(
         context_limit = 12 if user.is_premium_active() else 6
         context_max_age = 24 if user.is_premium_active() else 12
 
-        # Получаем контекст диалога
-        async with get_session() as session:
-            conversation_context = await get_conversation_context(
-                session,
-                user.id,
-                limit=context_limit,
-                max_age_hours=context_max_age,
+        # Пытаемся получить контекст из кеша первым делом
+        from app.services.cache_service import cache_service
+
+        conversation_context = await cache_service.get_conversation_context(
+            user.id, context_limit, context_max_age
+        )
+
+        if not conversation_context:
+            # Если нет в кеше, загружаем из БД
+            async with get_session() as session:
+                from app.services.conversation_service import get_conversation_context
+
+                conversation_context = await get_conversation_context(
+                    session,
+                    user.id,
+                    limit=context_limit,
+                    max_age_hours=context_max_age,
+                )
+            # Кешируем контекст на короткое время (5 минут)
+            await cache_service.set_conversation_context(
+                user.id, conversation_context, ttl_seconds=300
             )
 
         # Формируем сообщения для AI с учетом языка пользователя
@@ -338,7 +352,7 @@ def sanitize_telegram_message(text: str) -> str:
 
 @message_router.message(F.successful_payment)
 async def handle_successful_payment(
-    message: Message, successful_payment: SuccessfulPayment
+    message: Message, successful_payment: SuccessfulPayment, user: User
 ) -> None:
     """Обработка успешного платежа Telegram Stars."""
     try:
@@ -361,12 +375,8 @@ async def handle_successful_payment(
             successful_payment, message.from_user.id
         )
 
-        # Get user's language preference
-        async with get_session() as session:
-            stmt = select(User).where(User.telegram_id == message.from_user.id)
-            result = await session.execute(stmt)
-            user = result.scalar_one_or_none()
-            user_lang = user.language_code if user and user.language_code else "ru"
+        # Use the user object from middleware context instead of querying database
+        user_lang = user.language_code if user and user.language_code else "ru"
 
         if success:
             # Send confirmation message

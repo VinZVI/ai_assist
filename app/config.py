@@ -260,7 +260,11 @@ class ConversationConfig(BaseSettings):
     """Конфигурация диалогов."""
 
     enable_saving: bool = Field(
-        default=False, validation_alias="CONVERSATION_ENABLE_SAVING"
+        default=True, validation_alias="CONVERSATION_ENABLE_SAVING"
+    )
+    cache_ttl: int = Field(default=600, validation_alias="CONVERSATION_CACHE_TTL")
+    user_activity_update_interval: int = Field(
+        default=300, validation_alias="USER_ACTIVITY_UPDATE_INTERVAL"
     )
 
     model_config = {"extra": "ignore", "env_file": ".env", "env_file_encoding": "utf-8"}

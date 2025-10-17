@@ -24,6 +24,8 @@ class HealthCheckService:
         self.config = get_config()
         self.last_check_time = 0.0
         self.last_check_result: dict[str, Any] = {}
+        self.cached_db_status = None
+        self.db_status_timestamp = 0.0
 
     async def perform_health_check(self) -> dict[str, Any]:
         """
@@ -47,8 +49,8 @@ class HealthCheckService:
             config_status = self._check_config()
             health_results["components"]["config"] = config_status
 
-            # Проверяем подключение к базе данных
-            db_status = await self._check_database()
+            # Проверяем подключение к базе данных с кэшированием
+            db_status = await self._check_database_cached()
             health_results["components"]["database"] = db_status
 
             # Проверяем AI провайдеры
@@ -92,26 +94,37 @@ class HealthCheckService:
         except Exception as e:
             return {"status": "error", "message": f"Ошибка проверки конфигурации: {e}"}
 
-    async def _check_database(self) -> dict[str, Any]:
+    async def _check_database_cached(self) -> dict[str, Any]:
         """
-        Проверка подключения к базе данных.
+        Проверка подключения к базе данных с использованием кэширования.
 
         Returns:
             Dict[str, Any]: Результат проверки базы данных
         """
+        current_time = time.time()
+        # Используем кэш на 30 секунд для проверки БД
+        if (current_time - self.db_status_timestamp) < 30 and self.cached_db_status:
+            return self.cached_db_status
+
+        # Если кэш устарел, выполняем реальную проверку
         try:
             db_status = await check_connection()
-            if db_status:
-                return {
-                    "status": "healthy",
-                    "message": "Подключение к базе данных установлено",
-                }
-            return {
-                "status": "unhealthy",
-                "message": "Нет подключения к базе данных",
+            result = {
+                "status": "healthy" if db_status else "unhealthy",
+                "message": "Подключение к базе данных установлено"
+                if db_status
+                else "Нет подключения к базе данных",
             }
+            # Кэшируем результат
+            self.cached_db_status = result
+            self.db_status_timestamp = current_time
+            return result
         except Exception as e:
-            return {"status": "error", "message": f"Ошибка проверки базы данных: {e}"}
+            result = {"status": "error", "message": f"Ошибка проверки базы данных: {e}"}
+            # Кэшируем результат даже в случае ошибки, но на меньшее время
+            self.cached_db_status = result
+            self.db_status_timestamp = current_time
+            return result
 
     async def _check_ai_providers(self) -> dict[str, Any]:
         """
