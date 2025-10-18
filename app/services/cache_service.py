@@ -29,7 +29,7 @@ class MemoryCache:
             ttl_seconds: Время жизни записей в секундах
             max_size: Максимальный размер кеша
         """
-        self._cache: OrderedDict[int, dict[str, Any]] = OrderedDict()
+        self._cache: OrderedDict[str, dict[str, Any]] = OrderedDict()
         self._ttl = ttl_seconds
         self._max_size = max_size
         self._hits = 0
@@ -437,7 +437,7 @@ class CacheService:
             # Инициализация персистентности контекстов
             if self.redis_cache:
                 self.conversation_persistence = ConversationPersistence(
-                    self.redis_cache.redis, db_flush_interval=600
+                    self.redis_cache.redis_client, db_flush_interval=600
                 )
 
                 # Восстановление контекстов при старте

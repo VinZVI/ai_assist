@@ -193,13 +193,10 @@ class AIAssistantBot:
         try:
             logger.info(get_log_text("main.bot_starting"))
 
-            # Инициализация базы данных
-            logger.info(get_log_text("main.bot_db_initializing"))
-            await init_db()
-
-            # Инициализация Redis кеша
-            logger.info("Initializing Redis cache...")
-            await initialize_redis_cache()
+            # Инициализация всех сервисов через dependency injection
+            logger.info("Initializing services with dependency injection...")
+            from app.core.service_registry import initialize_services
+            await initialize_services()
 
             # Создание бота и диспетчера
             self.bot = self.create_bot()
