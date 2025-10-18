@@ -17,6 +17,7 @@ from app.lexicon.ai_prompts import create_system_message
 from app.lexicon.gettext import get_log_text
 from app.models.conversation import Conversation, ConversationStatus
 from app.services.ai_providers.base import ConversationMessage
+from app.utils.validators import InputValidator
 
 
 async def get_recent_conversation_history(
@@ -52,20 +53,24 @@ async def get_recent_conversation_history(
         for conv in reversed(conversations):  # Обращаем порядок для хронологии
             # Добавляем сообщение пользователя
             if conv.message_text:
+                # Санитизация текста пользователя
+                sanitized_message = InputValidator.sanitize_text(conv.message_text)
                 messages.append(
                     ConversationMessage(
                         role="user",
-                        content=conv.message_text,
+                        content=sanitized_message,
                         timestamp=conv.created_at,
                     ),
                 )
 
             # Добавляем ответ ассистента
             if conv.response_text:
+                # Санитизация текста ответа
+                sanitized_response = InputValidator.sanitize_text(conv.response_text)
                 messages.append(
                     ConversationMessage(
                         role="assistant",
-                        content=conv.response_text,
+                        content=sanitized_response,
                         timestamp=conv.processed_at or conv.created_at,
                     ),
                 )
@@ -216,6 +221,34 @@ async def save_conversation(
         bool: True если успешно сохранено, False в случае ошибки
     """
     try:
+        # Валидация входных данных
+        is_valid, error_msg = InputValidator.validate_message_length(
+            user_message, InputValidator.MAX_MESSAGE_LENGTH
+        )
+        if not is_valid:
+            logger.error(f"Invalid user message: {error_msg}")
+            return False
+
+        is_valid, error_msg = InputValidator.validate_message_length(
+            ai_response, InputValidator.MAX_RESPONSE_LENGTH
+        )
+        if not is_valid:
+            logger.error(f"Invalid AI response: {error_msg}")
+            return False
+
+        # Санитизация текста
+        user_message = InputValidator.sanitize_text(user_message)
+        ai_response = InputValidator.sanitize_text(ai_response)
+
+        # Валидация числовых параметров
+        if tokens_used < 0 or tokens_used > 100000:
+            logger.error(f"Invalid tokens_used: {tokens_used}")
+            return False
+
+        if response_time < 0 or response_time > 300:  # Максимум 5 минут
+            logger.error(f"Invalid response_time: {response_time}")
+            return False
+
         # Создаем запись сообщения пользователя
         user_conv = Conversation(
             user_id=user_id,
@@ -290,6 +323,34 @@ async def save_conversation_context_from_cache(
         # Проверяем, включено ли сохранение
         if not config.conversation.enable_saving:
             return True
+
+        # Валидация входных данных
+        is_valid, error_msg = InputValidator.validate_message_length(
+            user_message, InputValidator.MAX_MESSAGE_LENGTH
+        )
+        if not is_valid:
+            logger.error(f"Invalid user message: {error_msg}")
+            return False
+
+        is_valid, error_msg = InputValidator.validate_message_length(
+            ai_response, InputValidator.MAX_RESPONSE_LENGTH
+        )
+        if not is_valid:
+            logger.error(f"Invalid AI response: {error_msg}")
+            return False
+
+        # Санитизация текста
+        user_message = InputValidator.sanitize_text(user_message)
+        ai_response = InputValidator.sanitize_text(ai_response)
+
+        # Валидация числовых параметров
+        if tokens_used < 0 or tokens_used > 100000:
+            logger.error(f"Invalid tokens_used: {tokens_used}")
+            return False
+
+        if response_time < 0 or response_time > 300:  # Максимум 5 минут
+            logger.error(f"Invalid response_time: {response_time}")
+            return False
 
         # Получаем время последней активности пользователя из кэша
         last_activity = await cache_service.get_user_last_activity(user_id)
@@ -366,15 +427,52 @@ async def save_all_pending_conversations() -> None:
 
             data = data_entry["data"]
             try:
+                # Валидация входных данных
+                is_valid, error_msg = InputValidator.validate_message_length(
+                    data["user_message"], InputValidator.MAX_MESSAGE_LENGTH
+                )
+                if not is_valid:
+                    logger.error(
+                        f"Invalid user message for user {user_id}: {error_msg}"
+                    )
+                    continue
+
+                is_valid, error_msg = InputValidator.validate_message_length(
+                    data["ai_response"], InputValidator.MAX_RESPONSE_LENGTH
+                )
+                if not is_valid:
+                    logger.error(f"Invalid AI response for user {user_id}: {error_msg}")
+                    continue
+
+                # Санитизация текста
+                user_message = InputValidator.sanitize_text(data["user_message"])
+                ai_response = InputValidator.sanitize_text(data["ai_response"])
+
+                # Валидация числовых параметров
+                tokens_used = data["tokens_used"]
+                response_time = data["response_time"]
+
+                if tokens_used < 0 or tokens_used > 100000:
+                    logger.error(
+                        f"Invalid tokens_used for user {user_id}: {tokens_used}"
+                    )
+                    continue
+
+                if response_time < 0 or response_time > 300:  # Максимум 5 минут
+                    logger.error(
+                        f"Invalid response_time for user {user_id}: {response_time}"
+                    )
+                    continue
+
                 async with get_session() as session:
                     result = await save_conversation(
                         session=session,
                         user_id=user_id,
-                        user_message=data["user_message"],
-                        ai_response=data["ai_response"],
+                        user_message=user_message,
+                        ai_response=ai_response,
                         ai_model=data["ai_model"],
-                        tokens_used=data["tokens_used"],
-                        response_time=data["response_time"],
+                        tokens_used=tokens_used,
+                        response_time=response_time,
                     )
                     if result:
                         logger.info(

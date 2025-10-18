@@ -5,6 +5,7 @@
 @created: 2025-09-07
 """
 
+import os
 from pathlib import Path
 from typing import Any
 
@@ -14,6 +15,7 @@ from pydantic_settings import BaseSettings
 
 from app.constants.config import ConfigErrorMessages, ConfigMagicValues
 from app.lexicon.gettext import get_log_text
+from app.utils.security import SecurityValidator
 
 
 class DatabaseConfig(BaseSettings):
@@ -65,13 +67,10 @@ class TelegramConfig(BaseSettings):
     @field_validator("bot_token")
     @classmethod
     def validate_bot_token(cls, v: str) -> str:
-        """Валидация формата токена бота."""
-        if not v or v == "your_telegram_bot_token_here":
-            raise ValueError(ConfigErrorMessages.INVALID_BOT_TOKEN_FORMAT)
-
-        # Базовая проверка формата токена (number:hash)
-        if ":" not in v:
-            raise ValueError(ConfigErrorMessages.INVALID_BOT_TOKEN_STRUCTURE)
+        """Строгая валидация токена бота."""
+        is_valid, error_msg = SecurityValidator.validate_production_token(v, "telegram")
+        if not is_valid:
+            raise ValueError(f"Bot token validation failed: {error_msg}")
 
         return v
 
@@ -107,10 +106,11 @@ class OpenRouterConfig(BaseSettings):
     @field_validator("openrouter_api_key")
     @classmethod
     def validate_api_key(cls, v: str) -> str:
-        """Валидация API ключа OpenRouter."""
-        # Пока просто проверяем, что ключ не пустой
-        if not v:
-            raise ValueError(ConfigErrorMessages.INVALID_OPENROUTER_API_KEY)
+        """Строгая валидация API ключа."""
+        is_valid, error_msg = SecurityValidator.validate_production_token(v, "api")
+        if not is_valid:
+            raise ValueError(f"OpenRouter API key validation failed: {error_msg}")
+
         return v
 
     @field_validator("openrouter_models", mode="before")
@@ -327,6 +327,19 @@ class AppConfig(BaseSettings):
     def __init__(self, **data: Any) -> None:
         """Инициализация конфигурации с логированием."""
         super().__init__(**data)
+
+        # Проверка безопасности конфигурации
+        config_dict = self.model_dump()
+        security_issues = SecurityValidator.check_configuration_security(config_dict)
+
+        if security_issues:
+            for issue in security_issues:
+                logger.warning(f"Security issue: {issue}")
+
+            # В production останавливаем приложение при критичных проблемах
+            if os.getenv("ENVIRONMENT") == "production" and security_issues:
+                raise ValueError(f"Security validation failed: {security_issues}")
+
         logger.info(get_log_text("config.config_loaded_success"))
 
 

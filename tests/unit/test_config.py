@@ -1,8 +1,8 @@
 """
-@file: tests/test_config.py
-@description: Тесты для модуля конфигурации приложения
-@dependencies: pytest, pytest-asyncio
-@created: 2025-09-07
+@file: tests/unit/test_config.py
+@description: Тесты для конфигурации приложения
+@dependencies: pytest, pydantic
+@created: 2025-09-12
 """
 
 import sys
@@ -12,6 +12,7 @@ from unittest.mock import Mock, mock_open, patch
 import pytest
 from loguru import logger
 
+# Импорты для тестов (перемещены на верхний уровень)
 from app.config import (
     AdminConfig,
     DatabaseConfig,
@@ -20,8 +21,6 @@ from app.config import (
     _config_manager,
     get_config,
 )
-
-# Импорты для тестов (перемещены на верхний уровень)
 from app.utils.logging import setup_logging
 
 # Добавляем корневую папку в путь
@@ -44,18 +43,22 @@ class TestConfigValidation:
         """Тест валидации TelegramConfig."""
         # Тест с невалидным токеном (пустой)
         with pytest.raises(
-            ValueError, match="BOT_TOKEN must be set to a valid Telegram bot token"
+            ValueError,
+            match="Bot token validation failed: Production telegram token cannot use default/test values",
         ):
             TelegramConfig(BOT_TOKEN="your_telegram_bot_token_here")  # noqa: S106
 
         # Тест с невалидным токеном (без двоеточия)
         with pytest.raises(
-            ValueError, match="BOT_TOKEN must be in format 'number:hash'"
+            ValueError,
+            match="Bot token validation failed: Invalid Telegram bot token format",
         ):
             TelegramConfig(BOT_TOKEN="invalid_token")  # noqa: S106
 
-        # Тест с валидным токеном
-        config = TelegramConfig(BOT_TOKEN="123456789:ABCdefGHIjklMNOpqrsTUVwxyz")  # noqa: S106
+        # Тест с валидным токеном (9 digits + colon + 35 characters = 45 total)
+        config = TelegramConfig(
+            BOT_TOKEN="123456789:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghi"  # noqa: S106
+        )
         assert config.bot_token is not None
         logger.success("✅ Валидация TelegramConfig работает")
 

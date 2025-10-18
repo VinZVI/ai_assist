@@ -38,6 +38,7 @@ from app.services.conversation_service import (
     get_conversation_context,
     save_conversation,
 )
+from app.utils.validators import InputValidator
 
 # Создаем роутер для обработчиков сообщений
 message_router = Router()
@@ -54,6 +55,9 @@ async def generate_ai_response(
         tuple: (response_text, tokens_used, model_name, response_time)
     """
     try:
+        # Санитизация входного сообщения
+        user_message = InputValidator.sanitize_text(user_message)
+
         ai_manager = get_ai_manager()
         start_time = datetime.now(UTC)
 
@@ -82,7 +86,11 @@ async def generate_ai_response(
                 )
             # Кешируем контекст на более длительное время (30 минут для лучшей производительности)
             await cache_service.set_conversation_context(
-                user.id, conversation_context, ttl_seconds=1800
+                user.id,
+                conversation_context,
+                limit=context_limit,
+                max_age_hours=context_max_age,
+                ttl_seconds=1800,
             )
 
         # Формируем сообщения для AI с учетом языка пользователя
@@ -227,10 +235,14 @@ async def handle_text_message(
         return
 
     try:
-        # Проверяем длину сообщения
-        if len(message.text) > 4000:
+        # Валидация длины сообщения
+        is_valid, _error_msg = InputValidator.validate_message_length(message.text)
+        if not is_valid:
             await message.answer(get_text("errors.message_too_long", user_lang))
             return
+
+        # Санитизация текста сообщения
+        sanitized_text = InputValidator.sanitize_text(message.text)
 
         # Проверяем лимиты пользователя
         if not user.can_send_message(100 if user.is_premium_active() else 10):
@@ -250,7 +262,7 @@ async def handle_text_message(
             tokens_used,
             model_name,
             response_time,
-        ) = await generate_ai_response(user, message.text)
+        ) = await generate_ai_response(user, sanitized_text)
 
         # Санитизируем ответ AI для безопасной отправки в Telegram
         sanitized_response = sanitize_telegram_message(ai_response)
@@ -262,7 +274,7 @@ async def handle_text_message(
         if save_conversation_func:
             await save_conversation_func(
                 user_id=user.id,
-                user_message=message.text,
+                user_message=sanitized_text,
                 ai_response=ai_response,
                 ai_model=model_name,
                 tokens_used=tokens_used,
