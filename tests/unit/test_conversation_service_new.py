@@ -1,10 +1,9 @@
-"""
-Тесты для нового сервиса диалогов.
-"""
+"""Тесты для нового сервиса диалогов."""
+
+from datetime import UTC, datetime
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
-from unittest.mock import Mock, AsyncMock, patch
-from datetime import datetime, UTC
 
 from app.services.conversation_service_new import ConversationService
 
@@ -13,13 +12,12 @@ class TestConversationServiceNew:
     """Тесты для нового сервиса диалогов."""
 
     @pytest.fixture
-    def conversation_service(self):
+    def conversation_service(self) -> ConversationService:
         """Фикстура для создания экземпляра сервиса."""
-        service = ConversationService()
-        return service
+        return ConversationService()
 
     @pytest.mark.asyncio
-    async def test_initialize(self, conversation_service):
+    async def test_initialize(self, conversation_service: ConversationService) -> None:
         """Тест инициализации сервиса."""
         with patch("app.services.conversation_service_new.container") as mock_container:
             # Создаем mock для cache_service
@@ -35,7 +33,9 @@ class TestConversationServiceNew:
             # Проверяем, что cache_service был получен из контейнера
             mock_container.get.assert_called_once_with("cache_service")
 
-    def test_cache_service_property(self, conversation_service):
+    def test_cache_service_property(
+        self, conversation_service: ConversationService
+    ) -> None:
         """Тест свойства cache_service."""
         # Создаем mock для cache_service
         mock_cache_service = Mock()
@@ -50,7 +50,9 @@ class TestConversationServiceNew:
         assert cache_service is mock_cache_service
 
     @pytest.mark.asyncio
-    async def test_save_conversation_with_cache_success(self, conversation_service):
+    async def test_save_conversation_with_cache_success(
+        self, conversation_service: ConversationService
+    ) -> None:
         """Тест успешного сохранения диалога в кэш."""
         # Создаем mock для cache_service
         mock_cache_service = Mock()
@@ -100,8 +102,8 @@ class TestConversationServiceNew:
 
     @pytest.mark.asyncio
     async def test_save_conversation_with_cache_validation_failure(
-        self, conversation_service
-    ):
+        self, conversation_service: ConversationService
+    ) -> None:
         """Тест сохранения диалога при неудачной валидации."""
         with patch(
             "app.utils.validators.InputValidator.validate_message_length"
@@ -127,7 +129,9 @@ class TestConversationServiceNew:
             assert result is False
 
     @pytest.mark.asyncio
-    async def test_save_conversation_with_cache_exception(self, conversation_service):
+    async def test_save_conversation_with_cache_exception(
+        self, conversation_service: ConversationService
+    ) -> None:
         """Тест сохранения диалога при возникновении исключения."""
         with patch(
             "app.utils.validators.InputValidator.validate_message_length"

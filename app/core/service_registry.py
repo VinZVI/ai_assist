@@ -1,12 +1,11 @@
-"""
-Реестр сервисов приложения.
-"""
+"""Реестр сервисов приложения."""
 
-from app.core.dependencies import container
 from loguru import logger
 
+from app.core.dependencies import container
 
-async def initialize_services():
+
+async def initialize_services() -> None:
     """Инициализация всех сервисов приложения."""
 
     # 1. Инициализируем базовые сервисы
@@ -24,9 +23,9 @@ async def initialize_services():
     logger.info("All services initialized successfully")
 
 
-async def _initialize_database_services():
+async def _initialize_database_services() -> None:
     """Инициализация сервисов БД."""
-    from app.database import init_db, get_session
+    from app.database import get_session, init_db
 
     # Инициализируем БД
     await init_db()
@@ -37,7 +36,7 @@ async def _initialize_database_services():
     logger.info("Database services initialized")
 
 
-async def _initialize_cache_services():
+async def _initialize_cache_services() -> None:
     """Инициализация сервисов кэширования."""
     from app.services.cache_service import cache_service
     from app.services.redis_cache_service import initialize_redis_cache
@@ -54,11 +53,11 @@ async def _initialize_cache_services():
     logger.info("Cache services initialized")
 
 
-async def _initialize_business_services():
+async def _initialize_business_services() -> None:
     """Инициализация бизнес-сервисов."""
-    from app.services.conversation_service import ConversationService
-    from app.services.user_service import UserService
     from app.services.ai_manager import get_ai_manager
+    from app.services.conversation_service_new import ConversationService
+    from app.services.user_service import UserService
 
     # Создаем экземпляры сервисов
     conversation_service = ConversationService()
@@ -73,7 +72,6 @@ async def _initialize_business_services():
     logger.info("Business services initialized")
 
 
-async def _initialize_monitoring_services():
+async def _initialize_monitoring_services() -> None:
     """Инициализация сервисов мониторинга."""
     # Пока оставим пустым, реализуем позже
-    pass

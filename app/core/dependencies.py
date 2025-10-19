@@ -1,6 +1,4 @@
-"""
-Централизованная система управления зависимостями.
-"""
+"""Централизованная система управления зависимостями."""
 
 import asyncio
 from collections.abc import Callable
@@ -14,9 +12,9 @@ T = TypeVar("T")
 class DependencyContainer:
     """Контейнер для управления зависимостями приложения."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._services: dict[str, Any] = {}
-        self._factories: dict[str, Callable] = {}
+        self._factories: dict[str, Callable[..., Any]] = {}
         self._singletons: dict[str, Any] = {}
         self._initialized = False
 
@@ -25,7 +23,7 @@ class DependencyContainer:
         self._singletons[name] = instance
         logger.debug(f"Registered singleton: {name}")
 
-    def register_factory(self, name: str, factory: Callable) -> None:
+    def register_factory(self, name: str, factory: Callable[..., Any]) -> None:
         """Регистрация factory для создания сервисов."""
         self._factories[name] = factory
         logger.debug(f"Registered factory: {name}")
@@ -64,13 +62,15 @@ class DependencyContainer:
 
         return service
 
-    def inject(self, *dependencies: str):
+    def inject(
+        self, *dependencies: str
+    ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
         """Декоратор для внедрения зависимостей."""
 
-        def decorator(func: Callable) -> Callable:
+        def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
             if asyncio.iscoroutinefunction(func):
 
-                async def async_wrapper(*args, **kwargs):
+                async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
                     # Внедряем зависимости как keyword arguments
                     for dep_name in dependencies:
                         if dep_name not in kwargs:
@@ -79,7 +79,7 @@ class DependencyContainer:
 
                 return async_wrapper
 
-            def sync_wrapper(*args, **kwargs):
+            def sync_wrapper(*args: Any, **kwargs: Any) -> Any:
                 for dep_name in dependencies:
                     if dep_name not in kwargs:
                         kwargs[dep_name] = self.get(dep_name)

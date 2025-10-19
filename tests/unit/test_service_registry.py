@@ -1,13 +1,12 @@
-"""
-Тесты для реестра сервисов.
-"""
+"""Тесты для реестра сервисов."""
+
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
-from unittest.mock import Mock, patch, AsyncMock
 
 from app.core.service_registry import (
-    initialize_services,
     _initialize_monitoring_services,
+    initialize_services,
 )
 
 
@@ -15,13 +14,13 @@ class TestServiceRegistry:
     """Тесты для реестра сервисов."""
 
     @pytest.mark.asyncio
-    async def test_initialize_monitoring_services(self):
+    async def test_initialize_monitoring_services(self) -> None:
         """Тест инициализации сервисов мониторинга."""
         # Пока просто проверяем, что функция не вызывает ошибок
         await _initialize_monitoring_services()
 
     @pytest.mark.asyncio
-    async def test_initialize_services(self):
+    async def test_initialize_services(self) -> None:
         """Тест полной инициализации сервисов."""
         with (
             patch("app.core.service_registry._initialize_database_services") as mock_db,

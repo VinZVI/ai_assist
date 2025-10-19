@@ -1,38 +1,35 @@
-"""
-Утилиты для оптимизации производительности БД.
-"""
+"""Утилиты для оптимизации производительности БД."""
 
-from typing import List, Dict, Any
-import asyncio
-from datetime import datetime, UTC, timedelta
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
-from sqlalchemy import text, select, func
-from sqlalchemy.ext.asyncio import AsyncSession
 from loguru import logger
+from sqlalchemy import func, select, text
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_session
-from app.models.user import User
 from app.models.conversation import Conversation
+from app.models.user import User
 
 
 class DatabaseOptimizer:
     """Утилиты для мониторинга и оптимизации БД."""
 
     @staticmethod
-    async def analyze_query_performance() -> Dict[str, Any]:
+    async def analyze_query_performance() -> dict[str, Any]:
         """Анализ производительности запросов."""
         try:
             async with get_session() as session:
                 # Получение статистики по индексам
                 index_stats_query = text("""
-                    SELECT 
+                    SELECT
                         schemaname,
                         tablename,
                         indexname,
                         idx_scan,
                         idx_tup_read,
                         idx_tup_fetch
-                    FROM pg_stat_user_indexes 
+                    FROM pg_stat_user_indexes
                     WHERE schemaname = 'public'
                     ORDER BY idx_scan DESC
                 """)
@@ -42,7 +39,7 @@ class DatabaseOptimizer:
 
                 # Получение статистики по таблицам
                 table_stats_query = text("""
-                    SELECT 
+                    SELECT
                         schemaname,
                         relname as tablename,
                         seq_scan,
@@ -52,7 +49,7 @@ class DatabaseOptimizer:
                         n_tup_ins,
                         n_tup_upd,
                         n_tup_del
-                    FROM pg_stat_user_tables 
+                    FROM pg_stat_user_tables
                     WHERE schemaname = 'public'
                 """)
 
@@ -63,13 +60,13 @@ class DatabaseOptimizer:
                 slow_queries = []
                 try:
                     slow_query = text("""
-                        SELECT 
+                        SELECT
                             query,
                             calls,
                             total_exec_time,
                             mean_exec_time,
                             rows
-                        FROM pg_stat_statements 
+                        FROM pg_stat_statements
                         WHERE query LIKE '%conversations%' OR query LIKE '%users%'
                         ORDER BY mean_exec_time DESC
                         LIMIT 10
@@ -95,7 +92,7 @@ class DatabaseOptimizer:
             return {"error": str(e)}
 
     @staticmethod
-    async def check_missing_indexes() -> List[Dict[str, Any]]:
+    async def check_missing_indexes() -> list[dict[str, Any]]:
         """Проверка на отсутствующие индексы."""
         suggestions = []
 
@@ -103,21 +100,21 @@ class DatabaseOptimizer:
             async with get_session() as session:
                 # Проверка на таблицы без индексов на внешние ключи
                 fk_check_query = text("""
-                    SELECT 
+                    SELECT
                         t.table_name,
                         c.column_name,
                         c.data_type
                     FROM information_schema.table_constraints t
-                    JOIN information_schema.constraint_column_usage ccu 
+                    JOIN information_schema.constraint_column_usage ccu
                         ON t.constraint_name = ccu.constraint_name
-                    JOIN information_schema.columns c 
-                        ON t.table_name = c.table_name 
+                    JOIN information_schema.columns c
+                        ON t.table_name = c.table_name
                         AND ccu.column_name = c.column_name
                     WHERE t.constraint_type = 'FOREIGN KEY'
                         AND t.table_schema = 'public'
                         AND NOT EXISTS (
-                            SELECT 1 FROM pg_indexes 
-                            WHERE tablename = t.table_name 
+                            SELECT 1 FROM pg_indexes
+                            WHERE tablename = t.table_name
                             AND indexdef LIKE '%' || c.column_name || '%'
                         )
                 """)
@@ -145,12 +142,12 @@ class DatabaseOptimizer:
                     ("conversations", "ai_model", "varchar"),
                 ]
 
-                for table, column, data_type in frequent_where_conditions:
+                for table, column, _data_type in frequent_where_conditions:
                     # Проверяем, есть ли индекс на этом столбце
                     index_check_query = text("""
                         SELECT COUNT(*) as index_count
-                        FROM pg_indexes 
-                        WHERE tablename = :table 
+                        FROM pg_indexes
+                        WHERE tablename = :table
                         AND (indexdef LIKE '%' || :column || '%')
                     """)
 
@@ -177,7 +174,7 @@ class DatabaseOptimizer:
             return [{"error": str(e)}]
 
     @staticmethod
-    async def optimize_table_maintenance() -> Dict[str, Any]:
+    async def optimize_table_maintenance() -> dict[str, Any]:
         """Выполнение обслуживания таблиц."""
         maintenance_results = {}
 
@@ -185,12 +182,12 @@ class DatabaseOptimizer:
             async with get_session() as session:
                 # Получение размеров таблиц
                 table_sizes_query = text("""
-                    SELECT 
+                    SELECT
                         schemaname,
                         tablename,
                         pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) as size,
                         pg_total_relation_size(schemaname||'.'||tablename) as size_bytes
-                    FROM pg_tables 
+                    FROM pg_tables
                     WHERE schemaname = 'public'
                     ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC
                 """)
@@ -204,12 +201,12 @@ class DatabaseOptimizer:
 
                 # Проверка на необходимость VACUUM
                 vacuum_stats_query = text("""
-                    SELECT 
+                    SELECT
                         schemaname,
                         tablename,
                         n_dead_tup,
                         n_live_tup,
-                        CASE 
+                        CASE
                             WHEN n_live_tup = 0 THEN 0
                             ELSE (n_dead_tup::float / n_live_tup::float) * 100
                         END as dead_tuple_percent,
@@ -217,7 +214,7 @@ class DatabaseOptimizer:
                         last_autovacuum,
                         last_analyze,
                         last_autoanalyze
-                    FROM pg_stat_user_tables 
+                    FROM pg_stat_user_tables
                     WHERE schemaname = 'public'
                     ORDER BY n_dead_tup DESC
                 """)
@@ -273,7 +270,7 @@ class DatabaseOptimizer:
             return {"error": str(e)}
 
     @staticmethod
-    async def generate_optimization_report() -> Dict[str, Any]:
+    async def generate_optimization_report() -> dict[str, Any]:
         """Генерация полного отчета по оптимизации."""
         logger.info("Generating database optimization report...")
 

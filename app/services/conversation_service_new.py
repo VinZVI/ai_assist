@@ -1,27 +1,25 @@
-"""
-Рефакторинг conversation_service без циркулярных импортов.
-"""
+"""Рефакторинг conversation_service без циркулярных импортов."""
 
 from datetime import UTC, datetime, timedelta
-from typing import Any, List
+from typing import Any
 
 from loguru import logger
 from sqlalchemy import and_, desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.dependencies import container
 from app.models.conversation import Conversation, ConversationStatus
 from app.services.ai_providers.base import ConversationMessage
-from app.core.dependencies import container
 
 
 class ConversationService:
     """Сервис для работы с диалогами без циркулярных импортов."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._cache_service = None
         self._initialized = False
 
-    async def initialize(self):
+    async def initialize(self) -> None:
         """Асинхронная инициализация сервиса."""
         if self._initialized:
             return
@@ -31,7 +29,7 @@ class ConversationService:
         logger.info("ConversationService initialized")
 
     @property
-    def cache_service(self):
+    def cache_service(self) -> Any:
         """Ленивое получение cache_service."""
         if not self._cache_service:
             self._cache_service = container.get("cache_service")

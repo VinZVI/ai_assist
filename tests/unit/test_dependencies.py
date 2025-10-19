@@ -1,9 +1,8 @@
-"""
-Тесты для системы dependency injection.
-"""
+"""Тесты для системы dependency injection."""
+
+from unittest.mock import AsyncMock, Mock
 
 import pytest
-from unittest.mock import Mock, AsyncMock
 
 from app.core.dependencies import DependencyContainer
 
@@ -11,7 +10,7 @@ from app.core.dependencies import DependencyContainer
 class TestDependencyContainer:
     """Тесты для контейнера зависимостей."""
 
-    def test_register_and_get_singleton(self):
+    def test_register_and_get_singleton(self) -> None:
         """Тест регистрации и получения singleton сервиса."""
         container = DependencyContainer()
 
@@ -30,14 +29,14 @@ class TestDependencyContainer:
         assert service1 is service2
         assert service1.name == "test_service"
 
-    def test_register_and_get_factory(self):
+    def test_register_and_get_factory(self) -> None:
         """Тест регистрации и получения сервиса через factory."""
         container = DependencyContainer()
 
         # Создаем factory
         call_count = 0
 
-        def service_factory():
+        def service_factory() -> Mock:
             nonlocal call_count
             call_count += 1
             mock_service = Mock()
@@ -58,7 +57,7 @@ class TestDependencyContainer:
         assert service1.name == "factory_service_1"
         assert call_count == 1  # Factory был вызван только один раз
 
-    def test_get_nonexistent_service_raises_error(self):
+    def test_get_nonexistent_service_raises_error(self) -> None:
         """Тест получения несуществующего сервиса вызывает ошибку."""
         container = DependencyContainer()
 
@@ -68,7 +67,7 @@ class TestDependencyContainer:
             container.get("nonexistent")
 
     @pytest.mark.asyncio
-    async def test_get_async_service_with_initialization(self):
+    async def test_get_async_service_with_initialization(self) -> None:
         """Тест асинхронного получения сервиса с инициализацией."""
         container = DependencyContainer()
 
