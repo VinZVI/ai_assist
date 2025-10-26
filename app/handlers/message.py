@@ -34,9 +34,11 @@ from app.models.conversation import Conversation, ConversationStatus
 from app.models.user import User
 from app.services.ai_manager import AIProviderError, get_ai_manager
 from app.services.ai_providers.base import ConversationMessage
-from app.services.conversation_service import (
-    get_conversation_context,
-    save_conversation,
+from app.services.conversation.conversation_history import (
+    get_conversation_context_from_db,
+)
+from app.services.conversation.conversation_storage import (
+    save_conversation_to_db,
 )
 from app.utils.validators import InputValidator
 

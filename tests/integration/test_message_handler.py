@@ -19,7 +19,9 @@ import pytest
 from aiogram import Bot
 from aiogram.types import Chat, Message
 from aiogram.types import User as TelegramUser
-from app.services.conversation_service import get_recent_conversation_history
+from app.services.conversation.conversation_history import (
+    get_recent_conversation_history,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import AppConfig

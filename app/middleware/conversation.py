@@ -1,8 +1,9 @@
 """
 @file: middleware/conversation.py
 @description: Middleware для сохранения диалогов
-@dependencies: aiogram, loguru, app.models.user, app.services.conversation_service
+@dependencies: aiogram, loguru, app.models.user, app.services.conversation.conversation_storage
 @created: 2025-10-09
+@updated: 2025-10-26
 """
 
 from collections.abc import Awaitable, Callable
@@ -16,9 +17,9 @@ from app.config import get_config
 from app.database import get_session
 from app.lexicon.gettext import get_log_text
 from app.middleware.base import BaseAIMiddleware
-from app.services.conversation_service import (
-    save_conversation,
+from app.services.conversation.conversation_storage import (
     save_conversation_context_from_cache,
+    save_conversation_to_db,
 )
 
 

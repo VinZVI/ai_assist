@@ -2,6 +2,7 @@
 @file: check_imports.py
 @description: Скрипт для проверки корректности импортов проекта
 @created: 2025-09-20
+@updated: 2025-10-26
 """
 
 import contextlib
@@ -18,7 +19,7 @@ try:
     # Telegram бот
     from aiogram import Bot, Dispatcher
     from aiogram.types import Message
-    from app.services.conversation_service import ConversationService
+    from app.services.conversation import ConversationService
     from app.services.user_service import UserService
 
     from app.config import get_config
