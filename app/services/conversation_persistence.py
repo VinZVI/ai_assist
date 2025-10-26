@@ -7,9 +7,25 @@ from loguru import logger
 
 
 class ConversationPersistence:
-    """Надежная персистентность контекстов диалогов."""
+    """Надежная персистентность контекстов диалогов.
+
+    Обеспечивает надежное сохранение контекста диалогов с тройной защитой:
+    1. В памяти для быстрого доступа
+    2. В Redis для персистентности между перезапусками
+    3. В базу данных для долгосрочного хранения
+
+    Контекст диалога содержит отдельно последние 5 сообщений пользователя
+    и 5 ответов ИИ, что позволяет ИИ лучше понимать контекст разговора.
+    """
 
     def __init__(self, redis_client: Any, db_flush_interval: int = 600) -> None:
+        """
+        Инициализация персистентности контекстов диалогов.
+
+        Args:
+            redis_client: Клиент Redis для персистентности
+            db_flush_interval: Интервал сброса в базу данных в секундах (по умолчанию 10 минут)
+        """
         self.redis = redis_client
         self.memory_buffer: dict[int, dict[str, Any]] = {}
         self.db_flush_interval = db_flush_interval
@@ -35,7 +51,21 @@ class ConversationPersistence:
     async def save_conversation_context(
         self, user_id: int, context: dict[str, Any], immediate_backup: bool = False
     ) -> None:
-        """Сохранение контекста с тройной защитой."""
+        """Сохранение контекста с тройной защитой.
+
+        Контекст диалога содержит отдельно последние 5 сообщений пользователя
+        и 5 ответов ИИ, что позволяет ИИ лучше понимать контекст разговора.
+
+        Процесс сохранения:
+        1. В память (быстрый доступ)
+        2. В Redis (персистентность между перезапусками)
+        3. В базу данных (долгосрочное хранение)
+
+        Args:
+            user_id: ID пользователя
+            context: Контекст диалога для сохранения
+            immediate_backup: Немедленный бэкап в Redis
+        """
         try:
             timestamp = datetime.now(UTC)
 
@@ -63,8 +93,19 @@ class ConversationPersistence:
     async def get_conversation_context(
         self, user_id: int, limit: int = 6, max_age_hours: int = 12
     ) -> dict[str, Any] | None:
-        """Получение контекста с fallback на Redis и БД."""
+        """Получение контекста с fallback на Redis и БД.
 
+        Контекст диалога содержит отдельно последние 5 сообщений пользователя
+        и 5 ответов ИИ, что позволяет ИИ лучше понимать контекст разговора.
+
+        Args:
+            user_id: ID пользователя
+            limit: Лимит сообщений
+            max_age_hours: Максимальный возраст сообщений в часах
+
+        Returns:
+            dict | None: Контекст диалога или None, если не найден
+        """
         # 1. Проверка памяти
         if user_id in self.memory_buffer:
             buffer_entry = self.memory_buffer[user_id]
@@ -72,7 +113,7 @@ class ConversationPersistence:
 
             if age_seconds < max_age_hours * 3600:
                 logger.debug(f"Context retrieved from memory for user {user_id}")
-                return buffer_entry["data"]
+                return buffer_entry["data"].get("context", buffer_entry["data"])
 
         # 2. Fallback на Redis
         try:
@@ -88,7 +129,7 @@ class ConversationPersistence:
                 context = json.loads(redis_data)
                 # Восстанавливаем в память
                 self.memory_buffer[user_id] = {
-                    "data": context,
+                    "data": {"context": context},
                     "timestamp": datetime.now(UTC),
                     "dirty": False,
                     "backup_timestamp": datetime.now(UTC),
@@ -102,17 +143,19 @@ class ConversationPersistence:
         # 3. Fallback на БД
         try:
             from app.database import get_session
-            from app.services.conversation_service import get_conversation_context
+            from app.services.conversation.conversation_history import (
+                get_conversation_context_from_db,
+            )
 
             async with get_session() as session:
-                context = await get_conversation_context(
+                context = await get_conversation_context_from_db(
                     session, user_id, limit, max_age_hours
                 )
 
                 if context and context.get("message_count", 0) > 0:
                     # Восстанавливаем в память и Redis
                     await self.save_conversation_context(
-                        user_id, context, immediate_backup=True
+                        user_id, {"context": context}, immediate_backup=True
                     )
                     logger.info(f"Context restored from database for user {user_id}")
                     return context
@@ -153,7 +196,7 @@ class ConversationPersistence:
             await self.redis.setex(
                 context_key,
                 1800,  # 30 минут
-                json.dumps(context, ensure_ascii=False),
+                json.dumps(context.get("context", context), ensure_ascii=False),
             )
 
             logger.debug(f"Context backed up to Redis for user {user_id}")
@@ -197,14 +240,34 @@ class ConversationPersistence:
             context_data = self.memory_buffer[user_id]["data"]
 
             # Извлекаем данные для сохранения
-            if "conversation_data" in context_data:
-                conv_data = context_data["conversation_data"]
+            conv_data = context_data.get("conversation_data", {})
+            context = context_data.get("context", {})
 
+            # Сохраняем контекст в Redis для быстрого доступа
+            try:
+                from app.utils.cache_keys import CacheKeyManager
+
+                key_manager = CacheKeyManager()
+                context_key = key_manager.conversation_context_key(user_id, 6, 12)
+                await self.redis.setex(
+                    context_key,
+                    1800,  # 30 минут
+                    json.dumps(context, ensure_ascii=False),
+                )
+            except Exception as e:
+                logger.warning(
+                    f"Failed to save context to Redis for user {user_id}: {e}"
+                )
+
+            # Сохраняем данные разговора в БД
+            if conv_data:
                 from app.database import get_session
-                from app.services.conversation_service import save_conversation
+                from app.services.conversation.conversation_storage import (
+                    save_conversation_to_db,
+                )
 
                 async with get_session() as session:
-                    success = await save_conversation(
+                    success = await save_conversation_to_db(
                         session=session,
                         user_id=user_id,
                         user_message=conv_data["user_message"],
@@ -305,7 +368,7 @@ class ConversationPersistence:
 
                     # Восстанавливаем в память
                     self.memory_buffer[user_id] = {
-                        "data": context,
+                        "data": {"context": context},
                         "timestamp": datetime.fromisoformat(backup_data["timestamp"]),
                         "dirty": False,
                         "backup_timestamp": datetime.now(UTC),

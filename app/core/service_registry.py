@@ -56,7 +56,7 @@ async def _initialize_cache_services() -> None:
 async def _initialize_business_services() -> None:
     """Инициализация бизнес-сервисов."""
     from app.services.ai_manager import get_ai_manager
-    from app.services.conversation_service_new import ConversationService
+    from app.services.conversation import ConversationService
     from app.services.user_service import UserService
 
     # Создаем экземпляры сервисов

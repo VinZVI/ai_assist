@@ -13,13 +13,18 @@ from typing import Any, Optional
 from loguru import logger
 
 from app.models.user import User
+from app.services.conversation import ConversationService
 from app.services.conversation_persistence import ConversationPersistence
 from app.services.redis_cache_service import RedisCache, get_redis_cache
 from app.utils.cache_keys import CacheKeyManager
 
 
 class MemoryCache:
-    """In-memory cache service with TTL support."""
+    """In-memory cache service with TTL support.
+
+    Реализует многоуровневое кэширование с поддержкой времени жизни записей.
+    Управляет кэшем пользователей, контекстом диалогов и другой метаинформацией.
+    """
 
     def __init__(self, ttl_seconds: int = 300, max_size: int = 1000) -> None:
         """
@@ -84,6 +89,9 @@ class MemoryCache:
     ) -> dict[str, Any] | None:
         """
         Получение контекста диалога из кеша.
+
+        Контекст диалога содержит отдельно последние 5 сообщений пользователя
+        и 5 ответов ИИ, что позволяет ИИ лучше понимать контекст разговора.
 
         Args:
             user_id: ID пользователя
@@ -191,9 +199,12 @@ class MemoryCache:
         """
         Сохранение контекста диалога в кеше.
 
+        Контекст диалога содержит отдельно последние 5 сообщений пользователя
+        и 5 ответов ИИ, что позволяет ИИ лучше понимать контекст разговора.
+
         Args:
             user_id: ID пользователя
-            context: Контекст диалога для кеширования
+            context: Контекст диалога для кеширования с разделением на user_messages и ai_responses
             limit: Лимит сообщений
             max_age_hours: Максимальный возраст сообщений в часах
             ttl_seconds: Время жизни записи в секундах (по умолчанию 30 минут)
@@ -214,9 +225,12 @@ class MemoryCache:
         """
         Сохранение данных диалога для последующего сохранения в БД.
 
+        Сохраняет данные диалога с контекстом, который содержит отдельно
+        последние 5 сообщений пользователя и 5 ответов ИИ.
+
         Args:
             user_id: ID пользователя
-            data: Данные диалога для сохранения
+            data: Данные диалога для сохранения, включая контекст с разделением на user_messages и ai_responses
             ttl_seconds: Время жизни записи в секундах (должно соответствовать времени неактивности)
         """
         self._conversation_context_cache[user_id] = {
@@ -398,7 +412,13 @@ class MemoryCache:
 
 
 class CacheService:
-    """Сервис кеширования с поддержкой нескольких уровней."""
+    """Сервис кеширования с поддержкой нескольких уровней.
+
+    Реализует многоуровневое кэширование с поддержкой памяти и Redis.
+    Управляет кэшем пользователей, контекстом диалогов и другой метаинформацией.
+    Обеспечивает персистентность контекста диалогов с автоматическим
+    сохранением в Redis и базу данных.
+    """
 
     def __init__(self, memory_ttl: int = 300, memory_max_size: int = 1000) -> None:
         """
@@ -481,6 +501,9 @@ class CacheService:
         """
         Получение контекста диалога из кеша.
 
+        Контекст диалога содержит отдельно последние 5 сообщений пользователя
+        и 5 ответов ИИ, что позволяет ИИ лучше понимать контекст разговора.
+
         Args:
             user_id: ID пользователя
             limit: Лимит сообщений
@@ -557,9 +580,12 @@ class CacheService:
         """
         Сохранение контекста диалога в кеше.
 
+        Контекст диалога содержит отдельно последние 5 сообщений пользователя
+        и 5 ответов ИИ, что позволяет ИИ лучше понимать контекст разговора.
+
         Args:
             user_id: ID пользователя
-            context: Контекст диалога для кеширования
+            context: Контекст диалога для кеширования с разделением на user_messages и ai_responses
             limit: Лимит сообщений
             max_age_hours: Максимальный возраст сообщений в часах
             ttl_seconds: Время жизни записи в секундах
@@ -568,7 +594,7 @@ class CacheService:
         if self.conversation_persistence:
             await self.conversation_persistence.save_conversation_context(
                 user_id,
-                {"conversation_data": context},
+                {"context": context},
                 immediate_backup=False,  # Будет сохранено в фоне
             )
         else:
@@ -588,9 +614,12 @@ class CacheService:
         """
         Сохранение данных диалога для последующего сохранения в БД.
 
+        Сохраняет данные диалога с контекстом, который содержит отдельно
+        последние 5 сообщений пользователя и 5 ответов ИИ.
+
         Args:
             user_id: ID пользователя
-            data: Данные диалога для сохранения
+            data: Данные диалога для сохранения, включая контекст с разделением на user_messages и ai_responses
             ttl_seconds: Время жизни записи в секундах (должно соответствовать времени неактивности)
         """
         # Сохраняем в memory cache
