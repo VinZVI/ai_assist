@@ -6,6 +6,6 @@
 @updated: 2025-09-12
 """
 
-# No service imports needed at this time
-
-__all__ = []
+__all__ = [
+    "conversation_persistence",
+]

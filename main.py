@@ -193,13 +193,11 @@ class AIAssistantBot:
         try:
             logger.info(get_log_text("main.bot_starting"))
 
-            # Инициализация базы данных
-            logger.info(get_log_text("main.bot_db_initializing"))
-            await init_db()
+            # Инициализация всех сервисов через dependency injection
+            logger.info("Initializing services with dependency injection...")
+            from app.core.service_registry import initialize_services
 
-            # Инициализация Redis кеша
-            logger.info("Initializing Redis cache...")
-            await initialize_redis_cache()
+            await initialize_services()
 
             # Создание бота и диспетчера
             self.bot = self.create_bot()
@@ -233,13 +231,16 @@ class AIAssistantBot:
         try:
             # Сохранение всех ожидающих диалогов из кэша
             try:
-                from app.services.conversation_service import (
-                    save_all_pending_conversations,
-                )
+                from app.core.dependencies import container
 
+                conversation_service = container.get("conversation_service")
                 logger.info("Сохранение всех ожидающих диалогов из кэша...")
-                await save_all_pending_conversations()
-                logger.info("Завершено сохранение всех ожидающих диалогов")
+                saved_count = (
+                    await conversation_service.save_all_pending_conversations()
+                )
+                logger.info(
+                    f"Завершено сохранение всех ожидающих диалогов ({saved_count} сохранено)"
+                )
             except Exception as e:
                 logger.error(f"Ошибка при сохранении ожидающих диалогов: {e}")
 
@@ -419,11 +420,14 @@ async def lifespan() -> AsyncGenerator[None, None]:
     finally:
         # Сохранение всех ожидающих диалогов из кэша перед завершением
         try:
-            from app.services.conversation_service import save_all_pending_conversations
+            from app.core.dependencies import container
 
+            conversation_service = container.get("conversation_service")
             logger.info("Сохранение всех ожидающих диалогов из кэша...")
-            await save_all_pending_conversations()
-            logger.info("Завершено сохранение всех ожидающих диалогов")
+            saved_count = await conversation_service.save_all_pending_conversations()
+            logger.info(
+                f"Завершено сохранение всех ожидающих диалогов ({saved_count} сохранено)"
+            )
         except Exception as e:
             logger.error(f"Ошибка при сохранении ожидающих диалогов: {e}")
 

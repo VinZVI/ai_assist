@@ -13,11 +13,18 @@ from typing import Any, Optional
 from loguru import logger
 
 from app.models.user import User
+from app.services.conversation import ConversationService
+from app.services.conversation_persistence import ConversationPersistence
 from app.services.redis_cache_service import RedisCache, get_redis_cache
+from app.utils.cache_keys import CacheKeyManager
 
 
 class MemoryCache:
-    """In-memory cache service with TTL support."""
+    """In-memory cache service with TTL support.
+
+    Реализует многоуровневое кэширование с поддержкой времени жизни записей.
+    Управляет кэшем пользователей, контекстом диалогов и другой метаинформацией.
+    """
 
     def __init__(self, ttl_seconds: int = 300, max_size: int = 1000) -> None:
         """
@@ -27,7 +34,7 @@ class MemoryCache:
             ttl_seconds: Время жизни записей в секундах
             max_size: Максимальный размер кеша
         """
-        self._cache: OrderedDict[int, dict[str, Any]] = OrderedDict()
+        self._cache: OrderedDict[str, dict[str, Any]] = OrderedDict()
         self._ttl = ttl_seconds
         self._max_size = max_size
         self._hits = 0
@@ -41,42 +48,50 @@ class MemoryCache:
         self._user_activity_cache: dict[int, datetime] = {}  # Track user activity
         # Store reference to Redis cache
         self.redis_cache: RedisCache | None = None
+        # Cache key manager for consistent key generation
+        self.key_manager = CacheKeyManager()
 
     def set_redis_cache(self, redis_cache: RedisCache | None) -> None:
         """Set the Redis cache reference."""
         self.redis_cache = redis_cache
 
-    async def get(self, key: int) -> User | None:
+    async def get(self, telegram_id: int) -> User | None:
         """
         Получение значения из кеша.
 
         Args:
-            key: Ключ для поиска
+            telegram_id: ID пользователя в Telegram
 
         Returns:
             User | None: Пользователь или None, если не найден или истек TTL
         """
-        if key not in self._cache:
+        # Используем унифицированный ключ
+        cache_key = self.key_manager.user_key(telegram_id)
+
+        if cache_key not in self._cache:
             self._misses += 1
             return None
 
-        cached_data = self._cache[key]
+        cached_data = self._cache[cache_key]
         if datetime.now(UTC) > cached_data["expires_at"]:
             # Удаляем устаревшую запись
-            del self._cache[key]
+            del self._cache[cache_key]
             self._misses += 1
             return None
 
         # Перемещаем запись в конец (для LRU)
-        self._cache.move_to_end(key)
+        self._cache.move_to_end(cache_key)
         self._hits += 1
         return cached_data["user"]
 
     async def get_conversation_context(
-        self, user_id: int, limit: int, max_age_hours: int
+        self, user_id: int, limit: int = 6, max_age_hours: int = 12
     ) -> dict[str, Any] | None:
         """
         Получение контекста диалога из кеша.
+
+        Контекст диалога содержит отдельно последние 5 сообщений пользователя
+        и 5 ответов ИИ, что позволяет ИИ лучше понимать контекст разговора.
 
         Args:
             user_id: ID пользователя
@@ -87,17 +102,27 @@ class MemoryCache:
             dict | None: Контекст диалога или None, если не найден или истек TTL
         """
         # Generate cache key consistently with set_conversation_context
-        cache_key = f"{user_id}_{limit}_{max_age_hours}"
+        cache_key = self.key_manager.conversation_context_key(
+            user_id, limit, max_age_hours
+        )
 
         if cache_key not in self._conversation_cache:
-            # Try alternative cache key format that might have been used
-            # This is for backward compatibility
-            alt_cache_key = f"{user_id}_6_12"
-            if alt_cache_key in self._conversation_cache:
-                cache_key = alt_cache_key
+            # Попытка найти с устаревшими ключами (для совместимости)
+            legacy_keys = [
+                f"{user_id}_{limit}_{max_age_hours}",
+                f"{user_id}_6_12",  # Старый формат по умолчанию
+            ]
+
+            for legacy_key in legacy_keys:
+                if legacy_key in self._conversation_cache:
+                    # Мигрируем на новый ключ
+                    cached_data = self._conversation_cache[legacy_key]
+                    del self._conversation_cache[legacy_key]
+
+                    self._conversation_cache[cache_key] = cached_data
+                    logger.info(f"Migrated cache key: {legacy_key} -> {cache_key}")
+                    break
             else:
-                # Try another alternative format
-                # We don't have message count here, so we can't generate the third format
                 return None
 
         cached_data = self._conversation_cache[cache_key]
@@ -149,40 +174,45 @@ class MemoryCache:
         Args:
             user: Пользователь для кеширования
         """
+        # Используем унифицированный ключ
+        cache_key = self.key_manager.user_key(user.telegram_id)
+
         # Если кеш переполнен, удаляем самую старую запись
         if len(self._cache) >= self._max_size:
             self._cache.popitem(last=False)
 
-        self._cache[user.telegram_id] = {
+        self._cache[cache_key] = {
             "user": user,
             "expires_at": datetime.now(UTC) + timedelta(seconds=self._ttl),
         }
         # Перемещаем запись в конец (для LRU)
-        self._cache.move_to_end(user.telegram_id)
+        self._cache.move_to_end(cache_key)
 
     async def set_conversation_context(
-        self, user_id: int, context: dict[str, Any], ttl_seconds: int = 1800
+        self,
+        user_id: int,
+        context: dict[str, Any],
+        limit: int = 6,
+        max_age_hours: int = 12,
+        ttl_seconds: int = 1800,
     ) -> None:
         """
         Сохранение контекста диалога в кеше.
 
+        Контекст диалога содержит отдельно последние 5 сообщений пользователя
+        и 5 ответов ИИ, что позволяет ИИ лучше понимать контекст разговора.
+
         Args:
             user_id: ID пользователя
-            context: Контекст диалога для кеширования
+            context: Контекст диалога для кеширования с разделением на user_messages и ai_responses
+            limit: Лимит сообщений
+            max_age_hours: Максимальный возраст сообщений в часах
             ttl_seconds: Время жизни записи в секундах (по умолчанию 30 минут)
         """
-        # Generate cache key consistently with get_conversation_context
-        # Use default parameters that match the get method
-        cache_key = f"{user_id}_6_12"  # Default cache key for standard context
-
-        # For premium users, we might want to use different parameters
-        # But we should be consistent with how we generate keys in get_conversation_context
-
-        # If we have context info, we can still create a more specific key
-        # But we need to make sure it matches what get_conversation_context expects
-        if "message_count" in context and "history" in context:
-            # Create a more specific cache key based on actual context parameters
-            cache_key = f"{user_id}_{len(context.get('history', []))}_{context.get('message_count', 0)}"
+        # Используем унифицированный ключ
+        cache_key = self.key_manager.conversation_context_key(
+            user_id, limit, max_age_hours
+        )
 
         self._conversation_cache[cache_key] = {
             "context": context,
@@ -195,9 +225,12 @@ class MemoryCache:
         """
         Сохранение данных диалога для последующего сохранения в БД.
 
+        Сохраняет данные диалога с контекстом, который содержит отдельно
+        последние 5 сообщений пользователя и 5 ответов ИИ.
+
         Args:
             user_id: ID пользователя
-            data: Данные диалога для сохранения
+            data: Данные диалога для сохранения, включая контекст с разделением на user_messages и ai_responses
             ttl_seconds: Время жизни записи в секундах (должно соответствовать времени неактивности)
         """
         self._conversation_context_cache[user_id] = {
@@ -256,15 +289,17 @@ class MemoryCache:
             "expires_at": datetime.now(UTC) + timedelta(seconds=ttl_seconds),
         }
 
-    async def delete(self, key: int) -> None:
+    async def delete(self, telegram_id: int) -> None:
         """
         Удаление значения из кеша.
 
         Args:
-            key: Ключ для удаления
+            telegram_id: ID пользователя в Telegram
         """
-        if key in self._cache:
-            del self._cache[key]
+        # Используем унифицированный ключ
+        cache_key = self.key_manager.user_key(telegram_id)
+        if cache_key in self._cache:
+            del self._cache[cache_key]
 
     async def delete_conversation_context(self, user_id: int) -> None:
         """
@@ -273,10 +308,26 @@ class MemoryCache:
         Args:
             user_id: ID пользователя
         """
-        # Удаляем все записи контекста для пользователя
-        keys_to_delete = [
-            key for key in self._conversation_cache if key.startswith(f"{user_id}_")
-        ]
+        # Удаляем все ключи пользователя (новые и старые форматы)
+        keys_to_delete = []
+
+        # Поиск по новому формату
+        for key in self._conversation_cache:
+            parsed = self.key_manager.parse_key(key)
+            if (
+                parsed["valid"]
+                and parsed["prefix"] == CacheKeyManager.PREFIXES["conversation_context"]
+                and len(parsed["components"]) >= 3
+                and int(parsed["components"][2]) == user_id
+            ):  # user_id is third component after prefix:version:
+                keys_to_delete.append(key)
+
+        # Поиск по старому формату (для совместимости)
+        for key in self._conversation_cache:
+            if key.startswith(f"{user_id}_"):
+                keys_to_delete.append(key)
+
+        # Удаление найденных ключей
         for key in keys_to_delete:
             del self._conversation_cache[key]
 
@@ -361,7 +412,13 @@ class MemoryCache:
 
 
 class CacheService:
-    """Сервис кеширования с поддержкой нескольких уровней."""
+    """Сервис кеширования с поддержкой нескольких уровней.
+
+    Реализует многоуровневое кэширование с поддержкой памяти и Redis.
+    Управляет кэшем пользователей, контекстом диалогов и другой метаинформацией.
+    Обеспечивает персистентность контекста диалогов с автоматическим
+    сохранением в Redis и базу данных.
+    """
 
     def __init__(self, memory_ttl: int = 300, memory_max_size: int = 1000) -> None:
         """
@@ -373,10 +430,11 @@ class CacheService:
         """
         self.memory_cache = MemoryCache(memory_ttl, memory_max_size)
         self.redis_cache: RedisCache | None = None
+        self.conversation_persistence: ConversationPersistence | None = None
         self._lock = asyncio.Lock()
 
     async def initialize_redis_cache(self) -> None:
-        """Инициализация Redis кеша."""
+        """Инициализация Redis кеша и персистентности."""
         try:
             self.redis_cache = await get_redis_cache()
             if self.redis_cache:
@@ -395,6 +453,19 @@ class CacheService:
 
             # Set the Redis cache reference in MemoryCache
             self.memory_cache.set_redis_cache(self.redis_cache)
+
+            # Инициализация персистентности контекстов
+            if self.redis_cache:
+                self.conversation_persistence = ConversationPersistence(
+                    self.redis_cache.redis_client, db_flush_interval=600
+                )
+
+                # Восстановление контекстов при старте
+                restored = await self.conversation_persistence.restore_all_contexts_on_startup()
+                logger.info(f"Restored {restored} conversations from Redis backup")
+
+                # Запуск фонового процесса
+                await self.conversation_persistence.start_background_backup()
         except Exception as e:
             logger.error(f"Failed to initialize Redis cache in CacheService: {e}")
             self.redis_cache = None
@@ -425,10 +496,13 @@ class CacheService:
         return None
 
     async def get_conversation_context(
-        self, user_id: int, limit: int, max_age_hours: int
+        self, user_id: int, limit: int = 6, max_age_hours: int = 12
     ) -> dict[str, Any] | None:
         """
         Получение контекста диалога из кеша.
+
+        Контекст диалога содержит отдельно последние 5 сообщений пользователя
+        и 5 ответов ИИ, что позволяет ИИ лучше понимать контекст разговора.
 
         Args:
             user_id: ID пользователя
@@ -438,6 +512,14 @@ class CacheService:
         Returns:
             dict | None: Контекст диалога или None, если не найден
         """
+        # Используем персистентность контекстов если доступна
+        if self.conversation_persistence:
+            context = await self.conversation_persistence.get_conversation_context(
+                user_id, limit, max_age_hours
+            )
+            if context:
+                return context
+
         # Сначала проверяем memory cache
         context = await self.memory_cache.get_conversation_context(
             user_id, limit, max_age_hours
@@ -488,18 +570,38 @@ class CacheService:
             await self.redis_cache.set(user)
 
     async def set_conversation_context(
-        self, user_id: int, context: dict[str, Any], ttl_seconds: int = 300
+        self,
+        user_id: int,
+        context: dict[str, Any],
+        limit: int = 6,
+        max_age_hours: int = 12,
+        ttl_seconds: int = 1800,
     ) -> None:
         """
         Сохранение контекста диалога в кеше.
 
+        Контекст диалога содержит отдельно последние 5 сообщений пользователя
+        и 5 ответов ИИ, что позволяет ИИ лучше понимать контекст разговора.
+
         Args:
             user_id: ID пользователя
-            context: Контекст диалога для кеширования
+            context: Контекст диалога для кеширования с разделением на user_messages и ai_responses
+            limit: Лимит сообщений
+            max_age_hours: Максимальный возраст сообщений в часах
             ttl_seconds: Время жизни записи в секундах
         """
-        # Сохраняем в memory cache
-        await self.memory_cache.set_conversation_context(user_id, context, ttl_seconds)
+        # Используем персистентность контекстов если доступна
+        if self.conversation_persistence:
+            await self.conversation_persistence.save_conversation_context(
+                user_id,
+                {"context": context},
+                immediate_backup=False,  # Будет сохранено в фоне
+            )
+        else:
+            # Сохраняем в memory cache
+            await self.memory_cache.set_conversation_context(
+                user_id, context, limit, max_age_hours, ttl_seconds
+            )
 
         # Сохраняем в Redis cache (если реализовано)
         if self.redis_cache:
@@ -512,9 +614,12 @@ class CacheService:
         """
         Сохранение данных диалога для последующего сохранения в БД.
 
+        Сохраняет данные диалога с контекстом, который содержит отдельно
+        последние 5 сообщений пользователя и 5 ответов ИИ.
+
         Args:
             user_id: ID пользователя
-            data: Данные диалога для сохранения
+            data: Данные диалога для сохранения, включая контекст с разделением на user_messages и ai_responses
             ttl_seconds: Время жизни записи в секундах (должно соответствовать времени неактивности)
         """
         # Сохраняем в memory cache
@@ -669,6 +774,11 @@ class CacheService:
         self.memory_cache.reset_stats()
         if self.redis_cache:
             self.redis_cache.reset_stats()
+
+    async def shutdown(self) -> None:
+        """Корректное завершение работы сервиса кеширования."""
+        if self.conversation_persistence:
+            await self.conversation_persistence.stop_background_backup()
 
 
 # Глобальный экземпляр сервиса кеширования

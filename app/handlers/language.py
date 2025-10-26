@@ -14,6 +14,7 @@ from aiogram.types import (
     Message,
 )
 from loguru import logger
+from sqlalchemy import select, update
 
 from app.database import get_session
 from app.keyboards import create_language_keyboard
@@ -89,6 +90,28 @@ async def handle_language_selection(callback: CallbackQuery, user: User) -> None
             await callback.answer(get_text("errors.general_error", "ru"))
             return
 
+        # Обновляем язык пользователя в базе данных
+        async with get_session() as session:
+            # Обновляем язык пользователя
+            update_stmt = (
+                update(User)
+                .where(User.telegram_id == callback.from_user.id)
+                .values(language_code=lang_code)
+            )
+            await session.execute(update_stmt)
+            await session.commit()
+
+            # Получаем обновленного пользователя из БД для кеширования
+            stmt = select(User).where(User.telegram_id == callback.from_user.id)
+            result = await session.execute(stmt)
+            updated_user = result.scalar_one_or_none()
+
+        # Обновляем пользователя в кеше
+        if updated_user:
+            from app.services.cache_service import cache_service
+
+            await cache_service.set_user(updated_user)
+
         # Проверяем, что у callback есть message и оно доступно
         if not callback.message:
             await callback.answer(get_text("errors.general_error", "ru"))
@@ -101,37 +124,22 @@ async def handle_language_selection(callback: CallbackQuery, user: User) -> None
             await callback.answer(get_text("errors.general_error", "ru"))
             return
 
-        # Обновляем язык пользователя в базе данных
-        async with get_session() as session:
-            from sqlalchemy import update
+        # Получаем название языка
+        language_name = get_text(f"language.available_languages.{lang_code}", lang_code)
 
-            # Обновляем язык пользователя
-            update_stmt = (
-                update(User)
-                .where(User.telegram_id == callback.from_user.id)
-                .values(language_code=lang_code)
+        # Отправляем подтверждение на выбранном языке
+        await callback.message.edit_text(
+            f"✅ {get_text('language.language_changed', lang_code, language=language_name)}",
+            parse_mode="HTML",
+        )
+
+        await callback.answer()
+
+        logger.info(
+            get_log_text("language.language_changed_success").format(
+                user_id=callback.from_user.id, language=lang_code
             )
-            await session.execute(update_stmt)
-            await session.commit()
-
-            # Получаем название языка
-            language_name = get_text(
-                f"language.available_languages.{lang_code}", lang_code
-            )
-
-            # Отправляем подтверждение на выбранном языке
-            await callback.message.edit_text(
-                f"✅ {get_text('language.language_changed', lang_code, language=language_name)}",
-                parse_mode="HTML",
-            )
-
-            await callback.answer()
-
-            logger.info(
-                get_log_text("language.language_changed_success").format(
-                    user_id=callback.from_user.id, language=lang_code
-                )
-            )
+        )
 
     except Exception as e:
         logger.error(

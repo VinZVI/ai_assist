@@ -38,6 +38,7 @@ from app.services.conversation_service import (
     get_conversation_context,
     save_conversation,
 )
+from app.utils.validators import InputValidator
 
 # Создаем роутер для обработчиков сообщений
 message_router = Router()
@@ -54,6 +55,9 @@ async def generate_ai_response(
         tuple: (response_text, tokens_used, model_name, response_time)
     """
     try:
+        # Санитизация входного сообщения
+        user_message = InputValidator.sanitize_text(user_message)
+
         ai_manager = get_ai_manager()
         start_time = datetime.now(UTC)
 
@@ -69,29 +73,35 @@ async def generate_ai_response(
             user.id, context_limit, context_max_age
         )
 
-        if not conversation_context:
-            # Если нет в кеше, загружаем из БД
-            async with get_session() as session:
-                from app.services.conversation_service import get_conversation_context
-
-                conversation_context = await get_conversation_context(
-                    session,
-                    user.id,
-                    limit=context_limit,
-                    max_age_hours=context_max_age,
-                )
-            # Кешируем контекст на более длительное время (30 минут для лучшей производительности)
-            await cache_service.set_conversation_context(
-                user.id, conversation_context, ttl_seconds=1800
-            )
-
         # Формируем сообщения для AI с учетом языка пользователя
         user_language = user.language_code or "ru"
         messages = [create_system_message(user_language)]
 
         # Добавляем контекст диалога
-        if conversation_context["history"]:
-            messages.extend(conversation_context["history"])
+        # Ensure conversation_context has the expected structure
+        if conversation_context and isinstance(conversation_context, dict):
+            # Проверяем, есть ли у нас новый формат с разделением на user_messages и ai_responses
+            if (
+                "user_messages" in conversation_context
+                and "ai_responses" in conversation_context
+            ):
+                # Новый формат - объединяем сообщения в хронологическом порядке
+                from app.services.ai_providers.base import UserAIConversationContext
+
+                try:
+                    context_obj = UserAIConversationContext.from_dict(
+                        conversation_context
+                    )
+                    history = context_obj.get_combined_history()
+                except Exception:
+                    # Если не удалось создать объект, используем старый формат
+                    history = conversation_context.get("history", [])
+            else:
+                # Старый формат
+                history = conversation_context.get("history", [])
+
+            if history and isinstance(history, list):
+                messages.extend(history)
 
         # Добавляем текущее сообщение пользователя
         messages.append(
@@ -153,6 +163,19 @@ async def generate_ai_response(
             )
         )
 
+        # Сохраняем диалог в кеш
+        from app.core.dependencies import container
+
+        conversation_service = container.get("conversation_service")
+        await conversation_service.save_conversation_with_cache(
+            user_id=user.id,
+            user_message=user_message,
+            ai_response=response.content,
+            ai_model=response.model,
+            tokens_used=response.tokens_used,
+            response_time=response_time,
+        )
+
         return response.content, response.tokens_used, response.model, response_time
 
     except AIProviderError as e:
@@ -177,7 +200,7 @@ async def generate_ai_response(
             return (
                 get_text("errors.ai_quota_error", user_lang, provider=provider),
                 0,
-                "quota_error",
+                f"{provider}_quota_error",
                 0.0,
             )
 
@@ -186,7 +209,7 @@ async def generate_ai_response(
             return (
                 get_text("errors.ai_all_providers_down", user_lang),
                 0,
-                "all_providers_down",
+                "no_available_providers",
                 0.0,
             )
 
@@ -194,14 +217,15 @@ async def generate_ai_response(
         return (
             get_text("errors.ai_general_error", user_lang),
             0,
-            "fallback",
+            f"{provider}_fallback",
             0.0,
         )
 
     except Exception:
         logger.exception(
             get_log_text("message.message_error").format(
-                user_id="unknown", error="Неожиданная ошибка при генерации AI ответа"
+                user_id=user.id if user else "unknown",
+                error="Неожиданная ошибка при генерации AI ответа",
             )
         )
         # Определяем язык пользователя для сообщений об ошибках
@@ -209,7 +233,7 @@ async def generate_ai_response(
         return (
             get_text("errors.ai_unexpected_error", user_lang),
             0,
-            "error",
+            "unexpected_error",
             0.0,
         )
 
@@ -227,10 +251,14 @@ async def handle_text_message(
         return
 
     try:
-        # Проверяем длину сообщения
-        if len(message.text) > 4000:
+        # Валидация длины сообщения
+        is_valid, _error_msg = InputValidator.validate_message_length(message.text)
+        if not is_valid:
             await message.answer(get_text("errors.message_too_long", user_lang))
             return
+
+        # Санитизация текста сообщения
+        sanitized_text = InputValidator.sanitize_text(message.text)
 
         # Проверяем лимиты пользователя
         if not user.can_send_message(100 if user.is_premium_active() else 10):
@@ -250,7 +278,7 @@ async def handle_text_message(
             tokens_used,
             model_name,
             response_time,
-        ) = await generate_ai_response(user, message.text)
+        ) = await generate_ai_response(user, sanitized_text)
 
         # Санитизируем ответ AI для безопасной отправки в Telegram
         sanitized_response = sanitize_telegram_message(ai_response)
@@ -262,7 +290,7 @@ async def handle_text_message(
         if save_conversation_func:
             await save_conversation_func(
                 user_id=user.id,
-                user_message=message.text,
+                user_message=sanitized_text,
                 ai_response=ai_response,
                 ai_model=model_name,
                 tokens_used=tokens_used,

@@ -154,8 +154,12 @@ class AIManager:
             self._provider_stats[provider_name]["failures"] += 1
 
             logger.error(f"💥 Ошибка провайдера {provider_name}: {e}")
+            # Include more detailed error information
+            error_detail = str(e)
+            if hasattr(e, "error_code"):
+                error_detail += f" (код ошибки: {e.error_code})"
             raise AIProviderError(
-                f"AI провайдер недоступен: {e!s}",
+                f"AI провайдер {provider_name} недоступен: {error_detail}",
                 provider_name,
             ) from e
 

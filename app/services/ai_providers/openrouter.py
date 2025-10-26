@@ -372,8 +372,10 @@ class OpenRouterProvider(BaseAIProvider):
                 if next_model is None:
                     # No more models to try
                     logger.error("💥 Все модели OpenRouter недоступны")
+                    # Include the list of models that were tried in the error message
+                    models_tried = ", ".join(self.config.openrouter_models)
                     raise APIConnectionError(
-                        f"Все модели OpenRouter недоступны: {last_exception!s}",
+                        f"Все модели OpenRouter недоступны: {last_exception!s}. Попытка с моделями: {models_tried}",
                         self.provider_name,
                     ) from last_exception
 
@@ -383,8 +385,10 @@ class OpenRouterProvider(BaseAIProvider):
         # If we get here, something went wrong
         unknown_error_message = "Неизвестная ошибка моделей OpenRouter"
         if last_exception:
+            # Include the list of models that were tried in the error message
+            models_tried = ", ".join(self.config.openrouter_models)
             raise APIConnectionError(
-                f"Все модели OpenRouter недоступны: {last_exception!s}",
+                f"Все модели OpenRouter недоступны: {last_exception!s}. Попытка с моделями: {models_tried}",
                 self.provider_name,
             ) from last_exception
         raise APIConnectionError(unknown_error_message, self.provider_name)
