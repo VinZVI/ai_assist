@@ -337,6 +337,34 @@ class UserService:
                 return None
 
     @staticmethod
+    async def update_user(user: User) -> User | None:
+        """
+        Update a user in the database and cache.
+
+        Args:
+            user: The user object to update
+
+        Returns:
+            User | None: The updated user or None if error occurred
+        """
+        try:
+            async with get_session() as session:
+                # Add the user to the session and commit
+                session.add(user)
+                await session.commit()
+                await session.refresh(user)
+
+                # Update cache
+                await cache_service.set_user(user)
+
+                logger.info(f"User {user.telegram_id} updated successfully")
+                return user
+
+        except Exception as e:
+            logger.error(f"Error updating user {user.telegram_id}: {e}")
+            return None
+
+    @staticmethod
     async def _update_user_activity_background_cached(user_telegram_id: int) -> None:
         """
         Внутренний метод для обновления активности пользователя с использованием кеша.

@@ -19,6 +19,7 @@ from sqlalchemy import (
     Column,
     Date,
     DateTime,
+    Enum,
     Index,
     Integer,
     String,
@@ -176,6 +177,74 @@ class User(Base):
         comment="Предпочтительный стиль общения",
     )
 
+    # Поля согласия и верификации
+    age_verified: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        comment="Подтверждение совершеннолетия",
+    )
+
+    terms_accepted: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        comment="Согласие с условиями использования",
+    )
+
+    privacy_policy_accepted: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        comment="Согласие с политикой конфиденциальности",
+    )
+
+    community_guidelines_accepted: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        comment="Согласие с правилами сообщества",
+    )
+
+    consent_timestamp: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        comment="Время получения согласия",
+    )
+
+    consent_ip_address: Mapped[str | None] = mapped_column(
+        String(45),
+        nullable=True,
+        comment="IP адрес при получении согласия",
+    )
+
+    # Версии соглашений (для отслеживания изменений)
+    terms_version: Mapped[str | None] = mapped_column(
+        String(10),
+        nullable=True,
+        comment="Версия условий использования",
+    )
+
+    privacy_version: Mapped[str | None] = mapped_column(
+        String(10),
+        nullable=True,
+        comment="Версия политики конфиденциальности",
+    )
+
+    guidelines_version: Mapped[str | None] = mapped_column(
+        String(10),
+        nullable=True,
+        comment="Версия правил сообщества",
+    )
+
+    # Статус верификации
+    verification_status: Mapped[str] = mapped_column(
+        Enum("pending", "verified", "rejected", "expired", name="verification_status"),
+        nullable=False,
+        default="pending",
+        comment="Статус верификации пользователя",
+    )
+
     # Отношения
     # Use string annotation for forward reference to avoid circular import
     conversations: Mapped[list["Conversation"]] = relationship(
@@ -220,6 +289,16 @@ class User(Base):
             kwargs["daily_message_count"] = 0
         if "total_messages" not in kwargs:
             kwargs["total_messages"] = 0
+        if "age_verified" not in kwargs:
+            kwargs["age_verified"] = False
+        if "terms_accepted" not in kwargs:
+            kwargs["terms_accepted"] = False
+        if "privacy_policy_accepted" not in kwargs:
+            kwargs["privacy_policy_accepted"] = False
+        if "community_guidelines_accepted" not in kwargs:
+            kwargs["community_guidelines_accepted"] = False
+        if "verification_status" not in kwargs:
+            kwargs["verification_status"] = "pending"
 
         super().__init__(**kwargs)
 
@@ -307,6 +386,17 @@ class User(Base):
     def get_support_preferences(self) -> dict[str, Any]:
         """Получение предпочтений в типе поддержки."""
         return self.support_preferences or {}
+
+    @property
+    def is_fully_verified(self) -> bool:
+        """Проверка полной верификации пользователя"""
+        return (
+            self.age_verified
+            and self.terms_accepted
+            and self.privacy_policy_accepted
+            and self.community_guidelines_accepted
+            and self.verification_status == "verified"
+        )
 
 
 # Pydantic схемы для валидации и сериализации

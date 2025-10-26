@@ -303,6 +303,37 @@ class AdminConfig(BaseSettings):
         return list(set(admin_ids))
 
 
+class ComplianceConfig(BaseSettings):
+    """Configuration for compliance and verification."""
+
+    # Document versions
+    terms_version: str = Field(default="1.0", validation_alias="TERMS_VERSION")
+    privacy_version: str = Field(default="1.0", validation_alias="PRIVACY_VERSION")
+    guidelines_version: str = Field(
+        default="1.0", validation_alias="GUIDELINES_VERSION"
+    )
+
+    # Verification settings
+    require_age_verification: bool = Field(
+        default=True, validation_alias="REQUIRE_AGE_VERIFICATION"
+    )
+    verification_timeout_hours: int = Field(
+        default=24, validation_alias="VERIFICATION_TIMEOUT_HOURS"
+    )
+
+    # Document URLs
+    terms_url: str = Field(
+        default="https://telegra.ph/Terms-of-Service-and-Privacy-Policy--AI-Assist-06-14",
+        validation_alias="TERMS_URL",
+    )
+    guidelines_url: str = Field(
+        default="https://telegra.ph/AI-Assist-Community-Guidelines-06-14",
+        validation_alias="GUIDELINES_URL",
+    )
+
+    model_config = {"extra": "ignore", "env_file": ".env", "env_file_encoding": "utf-8"}
+
+
 class AppConfig(BaseSettings):
     """Основная конфигурация приложения."""
 
@@ -321,6 +352,9 @@ class AppConfig(BaseSettings):
     # Дополнительные настройки
     debug: bool = Field(default=False, validation_alias="DEBUG")
     log_level: str = Field(default="INFO", validation_alias="LOG_LEVEL")
+
+    # Add compliance configuration
+    compliance: ComplianceConfig = Field(default_factory=ComplianceConfig)
 
     model_config = {"extra": "ignore", "env_file": ".env", "env_file_encoding": "utf-8"}
 

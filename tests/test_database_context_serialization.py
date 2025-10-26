@@ -4,11 +4,11 @@ from typing import Any
 from unittest.mock import AsyncMock, Mock
 
 import pytest
+from app.services.conversation_service import get_conversation_context
 
 from app.services.ai_providers.base import (
     ConversationMessage,
 )
-from app.services.conversation_service import get_conversation_context
 
 
 def test_conversation_context_serialization_from_database() -> None:
