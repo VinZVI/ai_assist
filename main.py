@@ -78,6 +78,9 @@ class AIAssistantBot:
             UserLanguageMiddleware,
         )
 
+        # Import the new verification middleware
+        from app.middleware.verification_middleware import VerificationMiddleware
+
         # Создаем единственные экземпляры middleware
         logging_middleware = LoggingMiddleware()
         auth_middleware = AuthMiddleware()
@@ -90,6 +93,8 @@ class AIAssistantBot:
         message_counting_middleware = MessageCountingMiddleware()
         metrics_middleware = MetricsMiddleware()
         admin_middleware = AdminMiddleware()
+        # Create instance of the new verification middleware
+        verification_middleware = VerificationMiddleware()
 
         # Регистрация middleware в правильном порядке
         # 1. Логирование (первым для записи всех событий)
@@ -124,15 +129,19 @@ class AIAssistantBot:
         dp.message.middleware(emotional_profiling_middleware)
         dp.callback_query.middleware(emotional_profiling_middleware)
 
-        # 9. Сохранение диалогов
+        # 9. Проверка верификации пользователя (после аутентификации, перед другими middleware)
+        dp.message.middleware(verification_middleware)
+        dp.callback_query.middleware(verification_middleware)
+
+        # 10. Сохранение диалогов
         dp.message.middleware(conversation_middleware)
         dp.callback_query.middleware(conversation_middleware)
 
-        # 10. Подсчет сообщений пользователей (только для сообщений)
+        # 11. Подсчет сообщений пользователей (только для сообщений)
         dp.message.middleware(message_counting_middleware)
         # Не регистрируем для callback_query, так как они не считаются в лимиты
 
-        # 11. Сбор метрик (последним для сбора полной информации)
+        # 12. Сбор метрик (последним для сбора полной информации)
         dp.message.middleware(metrics_middleware)
         dp.callback_query.middleware(metrics_middleware)
 
