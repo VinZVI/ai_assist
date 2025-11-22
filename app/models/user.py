@@ -20,6 +20,7 @@ from sqlalchemy import (
     Date,
     DateTime,
     Enum,
+    ForeignKey,
     Index,
     Integer,
     String,
@@ -34,8 +35,13 @@ from app.config import get_config
 from app.database import Base, get_session
 
 if TYPE_CHECKING:
+    from app.models.character import Character
+    from app.models.character_rating import CharacterRating
+    from app.models.chat import Chat
     from app.models.conversation import Conversation
     from app.models.payment import Payment
+    from app.models.scenario import Scenario
+    from app.models.subscription import Subscription
 
 
 class User(Base):
@@ -261,6 +267,50 @@ class User(Base):
         lazy="select",
     )
 
+    # Новые связи для Stage 1.2
+    chats: Mapped[list["Chat"]] = relationship(
+        "Chat",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+    created_characters: Mapped[list["Character"]] = relationship(
+        "Character",
+        foreign_keys="Character.created_by_user_id",
+    )
+    created_scenarios: Mapped[list["Scenario"]] = relationship(
+        "Scenario",
+        foreign_keys="Scenario.created_by_user_id",
+    )
+    character_ratings: Mapped[list["CharacterRating"]] = relationship(
+        "CharacterRating",
+        back_populates="user",
+    )
+
+    # Подписка пользователя
+    subscription: Mapped["Subscription"] = relationship(
+        "Subscription",
+        back_populates="user",
+        uselist=False,
+    )
+
+    # Статистика пользователя
+    total_chats: Mapped[int] = mapped_column(
+        Integer,
+        default=0,
+        comment="Общее количество чатов"
+    )
+    total_messages_sent: Mapped[int] = mapped_column(
+        Integer,
+        default=0,
+        comment="Общее количество отправленных сообщений"
+    )
+    favorite_character_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("characters.id"),
+        nullable=True,
+        comment="ID любимого персонажа"
+    )
+
     # Индексы
     __table_args__ = (
         Index("idx_user_telegram_id", "telegram_id"),
@@ -299,6 +349,10 @@ class User(Base):
             kwargs["community_guidelines_accepted"] = False
         if "verification_status" not in kwargs:
             kwargs["verification_status"] = "pending"
+        if "total_chats" not in kwargs:
+            kwargs["total_chats"] = 0
+        if "total_messages_sent" not in kwargs:
+            kwargs["total_messages_sent"] = 0
 
         super().__init__(**kwargs)
 
@@ -397,6 +451,11 @@ class User(Base):
             and self.community_guidelines_accepted
             and self.verification_status == "verified"
         )
+
+    @property
+    def active_chats_count(self) -> int:
+        """Количество активных чатов"""
+        return len([chat for chat in self.chats if chat.is_active])
 
 
 # Pydantic схемы для валидации и сериализации

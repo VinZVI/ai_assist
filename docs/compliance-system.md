@@ -71,6 +71,13 @@ Middleware that checks user verification status:
 - Allows certain commands without verification
 - Handles unverified user responses
 
+#### Auth Middleware Enhancement (`app/middleware/auth.py`)
+
+Enhanced authentication middleware with verification checking:
+- Checks if user's accepted terms versions are still current
+- Automatically expires verification status when terms are updated
+- Ensures users must re-accept updated terms
+
 ## Database Changes
 
 ### New User Fields
@@ -132,6 +139,13 @@ The verification middleware protects the bot by:
 - Blocking access to all other commands for unverified users
 - Allowing full access for verified users
 
+## Terms Version Checking
+
+The enhanced AuthMiddleware automatically checks if a user's accepted terms versions are still current:
+- When a verified user accesses the bot, their accepted terms versions are compared with current versions
+- If any version has changed, the user's verification status is automatically set to 'expired'
+- The user must re-accept the updated terms to continue using the bot
+
 ## Testing
 
 Unit tests cover:
@@ -140,6 +154,7 @@ Unit tests cover:
 - Consent rejection flow
 - Verification middleware behavior for verified and unverified users
 - Allowed command access for unverified users
+- Terms version checking and automatic expiration
 
 ## Migration
 
@@ -161,5 +176,6 @@ A database migration was created to add the new fields to the users table:
 - Integration with main application
 - End-to-end testing
 - Documentation updates
+- AuthMiddleware enhancement for terms version checking
 
 ✅ **All Components Complete:** The compliance system is fully implemented and integrated into the main application.

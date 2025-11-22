@@ -50,19 +50,19 @@ class AIAssistantBot:
             ),
         )
 
-    def create_dispatcher(self) -> Dispatcher:
+    async def create_dispatcher(self) -> Dispatcher:
         """Создание диспетчера с middleware и обработчиками."""
         dp = Dispatcher()
 
         # Регистрация middleware
-        self.register_middleware(dp)
+        await self.register_middleware(dp)
 
         # Регистрация обработчиков
         self.register_handlers(dp)
 
         return dp
 
-    def register_middleware(self, dp: Dispatcher) -> None:
+    async def register_middleware(self, dp: Dispatcher) -> None:
         """Регистрация middleware."""
         from app.middleware import (
             AdminMiddleware,
@@ -79,7 +79,11 @@ class AIAssistantBot:
         )
 
         # Import the new verification middleware
-        from app.middleware.verification_middleware import VerificationMiddleware
+        from app.middleware.verification_middleware import (
+            VerificationMiddleware,
+            setup_verification_middleware,
+        )
+        from app.core.dependencies import container
 
         # Создаем единственные экземпляры middleware
         logging_middleware = LoggingMiddleware()
@@ -93,8 +97,9 @@ class AIAssistantBot:
         message_counting_middleware = MessageCountingMiddleware()
         metrics_middleware = MetricsMiddleware()
         admin_middleware = AdminMiddleware()
-        # Create instance of the new verification middleware
-        verification_middleware = VerificationMiddleware()
+        # Create instance of the new verification middleware with proper dependencies
+        user_service = container.get("user_service")
+        verification_middleware = await setup_verification_middleware(user_service)
 
         # Регистрация middleware в правильном порядке
         # 1. Логирование (первым для записи всех событий)
@@ -210,7 +215,7 @@ class AIAssistantBot:
 
             # Создание бота и диспетчера
             self.bot = self.create_bot()
-            self.dp = self.create_dispatcher()
+            self.dp = await self.create_dispatcher()
 
             # Получение информации о боте
             bot_info = await self.bot.get_me()

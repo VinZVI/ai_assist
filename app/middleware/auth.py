@@ -1,9 +1,4 @@
-"""
-@file: middleware/auth.py
-@description: Middleware для аутентификации пользователей
-@dependencies: aiogram, loguru, app.models.user, app.services.user_service
-@created: 2025-10-09
-"""
+"""Middleware для автоматического получения/создания пользователя."""
 
 from collections.abc import Awaitable, Callable
 from typing import Any, ClassVar, cast
@@ -12,8 +7,10 @@ from aiogram.types import CallbackQuery, InaccessibleMessage, Message, TelegramO
 from aiogram.types import User as TelegramUser
 from loguru import logger
 
+from app.config import get_config
 from app.lexicon.gettext import get_log_text
 from app.middleware.base import BaseAIMiddleware
+from app.models.user import User as UserModel
 from app.services.cache_service import cache_service
 from app.services.user_service import get_or_update_user
 
@@ -32,6 +29,7 @@ class AuthMiddleware(BaseAIMiddleware):
         """Инициализация AuthMiddleware."""
         super().__init__()
         self.cache_service = cache_service
+        self.config = get_config()
         # Инициализация Redis кеша
         import asyncio
 
@@ -44,6 +42,28 @@ class AuthMiddleware(BaseAIMiddleware):
             await self.cache_service.initialize_redis_cache()
         except Exception as e:
             logger.error(f"Failed to initialize Redis cache: {e}")
+
+    async def check_terms_versions(self, user: UserModel) -> bool:
+        """
+        Проверка актуальности версий соглашений.
+        
+        Args:
+            user: Пользователь для проверки
+            
+        Returns:
+            bool: True если требуется повторная валидация
+        """
+        current_versions = {
+            'terms': self.config.compliance.terms_version,
+            'privacy': self.config.compliance.privacy_version,
+            'guidelines': self.config.compliance.guidelines_version
+        }
+        
+        return (
+            user.terms_version != current_versions['terms'] or
+            user.privacy_version != current_versions['privacy'] or
+            user.guidelines_version != current_versions['guidelines']
+        )
 
     async def __call__(
         self,
@@ -111,6 +131,16 @@ class AuthMiddleware(BaseAIMiddleware):
                     )
 
                 if user:
+                    # Добавляем проверку актуальности верификации
+                    if user.is_fully_verified:
+                        # Проверяем актуальность версий соглашений
+                        needs_revalidation = await self.check_terms_versions(user)
+                        if needs_revalidation:
+                            user.verification_status = 'expired'
+                            from app.core.dependencies import container
+                            user_service = container.get("user_service")
+                            await user_service.update_user(user)
+
                     # Добавляем пользователя в данные контекста
                     data["user"] = user
                     self._auth_stats["users_authenticated"] += 1

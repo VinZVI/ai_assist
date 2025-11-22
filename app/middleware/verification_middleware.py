@@ -32,14 +32,48 @@ class VerificationMiddleware(BaseMiddleware):
 
         # List of commands available without verification
         allowed_commands = ["/start", "/help", "/support"]
+        
+        # List of callback data available without verification
+        allowed_callbacks = [
+            "start_chat",
+            "my_stats",
+            "premium_info",
+            "help",
+            "settings",
+            "main_menu",
+        ]
+        
+        # List of callback prefixes available without verification
+        allowed_callback_prefixes = [
+            "onboarding:",
+            "consent:",
+            "select_language:",
+            "buy_premium:",
+        ]
 
         # Check event type
         if isinstance(event, Message):
             command = event.text
-            if command and command.split()[0] in allowed_commands:
+            # Allow text messages (non-commands) for conversation
+            if command:
+                # Allow commands in the allowed_commands list
+                if command.split()[0] in allowed_commands:
+                    return await handler(event, data)
+                # Allow non-command text messages for conversation
+                elif not command.startswith("/"):
+                    return await handler(event, data)
+        elif isinstance(event, CallbackQuery):
+            callback_data = event.data
+            if callback_data and (
+                callback_data in allowed_callbacks
+                or any(
+                    callback_data.startswith(prefix)
+                    for prefix in allowed_callback_prefixes
+                )
+            ):
                 return await handler(event, data)
 
-        # Check verification
+        # Check verification for other commands/callbacks
         if not user.is_fully_verified:
             await self.handle_unverified_user(event, user)
             return None

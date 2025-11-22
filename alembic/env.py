@@ -4,18 +4,35 @@ from sqlalchemy import engine_from_config, pool
 
 from alembic import context
 
+# Import the database configuration from the app
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+
+from app.config import get_config
+from app.models.user import Base
+from app.models.character import Character
+from app.models.scenario import Scenario
+from app.models.chat import Chat
+from app.models.chat_message import ChatMessage
+from app.models.character_tag import CharacterTag
+from app.models.character_rating import CharacterRating
+from app.models.subscription import Subscription, SubscriptionUsage
+
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
 
-target_metadata = None
+# Set the database URL from the app configuration
+app_config = get_config()
+config.set_main_option('sqlalchemy.url', app_config.database.database_url)
+
+target_metadata = Base.metadata
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
-
-target_metadata = None
 
 
 def run_migrations_offline() -> None:

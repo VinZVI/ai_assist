@@ -16,6 +16,7 @@ from loguru import logger
 
 from app.lexicon.gettext import get_log_text, get_text
 from app.middleware.base import BaseAIMiddleware
+from app.services.subscription_service import SubscriptionService
 
 if TYPE_CHECKING:
     from app.models.user import User
@@ -34,14 +35,16 @@ class RateLimitMiddleware(BaseAIMiddleware):
         "requests_processed": 0,
     }
 
-    def __init__(self, requests_per_minute: int = 10) -> None:
+    def __init__(self, subscription_service: SubscriptionService, requests_per_minute: int = 10) -> None:
         """
         Инициализация RateLimitMiddleware.
 
         Args:
+            subscription_service: Сервис управления подписками
             requests_per_minute: Максимальное количество запросов в минуту
         """
         super().__init__()
+        self.subscription_service = subscription_service
         self.requests_per_minute = requests_per_minute
         logger.info(
             get_log_text("middleware.rate_limit_middleware_initialized").format(
@@ -81,12 +84,65 @@ class RateLimitMiddleware(BaseAIMiddleware):
             # Получаем пользователя из контекста (если уже аутентифицирован)
             user: User | None = data.get("user")
 
-            # Для премиум пользователей увеличиваем лимит в 2 раза
-            max_requests = self.requests_per_minute * (
-                2 if user and user.is_premium else 1
+            # Проверяем лимиты сообщений через систему подписок
+            can_send = await self.subscription_service.check_usage_limit(
+                user_id, 
+                'messages', 
+                1
             )
 
-            # Очищаем старые записи (старше 1 минуты)
+            if not can_send:
+                # Превышен лимит сообщений
+                self._rate_limit_stats["requests_limited"] += 1
+                self._rate_limit_stats["requests_processed"] += 1
+
+                # Отправляем сообщение пользователю только для сообщений
+                if isinstance(event, Message):
+                    try:
+                        # Получаем статистику использования для отображения в сообщении
+                        stats = await self.subscription_service.get_usage_stats(user_id)
+                        user_lang = user.language_code if user else "ru"
+                        
+                        message = f"""
+⚠️ Дневной лимит сообщений исчерпан!
+
+📊 Использовано: {stats['messages']['used']}/{stats['messages']['limit']}
+
+💎 Обновите подписку для увеличения лимитов:
+• Стандарт: 100 сообщений/день
+• Премиум: 300 сообщений/день  
+• Deluxe: безлимит сообщений
+
+/upgrade - Обновить подписку
+                        """
+                        
+                        await event.answer(message)
+                    except Exception as e:
+                        logger.warning(
+                            get_log_text(
+                                "middleware.rate_limit_message_error"
+                            ).format(error=str(e))
+                        )
+                elif isinstance(event, CallbackQuery):
+                    try:
+                        user_lang = user.language_code if user else "ru"
+                        await event.answer(
+                            get_text(
+                                "errors.rate_limit_exceeded", user_lang or "ru"
+                            ),
+                            show_alert=True,
+                        )
+                    except Exception as e:
+                        logger.warning(
+                            get_log_text(
+                                "middleware.rate_limit_callback_error"
+                            ).format(error=str(e))
+                        )
+
+                # Не передаем управление следующему обработчику
+                return None
+
+            # Очищаем старые записи (старше 1 минуты) для обратной совместимости
             cutoff_time = datetime.now(UTC) - timedelta(minutes=1)
             self._request_counts[user_id] = [
                 timestamp
@@ -98,63 +154,12 @@ class RateLimitMiddleware(BaseAIMiddleware):
             if self._should_apply_rate_limit(event):
                 self._rate_limit_stats["requests_processed"] += 1
 
-                # Проверяем лимит
-                if len(self._request_counts[user_id]) >= max_requests:
-                    # Превышен лимит запросов
-                    self._rate_limit_stats["requests_limited"] += 1
-
-                    # Логируем только первый раз для пользователя в течение минуты
-                    if len(self._request_counts[user_id]) == max_requests:
-                        self._rate_limit_stats["users_limited"] += 1
-                        logger.warning(
-                            get_log_text("middleware.rate_limit_exceeded").format(
-                                user_id=user_id,
-                                requests_count=len(self._request_counts[user_id]),
-                                limit=max_requests,
-                            )
-                        )
-
-                    # Отправляем сообщение пользователю только для сообщений
-                    # Для callback queries отправляем ответ на callback
-                    if isinstance(event, Message):
-                        try:
-                            user_lang = user.language_code if user else "ru"
-                            await event.answer(
-                                get_text(
-                                    "errors.rate_limit_exceeded", user_lang or "ru"
-                                )
-                            )
-                        except Exception as e:
-                            logger.warning(
-                                get_log_text(
-                                    "middleware.rate_limit_message_error"
-                                ).format(error=str(e))
-                            )
-                    elif isinstance(event, CallbackQuery):
-                        try:
-                            user_lang = user.language_code if user else "ru"
-                            await event.answer(
-                                get_text(
-                                    "errors.rate_limit_exceeded", user_lang or "ru"
-                                ),
-                                show_alert=True,
-                            )
-                        except Exception as e:
-                            logger.warning(
-                                get_log_text(
-                                    "middleware.rate_limit_callback_error"
-                                ).format(error=str(e))
-                            )
-
-                    # Не передаем управление следующему обработчику
-                    return None
-
-            # Добавляем текущий запрос только если применяем ограничение
-            # Но не считаем callback-запросы в лимит сообщений
-            if self._should_apply_rate_limit(
-                event
-            ) and self._should_count_toward_message_limit(event):
-                self._request_counts[user_id].append(datetime.now(UTC))
+                # Добавляем текущий запрос только если применяем ограничение
+                # Но не считаем callback-запросы в лимит сообщений
+                if self._should_apply_rate_limit(
+                    event
+                ) and self._should_count_toward_message_limit(event):
+                    self._request_counts[user_id].append(datetime.now(UTC))
 
         # Передаем управление следующему обработчику
         return await handler(event, data)
