@@ -40,55 +40,35 @@ class Character(Base):
 
     # Основные поля
     id: Mapped[int] = mapped_column(
-        Integer,
-        primary_key=True,
-        index=True,
-        comment="Уникальный ID персонажа"
+        Integer, primary_key=True, index=True, comment="Уникальный ID персонажа"
     )
     name: Mapped[str] = mapped_column(
-        String(100),
-        nullable=False,
-        index=True,
-        comment="Имя персонажа"
+        String(100), nullable=False, index=True, comment="Имя персонажа"
     )
     gender: Mapped[str] = mapped_column(
-        Enum('male', 'female', 'other', name='character_gender'),
+        Enum("male", "female", "other", name="character_gender"),
         nullable=False,
-        comment="Пол персонажа"
+        comment="Пол персонажа",
     )
     age: Mapped[int] = mapped_column(
-        Integer,
-        nullable=False,
-        comment="Возраст персонажа"
+        Integer, nullable=False, comment="Возраст персонажа"
     )
     description: Mapped[str] = mapped_column(
-        Text,
-        nullable=False,
-        comment="Характер персонажа"
+        Text, nullable=False, comment="Характер персонажа"
     )
 
     # Системные поля
     avatar_url: Mapped[str | None] = mapped_column(
-        String(500),
-        nullable=True,
-        comment="URL аватара персонажа"
+        String(500), nullable=True, comment="URL аватара персонажа"
     )
     system_prompt: Mapped[str] = mapped_column(
-        Text,
-        nullable=False,
-        comment="Промпт для ИИ"
+        Text, nullable=False, comment="Промпт для ИИ"
     )
     is_active: Mapped[bool] = mapped_column(
-        Boolean,
-        default=True,
-        nullable=False,
-        comment="Активен ли персонаж"
+        Boolean, default=True, nullable=False, comment="Активен ли персонаж"
     )
     is_public: Mapped[bool] = mapped_column(
-        Boolean,
-        default=True,
-        nullable=False,
-        comment="Публичный ли персонаж"
+        Boolean, default=True, nullable=False, comment="Публичный ли персонаж"
     )
 
     # Метаинформация
@@ -96,65 +76,47 @@ class Character(Base):
         BigInteger,
         ForeignKey("users.telegram_id"),
         nullable=True,
-        comment="ID пользователя-создателя"
+        comment="ID пользователя-создателя",
     )
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=func.now(),
-        comment="Дата создания"
+        DateTime(timezone=True), default=func.now(), comment="Дата создания"
     )
     updated_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         onupdate=func.now(),
-        comment="Дата последнего обновления"
+        comment="Дата последнего обновления",
     )
 
     # Статистика
     total_chats: Mapped[int] = mapped_column(
-        Integer,
-        default=0,
-        comment="Общее количество чатов"
+        Integer, default=0, comment="Общее количество чатов"
     )
     total_messages: Mapped[int] = mapped_column(
-        Integer,
-        default=0,
-        comment="Общее количество сообщений"
+        Integer, default=0, comment="Общее количество сообщений"
     )
     rating_sum: Mapped[int] = mapped_column(
-        Integer,
-        default=0,
-        comment="Сумма рейтингов"
+        Integer, default=0, comment="Сумма рейтингов"
     )
     rating_count: Mapped[int] = mapped_column(
-        Integer,
-        default=0,
-        comment="Количество оценок"
+        Integer, default=0, comment="Количество оценок"
     )
 
     # Связи
     tags: Mapped[list["CharacterTag"]] = relationship(
-        "CharacterTag",
-        back_populates="character",
-        cascade="all, delete-orphan"
+        "CharacterTag", back_populates="character", cascade="all, delete-orphan"
     )
     ratings: Mapped[list["CharacterRating"]] = relationship(
-        "CharacterRating",
-        back_populates="character",
-        cascade="all, delete-orphan"
+        "CharacterRating", back_populates="character", cascade="all, delete-orphan"
     )
-    chats: Mapped[list["Chat"]] = relationship(
-        "Chat",
-        back_populates="character"
-    )
+    chats: Mapped[list["Chat"]] = relationship("Chat", back_populates="character")
     created_by: Mapped["User | None"] = relationship(
-        "User",
-        foreign_keys=[created_by_user_id]
+        "User", foreign_keys=[created_by_user_id]
     )
 
     # Индексы
     __table_args__ = (
-        Index('idx_character_name_active', 'name', 'is_active'),
-        Index('idx_character_created_by', 'created_by_user_id'),
+        Index("idx_character_name_active", "name", "is_active"),
+        Index("idx_character_created_by", "created_by_user_id"),
     )
 
     def __repr__(self) -> str:

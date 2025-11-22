@@ -38,112 +38,83 @@ class Chat(Base):
 
     # Основные поля
     id: Mapped[int] = mapped_column(
-        Integer,
-        primary_key=True,
-        index=True,
-        comment="Уникальный ID чата"
+        Integer, primary_key=True, index=True, comment="Уникальный ID чата"
     )
     user_id: Mapped[int] = mapped_column(
         BigInteger,
         ForeignKey("users.telegram_id"),
         nullable=False,
         index=True,
-        comment="ID пользователя"
+        comment="ID пользователя",
     )
     character_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("characters.id"),
         nullable=False,
         index=True,
-        comment="ID персонажа"
+        comment="ID персонажа",
     )
     scenario_id: Mapped[int | None] = mapped_column(
         Integer,
         ForeignKey("scenarios.id"),
         nullable=True,
         index=True,
-        comment="ID сценария"
+        comment="ID сценария",
     )
 
     # Настройки чата
     title: Mapped[str | None] = mapped_column(
-        String(200),
-        nullable=True,
-        comment="Пользовательское название"
+        String(200), nullable=True, comment="Пользовательское название"
     )
     is_active: Mapped[bool] = mapped_column(
-        Boolean,
-        default=True,
-        nullable=False,
-        comment="Активен ли чат"
+        Boolean, default=True, nullable=False, comment="Активен ли чат"
     )
 
     # Управление памятью
     memory_retention_days: Mapped[int | None] = mapped_column(
-        Integer,
-        nullable=True,
-        comment="Дней хранения памяти (null = безлимит)"
+        Integer, nullable=True, comment="Дней хранения памяти (null = безлимит)"
     )
     last_message_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True),
-        nullable=True,
-        comment="Время последнего сообщения"
+        DateTime(timezone=True), nullable=True, comment="Время последнего сообщения"
     )
 
     # Метаинформация
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=func.now(),
-        comment="Дата создания"
+        DateTime(timezone=True), default=func.now(), comment="Дата создания"
     )
     updated_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         onupdate=func.now(),
-        comment="Дата последнего обновления"
+        comment="Дата последнего обновления",
     )
 
     # Статистика
     total_messages: Mapped[int] = mapped_column(
-        Integer,
-        default=0,
-        comment="Общее количество сообщений"
+        Integer, default=0, comment="Общее количество сообщений"
     )
     user_messages_count: Mapped[int] = mapped_column(
-        Integer,
-        default=0,
-        comment="Количество сообщений пользователя"
+        Integer, default=0, comment="Количество сообщений пользователя"
     )
     ai_messages_count: Mapped[int] = mapped_column(
-        Integer,
-        default=0,
-        comment="Количество сообщений ИИ"
+        Integer, default=0, comment="Количество сообщений ИИ"
     )
 
     # Связи
-    user: Mapped["User"] = relationship(
-        "User",
-        back_populates="chats"
-    )
-    character: Mapped["Character"] = relationship(
-        "Character",
-        back_populates="chats"
-    )
+    user: Mapped["User"] = relationship("User", back_populates="chats")
+    character: Mapped["Character"] = relationship("Character", back_populates="chats")
     scenario: Mapped["Scenario | None"] = relationship(
-        "Scenario",
-        back_populates="chats"
+        "Scenario", back_populates="chats"
     )
     messages: Mapped[list["ChatMessage"]] = relationship(
-        "ChatMessage",
-        back_populates="chat",
-        cascade="all, delete-orphan"
+        "ChatMessage", back_populates="chat", cascade="all, delete-orphan"
     )
 
     # Индексы
     __table_args__ = (
-        Index('idx_user_character_scenario', 'user_id', 'character_id', 'scenario_id'),
-        Index('idx_user_active_chats', 'user_id', 'is_active'),
-        Index('idx_last_message', 'last_message_at'),
-        Index('idx_chat_created_at', 'created_at'),
+        Index("idx_user_character_scenario", "user_id", "character_id", "scenario_id"),
+        Index("idx_user_active_chats", "user_id", "is_active"),
+        Index("idx_last_message", "last_message_at"),
+        Index("idx_chat_created_at", "created_at"),
     )
 
     def __repr__(self) -> str:

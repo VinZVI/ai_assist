@@ -55,17 +55,14 @@ class Subscription(Base):
 
     # Основные поля
     id: Mapped[int] = mapped_column(
-        Integer,
-        primary_key=True,
-        index=True,
-        comment="Уникальный ID подписки"
+        Integer, primary_key=True, index=True, comment="Уникальный ID подписки"
     )
     user_id: Mapped[int] = mapped_column(
         BigInteger,
         ForeignKey("users.telegram_id"),
         nullable=False,
         unique=True,
-        comment="ID пользователя"
+        comment="ID пользователя",
     )
 
     # Информация о подписке
@@ -74,48 +71,35 @@ class Subscription(Base):
         default=SubscriptionTier.FREE,
         nullable=False,
         index=True,
-        comment="Уровень подписки"
+        comment="Уровень подписки",
     )
     status: Mapped[SubscriptionStatus] = mapped_column(
         SQLEnum(SubscriptionStatus),
         default=SubscriptionStatus.ACTIVE,
         nullable=False,
-        comment="Статус подписки"
+        comment="Статус подписки",
     )
 
     # Временные рамки
     started_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=func.now(),
-        comment="Дата начала подписки"
+        DateTime(timezone=True), default=func.now(), comment="Дата начала подписки"
     )
     expires_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True),
-        nullable=True,
-        comment="Дата окончания подписки"
+        DateTime(timezone=True), nullable=True, comment="Дата окончания подписки"
     )
     cancelled_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True),
-        nullable=True,
-        comment="Дата отмены подписки"
+        DateTime(timezone=True), nullable=True, comment="Дата отмены подписки"
     )
 
     # Лимиты (кэшируются для производительности)
     daily_message_limit: Mapped[int] = mapped_column(
-        Integer,
-        nullable=False,
-        comment="Дневной лимит сообщений"
+        Integer, nullable=False, comment="Дневной лимит сообщений"
     )
     daily_image_limit: Mapped[int] = mapped_column(
-        Integer,
-        default=0,
-        nullable=False,
-        comment="Дневной лимит изображений"
+        Integer, default=0, nullable=False, comment="Дневной лимит изображений"
     )
     memory_retention_days: Mapped[int | None] = mapped_column(
-        Integer,
-        nullable=True,
-        comment="Дней хранения памяти (null = безлимит)"
+        Integer, nullable=True, comment="Дней хранения памяти (null = безлимит)"
     )
 
     # Дополнительные возможности
@@ -123,80 +107,62 @@ class Subscription(Base):
         Boolean,
         default=False,
         nullable=False,
-        comment="Есть ли возможность генерации изображений"
+        comment="Есть ли возможность генерации изображений",
     )
     has_priority_queue: Mapped[bool] = mapped_column(
-        Boolean,
-        default=False,
-        nullable=False,
-        comment="Есть ли приоритет в очереди"
+        Boolean, default=False, nullable=False, comment="Есть ли приоритет в очереди"
     )
     has_no_ads: Mapped[bool] = mapped_column(
-        Boolean,
-        default=False,
-        nullable=False,
-        comment="Нет ли рекламы"
+        Boolean, default=False, nullable=False, comment="Нет ли рекламы"
     )
     max_characters_creation: Mapped[int | None] = mapped_column(
         Integer,
         nullable=True,
-        comment="Максимум созданных персонажей (null = безлимит)"
+        comment="Максимум созданных персонажей (null = безлимит)",
     )
     max_scenarios_per_character: Mapped[int | None] = mapped_column(
         Integer,
         nullable=True,
-        comment="Максимум сценариев на персонажа (null = безлимит)"
+        comment="Максимум сценариев на персонажа (null = безлимит)",
     )
 
     # Платежная информация
     payment_provider: Mapped[str | None] = mapped_column(
-        String(50),
-        nullable=True,
-        comment="Провайдер платежа"
+        String(50), nullable=True, comment="Провайдер платежа"
     )
     external_subscription_id: Mapped[str | None] = mapped_column(
-        String(200),
-        nullable=True,
-        comment="Внешний ID подписки"
+        String(200), nullable=True, comment="Внешний ID подписки"
     )
     last_payment_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True),
-        nullable=True,
-        comment="Дата последнего платежа"
+        DateTime(timezone=True), nullable=True, comment="Дата последнего платежа"
     )
     next_billing_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True),
-        nullable=True,
-        comment="Дата следующего платежа"
+        DateTime(timezone=True), nullable=True, comment="Дата следующего платежа"
     )
 
     # Метаинформация
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=func.now(),
-        comment="Дата создания"
+        DateTime(timezone=True), default=func.now(), comment="Дата создания"
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=func.now(),
         onupdate=func.now(),
-        comment="Дата последнего обновления"
+        comment="Дата последнего обновления",
     )
 
     # Связи
     user: Mapped["User"] = relationship("User", back_populates="subscription")
     usage_records: Mapped[list["SubscriptionUsage"]] = relationship(
-        "SubscriptionUsage",
-        back_populates="subscription",
-        cascade="all, delete-orphan"
+        "SubscriptionUsage", back_populates="subscription", cascade="all, delete-orphan"
     )
 
     # Индексы
     __table_args__ = (
-        Index('idx_subscription_user_id', 'user_id'),
-        Index('idx_subscription_tier', 'tier'),
-        Index('idx_subscription_status', 'status'),
-        Index('idx_subscription_expires_at', 'expires_at'),
+        Index("idx_subscription_user_id", "user_id"),
+        Index("idx_subscription_tier", "tier"),
+        Index("idx_subscription_status", "status"),
+        Index("idx_subscription_expires_at", "expires_at"),
     )
 
     def __repr__(self) -> str:
@@ -226,75 +192,54 @@ class SubscriptionUsage(Base):
     __tablename__ = "subscription_usage"
 
     id: Mapped[int] = mapped_column(
-        Integer,
-        primary_key=True,
-        comment="Уникальный ID записи использования"
+        Integer, primary_key=True, comment="Уникальный ID записи использования"
     )
     subscription_id: Mapped[int] = mapped_column(
-        Integer,
-        ForeignKey("subscriptions.id"),
-        nullable=False,
-        comment="ID подписки"
+        Integer, ForeignKey("subscriptions.id"), nullable=False, comment="ID подписки"
     )
 
     # Дата для группировки
     usage_date: Mapped[date] = mapped_column(
-        Date,
-        nullable=False,
-        index=True,
-        comment="Дата использования"
+        Date, nullable=False, index=True, comment="Дата использования"
     )
 
     # Счетчики использования
     messages_sent: Mapped[int] = mapped_column(
-        Integer,
-        default=0,
-        nullable=False,
-        comment="Отправлено сообщений"
+        Integer, default=0, nullable=False, comment="Отправлено сообщений"
     )
     images_generated: Mapped[int] = mapped_column(
-        Integer,
-        default=0,
-        nullable=False,
-        comment="Сгенерировано изображений"
+        Integer, default=0, nullable=False, comment="Сгенерировано изображений"
     )
     characters_created: Mapped[int] = mapped_column(
-        Integer,
-        default=0,
-        nullable=False,
-        comment="Создано персонажей"
+        Integer, default=0, nullable=False, comment="Создано персонажей"
     )
     scenarios_created: Mapped[int] = mapped_column(
-        Integer,
-        default=0,
-        nullable=False,
-        comment="Создано сценариев"
+        Integer, default=0, nullable=False, comment="Создано сценариев"
     )
 
     # Метаинформация
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=func.now(),
-        comment="Дата создания"
+        DateTime(timezone=True), default=func.now(), comment="Дата создания"
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=func.now(),
         onupdate=func.now(),
-        comment="Дата последнего обновления"
+        comment="Дата последнего обновления",
     )
 
     # Связи
     subscription: Mapped["Subscription"] = relationship(
-        "Subscription",
-        back_populates="usage_records"
+        "Subscription", back_populates="usage_records"
     )
 
     # Ограничения
     __table_args__ = (
-        UniqueConstraint('subscription_id', 'usage_date', name='uq_subscription_daily_usage'),
-        Index('idx_usage_date', 'usage_date'),
-        Index('idx_subscription_usage', 'subscription_id'),
+        UniqueConstraint(
+            "subscription_id", "usage_date", name="uq_subscription_daily_usage"
+        ),
+        Index("idx_usage_date", "usage_date"),
+        Index("idx_subscription_usage", "subscription_id"),
     )
 
     def __repr__(self) -> str:
@@ -302,4 +247,9 @@ class SubscriptionUsage(Base):
 
 
 # Экспорт для удобного использования
-__all__ = ["Subscription", "SubscriptionUsage", "SubscriptionTier", "SubscriptionStatus"]
+__all__ = [
+    "Subscription",
+    "SubscriptionUsage",
+    "SubscriptionTier",
+    "SubscriptionStatus",
+]

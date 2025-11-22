@@ -295,20 +295,16 @@ class User(Base):
 
     # Статистика пользователя
     total_chats: Mapped[int] = mapped_column(
-        Integer,
-        default=0,
-        comment="Общее количество чатов"
+        Integer, default=0, comment="Общее количество чатов"
     )
     total_messages_sent: Mapped[int] = mapped_column(
-        Integer,
-        default=0,
-        comment="Общее количество отправленных сообщений"
+        Integer, default=0, comment="Общее количество отправленных сообщений"
     )
     favorite_character_id: Mapped[int | None] = mapped_column(
         Integer,
         ForeignKey("characters.id"),
         nullable=True,
-        comment="ID любимого персонажа"
+        comment="ID любимого персонажа",
     )
 
     # Индексы

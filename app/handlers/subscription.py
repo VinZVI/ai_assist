@@ -26,44 +26,42 @@ class SubscriptionHandler:
         stats = await self.subscription_service.get_usage_stats(user.telegram_id)
 
         status_message = self.format_subscription_status(stats)
-        keyboard = self.create_subscription_keyboard(stats['tier'])
+        keyboard = self.create_subscription_keyboard(stats["tier"])
 
         await message.answer(
-            text=status_message,
-            reply_markup=keyboard,
-            parse_mode="HTML"
+            text=status_message, reply_markup=keyboard, parse_mode="HTML"
         )
 
     def format_subscription_status(self, stats: dict) -> str:
         """Форматирование статуса подписки"""
         tier_names = {
-            'free': '🆓 Без подписки',
-            'standard': '⭐ Стандарт',
-            'premium': '💎 Премиум',
-            'deluxe': '👑 Deluxe',
-            'admin': '🛡️ Админ'
+            "free": "🆓 Без подписки",
+            "standard": "⭐ Стандарт",
+            "premium": "💎 Премиум",
+            "deluxe": "👑 Deluxe",
+            "admin": "🛡️ Админ",
         }
 
-        tier_name = tier_names.get(stats['tier'], stats['tier'])
+        tier_name = tier_names.get(stats["tier"], stats["tier"])
 
         message = f"""
 <b>{tier_name}</b>
 
-📨 Сообщения: {stats['messages']['used']}"""
+📨 Сообщения: {stats["messages"]["used"]}"""
 
-        if stats['messages']['unlimited']:
+        if stats["messages"]["unlimited"]:
             message += " (безлимит)"
         else:
             message += f"/{stats['messages']['limit']}"
 
-        if stats['images']['limit'] > 0 or stats['images']['unlimited']:
+        if stats["images"]["limit"] > 0 or stats["images"]["unlimited"]:
             message += f"\n🖼️ Изображения: {stats['images']['used']}"
-            if stats['images']['unlimited']:
+            if stats["images"]["unlimited"]:
                 message += " (безлимит)"
             else:
                 message += f"/{stats['images']['limit']}"
 
-        if stats['expires_at']:
+        if stats["expires_at"]:
             message += f"\n⏰ До окончания: {stats['days_remaining']} дн."
 
         return message
@@ -71,40 +69,37 @@ class SubscriptionHandler:
     def create_subscription_keyboard(self, current_tier: str):
         """Создание клавиатуры для выбора подписки"""
         from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-        
+
         # Получаем доступные уровни подписки
         available_tiers = [
             SubscriptionTier.STANDARD,
             SubscriptionTier.PREMIUM,
-            SubscriptionTier.DELUXE
+            SubscriptionTier.DELUXE,
         ]
-        
+
         # Создаем кнопки для каждого уровня, кроме текущего
         buttons = []
         for tier in available_tiers:
             if tier.value != current_tier:
                 price = SubscriptionConfig.get_tier_price(tier)
                 tier_name = {
-                    'standard': '⭐ Стандарт',
-                    'premium': '💎 Премиум',
-                    'deluxe': '👑 Deluxe'
+                    "standard": "⭐ Стандарт",
+                    "premium": "💎 Премиум",
+                    "deluxe": "👑 Deluxe",
                 }.get(tier.value, tier.value)
-                
+
                 button = InlineKeyboardButton(
                     text=f"{tier_name} ({price} ⭐)",
-                    callback_data=f"upgrade:{tier.value}"
+                    callback_data=f"upgrade:{tier.value}",
                 )
                 buttons.append([button])
 
         if buttons:
-            buttons.append([
-                InlineKeyboardButton(
-                    text="❌ Отмена",
-                    callback_data="cancel_upgrade"
-                )
-            ])
+            buttons.append(
+                [InlineKeyboardButton(text="❌ Отмена", callback_data="cancel_upgrade")]
+            )
             return InlineKeyboardMarkup(inline_keyboard=buttons)
-        
+
         return None
 
     async def handle_upgrade_callback(self, callback: CallbackQuery, user: User):
@@ -120,20 +115,22 @@ class SubscriptionHandler:
         else:
             await callback.answer("Этот уровень недоступен для покупки")
 
-    async def create_payment_invoice(self, callback: CallbackQuery, user: User, tier: SubscriptionTier, price: int):
+    async def create_payment_invoice(
+        self, callback: CallbackQuery, user: User, tier: SubscriptionTier, price: int
+    ):
         """Создание счета для оплаты подписки"""
         tier_names = {
-            'standard': '⭐ Стандарт',
-            'premium': '💎 Премиум',
-            'deluxe': '👑 Deluxe'
+            "standard": "⭐ Стандарт",
+            "premium": "💎 Премиум",
+            "deluxe": "👑 Deluxe",
         }
-        
+
         tier_name = tier_names.get(tier.value, tier.value)
-        
+
         try:
             # Создаем счет на оплату через Telegram Stars
             prices = [{"label": f"Подписка {tier_name}", "amount": price}]
-            
+
             invoice = await callback.bot.send_invoice(
                 chat_id=user.telegram_id,
                 title=f"Подписка {tier_name}",
@@ -143,9 +140,9 @@ class SubscriptionHandler:
                 currency="XTR",  # Telegram Stars
                 prices=prices,
                 start_parameter=f"subscription_{tier.value}",
-                provider_data={}
+                provider_data={},
             )
-            
+
             await callback.answer("Счет на оплату создан!")
         except Exception as e:
             await callback.answer(f"Ошибка при создании счета: {str(e)}")
@@ -158,27 +155,25 @@ class SubscriptionHandler:
             if len(parts) >= 3 and parts[0] == "subscription":
                 tier_str = parts[1]
                 tier = SubscriptionTier(tier_str)
-                
+
                 # Обновляем подписку пользователя
                 payment_data = {
                     "provider": "telegram_stars",
-                    "external_id": message.successful_payment.telegram_payment_charge_id
+                    "external_id": message.successful_payment.telegram_payment_charge_id,
                 }
-                
+
                 subscription = await self.subscription_service.upgrade_subscription(
-                    user.telegram_id,
-                    tier,
-                    payment_data
+                    user.telegram_id, tier, payment_data
                 )
-                
+
                 tier_names = {
-                    'standard': '⭐ Стандарт',
-                    'premium': '💎 Премиум',
-                    'deluxe': '👑 Deluxe'
+                    "standard": "⭐ Стандарт",
+                    "premium": "💎 Премиум",
+                    "deluxe": "👑 Deluxe",
                 }
-                
+
                 tier_name = tier_names.get(tier.value, tier.value)
-                
+
                 success_message = f"""
 🎉 Поздравляем! 
 
@@ -192,10 +187,12 @@ class SubscriptionHandler:
 
 Спасибо за ваш выбор! 🙏
                 """
-                
+
                 await message.answer(success_message)
             else:
-                await message.answer("Ошибка обработки платежа. Пожалуйста, свяжитесь с поддержкой.")
+                await message.answer(
+                    "Ошибка обработки платежа. Пожалуйста, свяжитесь с поддержкой."
+                )
         except Exception as e:
             await message.answer(f"Ошибка при обработке платежа: {str(e)}")
 
@@ -205,14 +202,20 @@ class SubscriptionHandler:
         await callback.answer("Апгрейд отменен")
 
 
-def register_subscription_handlers(router: Router, subscription_service: SubscriptionService):
+def register_subscription_handlers(
+    router: Router, subscription_service: SubscriptionService
+):
     """Регистрация обработчиков подписки"""
     handler = SubscriptionHandler(subscription_service)
-    
+
     router.message.register(handler.handle_subscription_status, Command("subscription"))
-    router.callback_query.register(handler.handle_upgrade_callback, F.data.startswith("upgrade:"))
-    router.callback_query.register(handler.handle_cancel_upgrade, F.data == "cancel_upgrade")
-    
+    router.callback_query.register(
+        handler.handle_upgrade_callback, F.data.startswith("upgrade:")
+    )
+    router.callback_query.register(
+        handler.handle_cancel_upgrade, F.data == "cancel_upgrade"
+    )
+
     return handler
 
 

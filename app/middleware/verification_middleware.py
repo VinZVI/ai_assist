@@ -32,7 +32,7 @@ class VerificationMiddleware(BaseMiddleware):
 
         # List of commands available without verification
         allowed_commands = ["/start", "/help", "/support"]
-        
+
         # List of callback data available without verification
         allowed_callbacks = [
             "start_chat",
@@ -42,7 +42,7 @@ class VerificationMiddleware(BaseMiddleware):
             "settings",
             "main_menu",
         ]
-        
+
         # List of callback prefixes available without verification
         allowed_callback_prefixes = [
             "onboarding:",

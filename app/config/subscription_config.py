@@ -15,71 +15,71 @@ class SubscriptionConfig:
 
     TIER_SETTINGS = {
         SubscriptionTier.FREE: {
-            'daily_message_limit': 20,
-            'daily_image_limit': 0,
-            'memory_retention_days': None,  # Только кэш
-            'has_image_generation': False,
-            'has_priority_queue': False,
-            'has_no_ads': False,
-            'max_characters_creation': 5,
-            'max_scenarios_per_character': 1,
-            'response_speed': 'minimal',
-            'storage': 'cache_only',
-            'queue_priority': 'low'
+            "daily_message_limit": 20,
+            "daily_image_limit": 0,
+            "memory_retention_days": None,  # Только кэш
+            "has_image_generation": False,
+            "has_priority_queue": False,
+            "has_no_ads": False,
+            "max_characters_creation": 5,
+            "max_scenarios_per_character": 1,
+            "response_speed": "minimal",
+            "storage": "cache_only",
+            "queue_priority": "low",
         },
         SubscriptionTier.STANDARD: {
-            'daily_message_limit': 100,
-            'daily_image_limit': 0,
-            'memory_retention_days': 7,
-            'has_image_generation': False,
-            'has_priority_queue': True,
-            'has_no_ads': True,
-            'max_characters_creation': 10,
-            'max_scenarios_per_character': 3,
-            'response_speed': 'maximum',
-            'storage': 'database',
-            'queue_priority': 'normal'
+            "daily_message_limit": 100,
+            "daily_image_limit": 0,
+            "memory_retention_days": 7,
+            "has_image_generation": False,
+            "has_priority_queue": True,
+            "has_no_ads": True,
+            "max_characters_creation": 10,
+            "max_scenarios_per_character": 3,
+            "response_speed": "maximum",
+            "storage": "database",
+            "queue_priority": "normal",
         },
         SubscriptionTier.PREMIUM: {
-            'daily_message_limit': 300,
-            'daily_image_limit': 60,
-            'memory_retention_days': 30,
-            'has_image_generation': True,
-            'has_priority_queue': True,
-            'has_no_ads': True,
-            'max_characters_creation': None,  # Безлимит
-            'max_scenarios_per_character': None,  # Безлимит
-            'response_speed': 'maximum',
-            'storage': 'database',
-            'queue_priority': 'high'
+            "daily_message_limit": 300,
+            "daily_image_limit": 60,
+            "memory_retention_days": 30,
+            "has_image_generation": True,
+            "has_priority_queue": True,
+            "has_no_ads": True,
+            "max_characters_creation": None,  # Безлимит
+            "max_scenarios_per_character": None,  # Безлимит
+            "response_speed": "maximum",
+            "storage": "database",
+            "queue_priority": "high",
         },
         SubscriptionTier.DELUXE: {
-            'daily_message_limit': None,  # Безлимит
-            'daily_image_limit': None,  # Безлимит
-            'memory_retention_days': None,  # Безлимит
-            'has_image_generation': True,
-            'has_priority_queue': True,
-            'has_no_ads': True,
-            'max_characters_creation': None,  # Безлимит
-            'max_scenarios_per_character': None,  # Безлимит
-            'response_speed': 'maximum',
-            'storage': 'permanent',
-            'queue_priority': 'highest'
+            "daily_message_limit": None,  # Безлимит
+            "daily_image_limit": None,  # Безлимит
+            "memory_retention_days": None,  # Безлимит
+            "has_image_generation": True,
+            "has_priority_queue": True,
+            "has_no_ads": True,
+            "max_characters_creation": None,  # Безлимит
+            "max_scenarios_per_character": None,  # Безлимит
+            "response_speed": "maximum",
+            "storage": "permanent",
+            "queue_priority": "highest",
         },
         SubscriptionTier.ADMIN: {
-            'daily_message_limit': None,  # Безлимит
-            'daily_image_limit': None,  # Безлимит
-            'memory_retention_days': None,  # Безлимит
-            'has_image_generation': True,
-            'has_priority_queue': True,
-            'has_no_ads': True,
-            'max_characters_creation': None,  # Безлимит
-            'max_scenarios_per_character': None,  # Безлимит
-            'response_speed': 'maximum',
-            'storage': 'permanent',
-            'queue_priority': 'admin',
-            'admin_features': True
-        }
+            "daily_message_limit": None,  # Безлимит
+            "daily_image_limit": None,  # Безлимит
+            "memory_retention_days": None,  # Безлимит
+            "has_image_generation": True,
+            "has_priority_queue": True,
+            "has_no_ads": True,
+            "max_characters_creation": None,  # Безлимит
+            "max_scenarios_per_character": None,  # Безлимит
+            "response_speed": "maximum",
+            "storage": "permanent",
+            "queue_priority": "admin",
+            "admin_features": True,
+        },
     }
 
     # Цены подписок в Telegram Stars

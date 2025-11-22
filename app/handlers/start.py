@@ -80,10 +80,10 @@ def format_welcome_message(user: User, config: AppConfig) -> str:
 async def handle_start_command(message: Message, user: User) -> None:
     """
     Обработчик команды /start.
-    
+
     Отправляет приветственное сообщение с информацией о боте.
     Пользователь уже аутентифицирован через middleware.
-    
+
     Args:
         message: Объект сообщения от пользователя
         user: Объект пользователя из middleware
@@ -91,16 +91,16 @@ async def handle_start_command(message: Message, user: User) -> None:
     try:
         # Получаем конфигурацию
         config = get_config()
-        
+
         # Логируем попытку старта
         logger.info(
             get_log_text("start.start_command_received").format(user_id=user.id)
         )
-        
+
         # Обновляем информацию о пользователе если что-то изменилось
         # ВАЖНО: Не обновляем language_code, чтобы сохранить выбор пользователя
         user_updated = False
-        
+
         if (
             message.from_user
             and hasattr(message.from_user, "username")
@@ -108,7 +108,7 @@ async def handle_start_command(message: Message, user: User) -> None:
         ):
             user.username = message.from_user.username
             user_updated = True
-            
+
         if (
             message.from_user
             and hasattr(message.from_user, "first_name")
@@ -116,7 +116,7 @@ async def handle_start_command(message: Message, user: User) -> None:
         ):
             user.first_name = message.from_user.first_name
             user_updated = True
-            
+
         if (
             message.from_user
             and hasattr(message.from_user, "last_name")
@@ -124,14 +124,14 @@ async def handle_start_command(message: Message, user: User) -> None:
         ):
             user.last_name = message.from_user.last_name
             user_updated = True
-            
+
         # Обновляем время последней активности
         user.last_activity_at = datetime.now(UTC)
         user.updated_at = datetime.now(UTC)
-        
+
         # Сбрасываем дневной счетчик если прошел день
         user.reset_daily_count_if_needed()
-        
+
         if user_updated:
             async with get_session() as session:
                 session.add(user)
@@ -141,24 +141,24 @@ async def handle_start_command(message: Message, user: User) -> None:
                         user_id=user.id
                     )
                 )
-                
+
         # Формируем приветственное сообщение
         welcome_message = format_welcome_message(user, config)
-        
+
         # Отправляем приветственное сообщение с клавиатурой
         sent_message = await message.answer(
             welcome_message,
             reply_markup=create_main_menu_keyboard(user.language_code or "ru"),
             parse_mode="HTML",
         )
-        
+
         logger.info(
             get_log_text("start.start_command_processed").format(
                 user_id=user.id,
                 message_id=sent_message.message_id,
             )
         )
-        
+
     except Exception as e:
         logger.error(
             get_log_text("start.start_unexpected_error").format(

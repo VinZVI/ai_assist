@@ -46,23 +46,23 @@ class AuthMiddleware(BaseAIMiddleware):
     async def check_terms_versions(self, user: UserModel) -> bool:
         """
         Проверка актуальности версий соглашений.
-        
+
         Args:
             user: Пользователь для проверки
-            
+
         Returns:
             bool: True если требуется повторная валидация
         """
         current_versions = {
-            'terms': self.config.compliance.terms_version,
-            'privacy': self.config.compliance.privacy_version,
-            'guidelines': self.config.compliance.guidelines_version
+            "terms": self.config.compliance.terms_version,
+            "privacy": self.config.compliance.privacy_version,
+            "guidelines": self.config.compliance.guidelines_version,
         }
-        
+
         return (
-            user.terms_version != current_versions['terms'] or
-            user.privacy_version != current_versions['privacy'] or
-            user.guidelines_version != current_versions['guidelines']
+            user.terms_version != current_versions["terms"]
+            or user.privacy_version != current_versions["privacy"]
+            or user.guidelines_version != current_versions["guidelines"]
         )
 
     async def __call__(
@@ -136,8 +136,9 @@ class AuthMiddleware(BaseAIMiddleware):
                         # Проверяем актуальность версий соглашений
                         needs_revalidation = await self.check_terms_versions(user)
                         if needs_revalidation:
-                            user.verification_status = 'expired'
+                            user.verification_status = "expired"
                             from app.core.dependencies import container
+
                             user_service = container.get("user_service")
                             await user_service.update_user(user)
 

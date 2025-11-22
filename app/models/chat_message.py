@@ -37,79 +37,53 @@ class ChatMessage(Base):
 
     # Основные поля
     id: Mapped[int] = mapped_column(
-        Integer,
-        primary_key=True,
-        index=True,
-        comment="Уникальный ID сообщения"
+        Integer, primary_key=True, index=True, comment="Уникальный ID сообщения"
     )
     chat_id: Mapped[int] = mapped_column(
-        Integer,
-        ForeignKey("chats.id"),
-        nullable=False,
-        index=True,
-        comment="ID чата"
+        Integer, ForeignKey("chats.id"), nullable=False, index=True, comment="ID чата"
     )
 
     # Содержимое сообщения
     message_type: Mapped[str] = mapped_column(
-        Enum('user', 'ai', 'system', name='message_type'),
+        Enum("user", "ai", "system", name="message_type"),
         nullable=False,
         index=True,
-        comment="Тип сообщения"
+        comment="Тип сообщения",
     )
     content: Mapped[str] = mapped_column(
-        Text,
-        nullable=False,
-        comment="Содержимое сообщения"
+        Text, nullable=False, comment="Содержимое сообщения"
     )
     extra_data: Mapped[dict[str, Any] | None] = mapped_column(
-        JSON,
-        nullable=True,
-        comment="Дополнительные данные"
+        JSON, nullable=True, comment="Дополнительные данные"
     )
 
     # Для ИИ сообщений
     ai_model: Mapped[str | None] = mapped_column(
-        String(50),
-        nullable=True,
-        comment="Модель ИИ"
+        String(50), nullable=True, comment="Модель ИИ"
     )
     generation_time_ms: Mapped[int | None] = mapped_column(
-        Integer,
-        nullable=True,
-        comment="Время генерации в миллисекундах"
+        Integer, nullable=True, comment="Время генерации в миллисекундах"
     )
     token_count: Mapped[int | None] = mapped_column(
-        Integer,
-        nullable=True,
-        comment="Количество токенов"
+        Integer, nullable=True, comment="Количество токенов"
     )
 
     # Системные поля
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=func.now(),
-        index=True,
-        comment="Дата создания"
+        DateTime(timezone=True), default=func.now(), index=True, comment="Дата создания"
     )
     is_deleted: Mapped[bool] = mapped_column(
-        Boolean,
-        default=False,
-        nullable=False,
-        comment="Удалено ли сообщение"
+        Boolean, default=False, nullable=False, comment="Удалено ли сообщение"
     )
 
     # Связи
-    chat: Mapped["Chat"] = relationship(
-        "Chat",
-        back_populates="messages"
-    )
+    chat: Mapped["Chat"] = relationship("Chat", back_populates="messages")
 
     # Индексы для производительности
     __table_args__ = (
-        Index('idx_chat_created', 'chat_id', 'created_at'),
-        Index('idx_chat_type_created', 'chat_id', 'message_type', 'created_at'),
-        Index('idx_message_created_at', 'created_at'),
+        Index("idx_chat_created", "chat_id", "created_at"),
+        Index("idx_chat_type_created", "chat_id", "message_type", "created_at"),
+        Index("idx_message_created_at", "created_at"),
     )
 
     def __repr__(self) -> str:

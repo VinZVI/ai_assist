@@ -36,46 +36,27 @@ class Scenario(Base):
 
     # Основные поля
     id: Mapped[int] = mapped_column(
-        Integer,
-        primary_key=True,
-        index=True,
-        comment="Уникальный ID сценария"
+        Integer, primary_key=True, index=True, comment="Уникальный ID сценария"
     )
     title: Mapped[str] = mapped_column(
-        String(200),
-        nullable=False,
-        index=True,
-        comment="Название сценария"
+        String(200), nullable=False, index=True, comment="Название сценария"
     )
     description: Mapped[str] = mapped_column(
-        Text,
-        nullable=False,
-        comment="Описание сценария"
+        Text, nullable=False, comment="Описание сценария"
     )
     initial_prompt: Mapped[str] = mapped_column(
-        Text,
-        nullable=False,
-        comment="Стартовый промпт сценария"
+        Text, nullable=False, comment="Стартовый промпт сценария"
     )
 
     # Настройки
     is_active: Mapped[bool] = mapped_column(
-        Boolean,
-        default=True,
-        nullable=False,
-        comment="Активен ли сценарий"
+        Boolean, default=True, nullable=False, comment="Активен ли сценарий"
     )
     is_public: Mapped[bool] = mapped_column(
-        Boolean,
-        default=True,
-        nullable=False,
-        comment="Публичный ли сценарий"
+        Boolean, default=True, nullable=False, comment="Публичный ли сценарий"
     )
     min_age_rating: Mapped[int] = mapped_column(
-        Integer,
-        default=18,
-        nullable=False,
-        comment="Минимальный возрастной рейтинг"
+        Integer, default=18, nullable=False, comment="Минимальный возрастной рейтинг"
     )
 
     # Метаинформация
@@ -83,45 +64,35 @@ class Scenario(Base):
         BigInteger,
         ForeignKey("users.telegram_id"),
         nullable=True,
-        comment="ID пользователя-создателя"
+        comment="ID пользователя-создателя",
     )
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=func.now(),
-        comment="Дата создания"
+        DateTime(timezone=True), default=func.now(), comment="Дата создания"
     )
     updated_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         onupdate=func.now(),
-        comment="Дата последнего обновления"
+        comment="Дата последнего обновления",
     )
 
     # Статистика
     total_chats: Mapped[int] = mapped_column(
-        Integer,
-        default=0,
-        comment="Общее количество чатов"
+        Integer, default=0, comment="Общее количество чатов"
     )
     total_messages: Mapped[int] = mapped_column(
-        Integer,
-        default=0,
-        comment="Общее количество сообщений"
+        Integer, default=0, comment="Общее количество сообщений"
     )
 
     # Связи
-    chats: Mapped[list["Chat"]] = relationship(
-        "Chat",
-        back_populates="scenario"
-    )
+    chats: Mapped[list["Chat"]] = relationship("Chat", back_populates="scenario")
     created_by: Mapped["User | None"] = relationship(
-        "User",
-        foreign_keys=[created_by_user_id]
+        "User", foreign_keys=[created_by_user_id]
     )
 
     # Индексы
     __table_args__ = (
-        Index('idx_scenario_title_active', 'title', 'is_active'),
-        Index('idx_scenario_created_by', 'created_by_user_id'),
+        Index("idx_scenario_title_active", "title", "is_active"),
+        Index("idx_scenario_created_by", "created_by_user_id"),
     )
 
     def __repr__(self) -> str:

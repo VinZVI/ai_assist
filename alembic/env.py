@@ -7,6 +7,7 @@ from alembic import context
 # Import the database configuration from the app
 import sys
 import os
+
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from app.config import get_config
@@ -25,7 +26,7 @@ config = context.config
 
 # Set the database URL from the app configuration
 app_config = get_config()
-config.set_main_option('sqlalchemy.url', app_config.database.database_url)
+config.set_main_option("sqlalchemy.url", app_config.database.database_url)
 
 target_metadata = Base.metadata
 

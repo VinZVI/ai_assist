@@ -29,34 +29,23 @@ class CharacterTag(Base):
     __tablename__ = "character_tags"
 
     id: Mapped[int] = mapped_column(
-        Integer,
-        primary_key=True,
-        comment="Уникальный ID тега"
+        Integer, primary_key=True, comment="Уникальный ID тега"
     )
     character_id: Mapped[int] = mapped_column(
-        Integer,
-        ForeignKey("characters.id"),
-        nullable=False,
-        comment="ID персонажа"
+        Integer, ForeignKey("characters.id"), nullable=False, comment="ID персонажа"
     )
     tag_name: Mapped[str] = mapped_column(
-        String(50),
-        nullable=False,
-        index=True,
-        comment="Название тега"
+        String(50), nullable=False, index=True, comment="Название тега"
     )
 
     # Связи
-    character: Mapped["Character"] = relationship(
-        "Character",
-        back_populates="tags"
-    )
+    character: Mapped["Character"] = relationship("Character", back_populates="tags")
 
     # Ограничения
     __table_args__ = (
-        UniqueConstraint('character_id', 'tag_name', name='uq_character_tag'),
-        Index('idx_tag_name', 'tag_name'),
-        Index('idx_character_tag', 'character_id'),
+        UniqueConstraint("character_id", "tag_name", name="uq_character_tag"),
+        Index("idx_tag_name", "tag_name"),
+        Index("idx_character_tag", "character_id"),
     )
 
     def __repr__(self) -> str:
