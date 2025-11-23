@@ -1,7 +1,7 @@
 """
 @file: services/subscription_service.py
 @description: Сервис управления подписками
-@dependencies: sqlalchemy, app.models.subscription, app.config.subscription_config
+@dependencies: sqlalchemy, app.models.subscription, app.subscription_config.subscription_config
 @created: 2025-11-22
 """
 
@@ -16,7 +16,7 @@ from app.models.subscription import (
     SubscriptionTier,
     SubscriptionStatus,
 )
-from app.config.subscription_config import SubscriptionConfig
+from app.subscription_config import SubscriptionConfig
 from app.config import AppConfig
 
 

@@ -58,16 +58,27 @@ async def _initialize_business_services() -> None:
     from app.services.ai_manager import get_ai_manager
     from app.services.conversation import ConversationService
     from app.services.user_service import UserService
+    from app.services.subscription_service import SubscriptionService
+    from app.config import get_config
 
     # Создаем экземпляры сервисов
     conversation_service = ConversationService()
     user_service = UserService()
     ai_manager = get_ai_manager()
+    config = get_config()
+    
+    # Create a factory function for subscription service that gets db session each time
+    def create_subscription_service():
+        db_session = container.get("db_session")
+        return SubscriptionService(db_session, config)
+    
+    subscription_service = create_subscription_service()
 
     # Регистрируем сервисы
     container.register_singleton("conversation_service", conversation_service)
     container.register_singleton("user_service", user_service)
     container.register_singleton("ai_manager", ai_manager)
+    container.register_singleton("subscription_service", subscription_service)
 
     logger.info("Business services initialized")
 

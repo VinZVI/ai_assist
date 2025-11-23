@@ -1,5 +1,5 @@
 """
-@file: config/subscription_config.py
+@file: subscription_config/subscription_config.py
 @description: Конфигурация уровней подписок
 @dependencies: app.models.subscription
 @created: 2025-11-22
@@ -7,7 +7,16 @@
 
 from datetime import timedelta
 from typing import Dict, Any
-from app.models.subscription import SubscriptionTier
+from enum import Enum
+
+
+class SubscriptionTier(Enum):
+    """Уровни подписки"""
+    FREE = "free"
+    STANDARD = "standard"
+    PREMIUM = "premium"
+    DELUXE = "deluxe"
+    ADMIN = "admin"
 
 
 class SubscriptionConfig:
@@ -113,4 +122,4 @@ class SubscriptionConfig:
 
 
 # Экспорт для удобного использования
-__all__ = ["SubscriptionConfig"]
+__all__ = ["SubscriptionConfig", "SubscriptionTier"]

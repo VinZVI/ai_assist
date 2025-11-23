@@ -35,9 +35,7 @@ class RateLimitMiddleware(BaseAIMiddleware):
         "requests_processed": 0,
     }
 
-    def __init__(
-        self, subscription_service: SubscriptionService, requests_per_minute: int = 10
-    ) -> None:
+    def __init__(self, subscription_service: SubscriptionService, requests_per_minute: int = 10) -> None:
         """
         Инициализация RateLimitMiddleware.
 
@@ -88,7 +86,9 @@ class RateLimitMiddleware(BaseAIMiddleware):
 
             # Проверяем лимиты сообщений через систему подписок
             can_send = await self.subscription_service.check_usage_limit(
-                user_id, "messages", 1
+                user_id, 
+                'messages', 
+                1
             )
 
             if not can_send:
@@ -102,11 +102,11 @@ class RateLimitMiddleware(BaseAIMiddleware):
                         # Получаем статистику использования для отображения в сообщении
                         stats = await self.subscription_service.get_usage_stats(user_id)
                         user_lang = user.language_code if user else "ru"
-
+                        
                         message = f"""
 ⚠️ Дневной лимит сообщений исчерпан!
 
-📊 Использовано: {stats["messages"]["used"]}/{stats["messages"]["limit"]}
+📊 Использовано: {stats['messages']['used']}/{stats['messages']['limit']}
 
 💎 Обновите подписку для увеличения лимитов:
 • Стандарт: 100 сообщений/день
@@ -115,26 +115,28 @@ class RateLimitMiddleware(BaseAIMiddleware):
 
 /upgrade - Обновить подписку
                         """
-
+                        
                         await event.answer(message)
                     except Exception as e:
                         logger.warning(
-                            get_log_text("middleware.rate_limit_message_error").format(
-                                error=str(e)
-                            )
+                            get_log_text(
+                                "middleware.rate_limit_message_error"
+                            ).format(error=str(e))
                         )
                 elif isinstance(event, CallbackQuery):
                     try:
                         user_lang = user.language_code if user else "ru"
                         await event.answer(
-                            get_text("errors.rate_limit_exceeded", user_lang or "ru"),
+                            get_text(
+                                "errors.rate_limit_exceeded", user_lang or "ru"
+                            ),
                             show_alert=True,
                         )
                     except Exception as e:
                         logger.warning(
-                            get_log_text("middleware.rate_limit_callback_error").format(
-                                error=str(e)
-                            )
+                            get_log_text(
+                                "middleware.rate_limit_callback_error"
+                            ).format(error=str(e))
                         )
 
                 # Не передаем управление следующему обработчику

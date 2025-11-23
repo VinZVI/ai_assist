@@ -90,7 +90,12 @@ class AIAssistantBot:
         auth_middleware = AuthMiddleware()
         user_language_middleware = UserLanguageMiddleware()
         anti_spam_middleware = AntiSpamMiddleware()
-        rate_limit_middleware = RateLimitMiddleware()
+        
+        # Get subscription service from container for RateLimitMiddleware
+        from app.core.dependencies import container
+        subscription_service = container.get("subscription_service")
+        rate_limit_middleware = RateLimitMiddleware(subscription_service)
+        
         content_filter_middleware = ContentFilterMiddleware()
         emotional_profiling_middleware = EmotionalProfilingMiddleware()
         conversation_middleware = ConversationMiddleware()
