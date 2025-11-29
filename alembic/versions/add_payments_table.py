@@ -1,7 +1,7 @@
 """Add payments table
 
 Revision ID: add_payments_table
-Revises: 82d758b7d903
+Revises: 202511222300
 Create Date: 2025-10-10
 
 """
@@ -12,7 +12,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "add_payments_table"
-down_revision = "82d758b7d903"
+down_revision = None  # This should be the first migration or base
 branch_labels = None
 depends_on = None
 

@@ -12,6 +12,7 @@ from enum import Enum
 
 class SubscriptionTier(Enum):
     """Уровни подписки"""
+
     FREE = "free"
     STANDARD = "standard"
     PREMIUM = "premium"

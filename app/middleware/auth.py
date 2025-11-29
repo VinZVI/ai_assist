@@ -141,6 +141,73 @@ class AuthMiddleware(BaseAIMiddleware):
 
                             user_service = container.get("user_service")
                             await user_service.update_user(user)
+                            # Обновляем кеш, чтобы состояние было консистентным
+                            await self.cache_service.set_user(user)
+                            logger.info(
+                                f"User {user.telegram_id} verification expired due to terms update"
+                            )
+
+                    # Проверяем статусы верификации (pending/expired/rejected)
+                    if not user.is_fully_verified:
+                        is_allowed = False
+
+                        if isinstance(message, Message) and message.text:
+                            command = message.text.split()[0]
+                            allowed_commands = ["/start", "/help", "/support"]
+                            is_allowed = command in allowed_commands
+                        elif isinstance(event, CallbackQuery):
+                            callback_data = event.data or ""
+                            allowed_prefixes = ["onboarding:", "consent:"]
+                            is_allowed = any(
+                                callback_data.startswith(prefix)
+                                for prefix in allowed_prefixes
+                            )
+
+                        if not is_allowed:
+                            # Вместо просто отправки сообщения, перенаправляем на процесс верификации
+                            verification_message = self._get_verification_message(
+                                user.verification_status
+                            )
+                            try:
+                                if isinstance(message, Message):
+                                    # Отправляем сообщение с кнопкой для начала верификации
+                                    await message.answer(
+                                        verification_message,
+                                        reply_markup=self._get_verification_keyboard()
+                                    )
+                                elif isinstance(event, CallbackQuery):
+                                    # For callback queries, we need to be more careful
+                                    if (
+                                        event.message
+                                        and not isinstance(
+                                            event.message, InaccessibleMessage
+                                        )
+                                    ):
+                                        try:
+                                            # Try to edit the message first
+                                            await event.message.edit_text(
+                                                verification_message,
+                                                reply_markup=self._get_verification_keyboard()
+                                            )
+                                            logger.info(f"Edited message for unverified user {user.telegram_id}")
+                                        except Exception as edit_error:
+                                            # If editing fails, send a new message
+                                            logger.warning(f"Failed to edit message for user {user.telegram_id}: {edit_error}")
+                                            try:
+                                                await event.message.answer(
+                                                    verification_message,
+                                                    reply_markup=self._get_verification_keyboard()
+                                                )
+                                                logger.info(f"Sent new message for unverified user {user.telegram_id}")
+                                            except Exception as send_error:
+                                                logger.error(f"Failed to send message to user {user.telegram_id}: {send_error}")
+                                    # Always answer the callback query
+                                    await event.answer()
+                            except Exception as e:
+                                logger.error(
+                                    f"Error notifying user about verification: {e}"
+                                )
+                            return None
 
                     # Добавляем пользователя в данные контекста
                     data["user"] = user
@@ -191,3 +258,44 @@ class AuthMiddleware(BaseAIMiddleware):
             Словарь со статистикой кеша
         """
         return self.cache_service.get_cache_stats()
+
+    def _get_verification_message(self, status: str) -> str:
+        """
+        Возвращает текст для уведомления пользователя о необходимости верификации.
+
+        Args:
+            status: verification_status пользователя
+
+        Returns:
+            Строку с сообщением
+        """
+        if status == "expired":
+            return (
+                "⚠️ Ваша верификация истекла из-за обновления условий использования.\n\n"
+                "Нажмите кнопку ниже, чтобы пройти процесс заново."
+            )
+        if status == "rejected":
+            return (
+                "❌ Верификация была отклонена.\n\n"
+                "Если хотите продолжить пользоваться ботом, пройдите регистрацию заново."
+            )
+        return (
+            "⚠️ Для использования бота необходимо завершить регистрацию.\n\n"
+            "Пожалуйста, нажмите кнопку ниже, чтобы начать процесс верификации."
+        )
+
+    def _get_verification_keyboard(self):
+        """
+        Возвращает клавиатуру для начала верификации.
+        
+        Returns:
+            InlineKeyboardMarkup: Клавиатура с кнопкой для начала верификации
+        """
+        from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+        
+        keyboard = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [InlineKeyboardButton(text="🔄 Начать регистрацию", callback_data="onboarding:start")]
+            ]
+        )
+        return keyboard

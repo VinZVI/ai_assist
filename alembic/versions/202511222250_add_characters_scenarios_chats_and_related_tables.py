@@ -1,7 +1,7 @@
 """Add characters, scenarios, chats and related tables for Stage 1.2
 
 Revision ID: 202511222250
-Revises: 82d758b7d903
+Revises: 82d758b7d904
 Create Date: 2025-11-22 22:50:00.000000
 
 """
@@ -14,7 +14,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision: str = "202511222250"
-down_revision: Union[str, None] = "82d758b7d903"
+down_revision: Union[str, None] = "82d758b7d904"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

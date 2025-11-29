@@ -24,8 +24,14 @@ def upgrade() -> None:
     )
     verification_status_enum.create(op.get_bind(), checkfirst=True)
 
-    # Add new columns to users table
-    op.add_column(
+    # Check existing columns
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
+    existing_columns = [col["name"] for col in inspector.get_columns("users")]
+
+    # Add new columns to users table (only if they don't exist)
+    if "age_verified" not in existing_columns:
+        op.add_column(
         "users",
         sa.Column(
             "age_verified",
@@ -33,50 +39,58 @@ def upgrade() -> None:
             nullable=False,
             server_default=sa.text("false"),
         ),
-    )
-    op.add_column(
-        "users",
-        sa.Column(
-            "terms_accepted",
+        )
+    if "terms_accepted" not in existing_columns:
+        op.add_column(
+            "users",
+            sa.Column(
+                "terms_accepted",
             sa.Boolean(),
             nullable=False,
             server_default=sa.text("false"),
         ),
-    )
-    op.add_column(
-        "users",
-        sa.Column(
-            "privacy_policy_accepted",
+        )
+    if "privacy_policy_accepted" not in existing_columns:
+        op.add_column(
+            "users",
+            sa.Column(
+                "privacy_policy_accepted",
             sa.Boolean(),
             nullable=False,
             server_default=sa.text("false"),
         ),
-    )
-    op.add_column(
-        "users",
-        sa.Column(
-            "community_guidelines_accepted",
+        )
+    if "community_guidelines_accepted" not in existing_columns:
+        op.add_column(
+            "users",
+            sa.Column(
+                "community_guidelines_accepted",
             sa.Boolean(),
             nullable=False,
             server_default=sa.text("false"),
         ),
-    )
-    op.add_column(
-        "users",
-        sa.Column("consent_timestamp", sa.DateTime(timezone=True), nullable=True),
-    )
-    op.add_column(
-        "users", sa.Column("consent_ip_address", sa.String(45), nullable=True)
-    )
-    op.add_column("users", sa.Column("terms_version", sa.String(10), nullable=True))
-    op.add_column("users", sa.Column("privacy_version", sa.String(10), nullable=True))
-    op.add_column(
-        "users", sa.Column("guidelines_version", sa.String(10), nullable=True)
-    )
-    op.add_column(
-        "users",
-        sa.Column(
-            "verification_status",
+        )
+    if "consent_timestamp" not in existing_columns:
+        op.add_column(
+            "users", sa.Column("consent_timestamp", sa.DateTime(timezone=True), nullable=True),
+        )
+    if "consent_ip_address" not in existing_columns:
+        op.add_column(
+            "users", sa.Column("consent_ip_address", sa.String(45), nullable=True)
+        )
+    if "terms_version" not in existing_columns:
+        op.add_column("users", sa.Column("terms_version", sa.String(10), nullable=True))
+    if "privacy_version" not in existing_columns:
+        op.add_column("users", sa.Column("privacy_version", sa.String(10), nullable=True))
+    if "guidelines_version" not in existing_columns:
+        op.add_column(
+            "users", sa.Column("guidelines_version", sa.String(10), nullable=True)
+        )
+    if "verification_status" not in existing_columns:
+        op.add_column(
+            "users",
+            sa.Column(
+                "verification_status",
             verification_status_enum,
             nullable=False,
             server_default="pending",

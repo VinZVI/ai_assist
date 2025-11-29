@@ -1,7 +1,7 @@
 """Add subscription and usage tables for Stage 1.3
 
 Revision ID: 202511222300
-Revises: 202511222255
+Revises: 
 Create Date: 2025-11-22 23:00:00.000000
 
 """
@@ -28,7 +28,7 @@ def upgrade() -> None:
         sa.Column(
             "id",
             sa.Integer(),
-            autoincrement=False,
+            autoincrement=True,
             nullable=False,
             comment="Уникальный ID подписки",
         ),
@@ -144,13 +144,15 @@ def upgrade() -> None:
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
-            nullable=True,
+            nullable=False,
+            server_default=sa.func.now(),
             comment="Дата создания",
         ),
         sa.Column(
             "updated_at",
             sa.DateTime(timezone=True),
-            nullable=True,
+            nullable=False,
+            server_default=sa.func.now(),
             comment="Дата последнего обновления",
         ),
         sa.ForeignKeyConstraint(
@@ -167,9 +169,7 @@ def upgrade() -> None:
         "idx_subscription_status", "subscriptions", ["status"], unique=False
     )
     op.create_index("idx_subscription_tier", "subscriptions", ["tier"], unique=False)
-    op.create_index(
-        "idx_subscription_user_id", "subscriptions", ["user_id"], unique=False
-    )
+    op.create_index("idx_subscription_user_id", "subscriptions", ["user_id"], unique=False)
     op.create_index(op.f("ix_subscriptions_id"), "subscriptions", ["id"], unique=False)
 
     # Create subscription_usage table
@@ -178,7 +178,7 @@ def upgrade() -> None:
         sa.Column(
             "id",
             sa.Integer(),
-            autoincrement=False,
+            autoincrement=True,
             nullable=False,
             comment="Уникальный ID записи использования",
         ),
@@ -192,36 +192,42 @@ def upgrade() -> None:
             "messages_sent",
             sa.Integer(),
             nullable=False,
+            server_default="0",
             comment="Отправлено сообщений",
         ),
         sa.Column(
             "images_generated",
             sa.Integer(),
             nullable=False,
+            server_default="0",
             comment="Сгенерировано изображений",
         ),
         sa.Column(
             "characters_created",
             sa.Integer(),
             nullable=False,
+            server_default="0",
             comment="Создано персонажей",
         ),
         sa.Column(
             "scenarios_created",
             sa.Integer(),
             nullable=False,
+            server_default="0",
             comment="Создано сценариев",
         ),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
-            nullable=True,
+            nullable=False,
+            server_default=sa.func.now(),
             comment="Дата создания",
         ),
         sa.Column(
             "updated_at",
             sa.DateTime(timezone=True),
-            nullable=True,
+            nullable=False,
+            server_default=sa.func.now(),
             comment="Дата последнего обновления",
         ),
         sa.ForeignKeyConstraint(

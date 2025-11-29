@@ -8,6 +8,13 @@
 
 # Импорт базового класса для моделей
 from app.database import Base
+
+# Импорт всех SQLAlchemy моделей (важно для разрешения relationships)
+from app.models.character import Character
+from app.models.character_rating import CharacterRating
+from app.models.character_tag import CharacterTag
+from app.models.chat import Chat
+from app.models.chat_message import ChatMessage
 from app.models.conversation import (
     Conversation,
     ConversationBase,
@@ -19,9 +26,9 @@ from app.models.conversation import (
     ConversationUpdate,
     MessageRole,
 )
-
-# Импорт всех моделей
 from app.models.payment import Payment
+from app.models.scenario import Scenario
+from app.models.subscription import Subscription, SubscriptionUsage, SubscriptionStatus
 from app.models.user import (
     User,
     UserBase,
@@ -35,7 +42,19 @@ from app.models.user import (
 __all__ = [
     # База данных
     "Base",
+    # SQLAlchemy модели (важно импортировать все для разрешения relationships)
+    "Character",
+    "CharacterRating",
+    "CharacterTag",
+    "Chat",
+    "ChatMessage",
     "Conversation",
+    "Payment",
+    "Scenario",
+    "Subscription",
+    "SubscriptionUsage",
+    "SubscriptionStatus",
+    "User",
     # Pydantic схемы для Conversation
     "ConversationBase",
     "ConversationCreate",
@@ -46,9 +65,6 @@ __all__ = [
     "ConversationUpdate",
     # Enums
     "MessageRole",
-    # Модели SQLAlchemy
-    "Payment",
-    "User",
     # Pydantic схемы для User
     "UserBase",
     "UserCreate",

@@ -11,7 +11,7 @@ from aiogram.types import CallbackQuery, Message
 from aiogram.types.base import TelegramObject
 from loguru import logger
 
-from app.compliance.consent_manager import ConsentManager
+from app.compliance.consent_manager import ConsentManager, OnboardingState
 from app.compliance.legal_texts import LegalTexts
 from app.keyboards.onboarding_keyboards import OnboardingKeyboards
 from app.models.user import User
@@ -62,6 +62,11 @@ class OnboardingHandler:
 
         # Set state to WELCOME
         await state.set_state(OnboardingStates.WELCOME)
+        logger.info(f"Set FSM state to WELCOME for user {user.telegram_id}")
+
+        # Log the current state to verify it was set
+        current_state = await state.get_state()
+        logger.info(f"Verified FSM state for user {user.telegram_id}: {current_state}")
 
     async def show_welcome_message(
         self, message: Message, user: User, state: FSMContext
@@ -89,25 +94,80 @@ class OnboardingHandler:
     ):
         """Handle onboarding callbacks."""
 
-        action = callback.data.split(":")[1]
+        # Log the callback data for debugging
+        logger.info(f"Received onboarding callback with data: {callback.data}")
+
+        # Log current state
+        current_state = await state.get_state()
+        logger.info(f"Current FSM state: {current_state}")
+
+        # Ensure we have data and it starts with "onboarding:"
+        if not callback.data or not callback.data.startswith("onboarding:"):
+            logger.warning(f"Invalid onboarding callback data: {callback.data}")
+            await callback.answer("Invalid callback data")
+            return
+
+        try:
+            # Split the callback data to get the action
+            parts = callback.data.split(":")
+            if len(parts) < 2:
+                logger.error(f"Malformed onboarding callback data: {callback.data}")
+                await callback.answer("Invalid callback format")
+                return
+
+            action = parts[1]
+            logger.info(f"Processing onboarding action: {action}")
+        except Exception as e:
+            logger.error(
+                f"Error processing onboarding callback data '{callback.data}': {e}"
+            )
+            await callback.answer("Error processing callback")
+            return
 
         if action == "start":
-            await callback.message.edit_text(
-                text=LegalTexts.CONSENT_TEXT,
-                reply_markup=OnboardingKeyboards.consent_keyboard(),
-                parse_mode="HTML",
-                disable_web_page_preview=True,
-            )
+            try:
+                await callback.message.edit_text(
+                    text=LegalTexts.CONSENT_TEXT,
+                    reply_markup=OnboardingKeyboards.consent_keyboard(),
+                    parse_mode="HTML",
+                    disable_web_page_preview=True,
+                )
+                logger.info(f"Updated message for user {user.telegram_id}")
 
-            # Set state to CONSENT
-            await state.set_state(OnboardingStates.CONSENT)
-
+                # Set state to CONSENT
+                await state.set_state(OnboardingStates.CONSENT)
+                logger.info(f"Set FSM state to CONSENT for user {user.telegram_id}")
+            except Exception as e:
+                logger.error(f"Error updating message for user {user.telegram_id}: {e}")
+                try:
+                    await callback.message.answer(
+                        text=LegalTexts.CONSENT_TEXT,
+                        reply_markup=OnboardingKeyboards.consent_keyboard(),
+                        parse_mode="HTML",
+                    )
+                    await state.set_state(OnboardingStates.CONSENT)
+                    logger.info(
+                        f"Sent new message and set FSM state to CONSENT for user {user.telegram_id}"
+                    )
+                except Exception as e2:
+                    logger.error(
+                        f"Error sending new message for user {user.telegram_id}: {e2}"
+                    )
         elif action == "info":
-            await callback.message.edit_text(
-                text=LegalTexts.BOT_INFO_MESSAGE,
-                reply_markup=OnboardingKeyboards.info_keyboard(),
-                parse_mode="HTML",
-            )
+            try:
+                await callback.message.edit_text(
+                    text=LegalTexts.BOT_INFO_MESSAGE,
+                    reply_markup=OnboardingKeyboards.info_keyboard(),
+                    parse_mode="HTML",
+                )
+                logger.info(f"Updated message with info for user {user.telegram_id}")
+            except Exception as e:
+                logger.error(
+                    f"Error updating message with info for user {user.telegram_id}: {e}"
+                )
+        else:
+            logger.warning(f"Unknown onboarding action: {action}")
+            await callback.answer("Unknown action")
 
         # Answer the callback query
         await callback.answer()
@@ -149,11 +209,18 @@ class OnboardingHandler:
                 parse_mode="HTML",
             )
 
-            # Set state to COMPLETED
-            await state.set_state(OnboardingStates.COMPLETED)
-
-            # Log successful registration
-            logger.info(f"User {user.telegram_id} completed onboarding successfully")
+            # Set state based on business logic result
+            if result.next_state == OnboardingState.COMPLETED:
+                await state.set_state(OnboardingStates.COMPLETED)
+                logger.info(
+                    f"User {user.telegram_id} completed onboarding successfully"
+                )
+            else:
+                # For other states, we might want to handle them differently
+                await state.set_state(OnboardingStates.COMPLETED)  # Default fallback
+                logger.info(
+                    f"User {user.telegram_id} onboarding result: {result.next_state}"
+                )
         else:
             await callback.message.edit_text(
                 text="❌ Произошла ошибка при регистрации. Попробуйте еще раз.",
@@ -199,13 +266,22 @@ async def setup_onboarding_handler(user_service: UserService):
         onboarding_handler.handle_start_command, Command("start")
     )
 
+    # Register callback handlers
+    # Note: We're not using StateFilter here because we want to handle onboarding:start
+    # even when the user doesn't have a state set yet (e.g., when they click the button
+    # from the AuthMiddleware message)
     onboarding_router.callback_query.register(
         onboarding_handler.handle_onboarding_callback,
         lambda c: c.data and c.data.startswith("onboarding:"),
     )
 
+    # Handle consent callbacks with state filter since these should only be processed
+    # when the user is in the CONSENT state
+    from aiogram.filters import StateFilter
+
     onboarding_router.callback_query.register(
         onboarding_handler.handle_consent_callback,
+        StateFilter(OnboardingStates.CONSENT),
         lambda c: c.data and c.data.startswith("consent:"),
     )
 

@@ -58,12 +58,13 @@ class AIAssistantBot:
         await self.register_middleware(dp)
 
         # Регистрация обработчиков
-        self.register_handlers(dp)
+        await self.register_handlers(dp)
 
         return dp
 
     async def register_middleware(self, dp: Dispatcher) -> None:
         """Регистрация middleware."""
+        from app.core.dependencies import container
         from app.middleware import (
             AdminMiddleware,
             AntiSpamMiddleware,
@@ -83,19 +84,17 @@ class AIAssistantBot:
             VerificationMiddleware,
             setup_verification_middleware,
         )
-        from app.core.dependencies import container
 
         # Создаем единственные экземпляры middleware
         logging_middleware = LoggingMiddleware()
         auth_middleware = AuthMiddleware()
         user_language_middleware = UserLanguageMiddleware()
         anti_spam_middleware = AntiSpamMiddleware()
-        
+
         # Get subscription service from container for RateLimitMiddleware
-        from app.core.dependencies import container
         subscription_service = container.get("subscription_service")
         rate_limit_middleware = RateLimitMiddleware(subscription_service)
-        
+
         content_filter_middleware = ContentFilterMiddleware()
         emotional_profiling_middleware = EmotionalProfilingMiddleware()
         conversation_middleware = ConversationMiddleware()
@@ -157,10 +156,25 @@ class AIAssistantBot:
 
         logger.info(get_log_text("main.bot_registered_middleware"))
 
-    def register_handlers(self, dp: Dispatcher) -> None:
+    async def register_handlers(self, dp: Dispatcher) -> None:
         """Регистрация всех обработчиков."""
+        # First, set up any routers that need special initialization
+        from app.core.dependencies import container
+        from app.handlers.onboarding import setup_onboarding_handler
+
+        # Get user service for onboarding setup
+        user_service = container.get("user_service")
+
+        # Set up the onboarding router with its dependencies
+        onboarding_router = await setup_onboarding_handler(user_service)
+
+        # Now register all routers including the properly set up onboarding router
         for router in ROUTERS:
-            dp.include_router(router)
+            # Replace the onboarding router with the properly set up one
+            if router.name == "onboarding":
+                dp.include_router(onboarding_router)
+            else:
+                dp.include_router(router)
 
         logger.info(
             get_log_text("main.bot_registered_routers").format(count=len(ROUTERS))

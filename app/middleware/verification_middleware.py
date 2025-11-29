@@ -28,6 +28,9 @@ class VerificationMiddleware(BaseMiddleware):
         user: User = data.get("user")
 
         if not user:
+            logger.info(
+                "VerificationMiddleware: No user in context, allowing event to proceed"
+            )
             return await handler(event, data)
 
         # List of commands available without verification
@@ -54,30 +57,77 @@ class VerificationMiddleware(BaseMiddleware):
         # Check event type
         if isinstance(event, Message):
             command = event.text
+            logger.info(
+                f"VerificationMiddleware: Processing message with text: {command}"
+            )
             # Allow text messages (non-commands) for conversation
             if command:
                 # Allow commands in the allowed_commands list
                 if command.split()[0] in allowed_commands:
+                    logger.info(
+                        f"VerificationMiddleware: Allowing command '{command}' to proceed"
+                    )
                     return await handler(event, data)
                 # Allow non-command text messages for conversation
-                elif not command.startswith("/"):
+                if not command.startswith("/"):
+                    logger.info(
+                        "VerificationMiddleware: Allowing non-command message to proceed"
+                    )
                     return await handler(event, data)
+                logger.info(
+                    f"VerificationMiddleware: Command '{command}' requires verification"
+                )
         elif isinstance(event, CallbackQuery):
             callback_data = event.data
-            if callback_data and (
-                callback_data in allowed_callbacks
-                or any(
-                    callback_data.startswith(prefix)
-                    for prefix in allowed_callback_prefixes
+            logger.info(
+                f"VerificationMiddleware: Processing callback with data: {callback_data}"
+            )
+
+            # Check if callback data is allowed
+            is_allowed = False
+            if callback_data:
+                # Direct match
+                if callback_data in allowed_callbacks:
+                    is_allowed = True
+                    logger.info(
+                        f"VerificationMiddleware: Callback data '{callback_data}' is in allowed_callbacks"
+                    )
+
+                # Prefix match
+                for prefix in allowed_callback_prefixes:
+                    if callback_data.startswith(prefix):
+                        is_allowed = True
+                        logger.info(
+                            f"VerificationMiddleware: Callback data '{callback_data}' starts with allowed prefix '{prefix}'"
+                        )
+                        break
+
+            if is_allowed:
+                logger.info(
+                    f"VerificationMiddleware: Allowing callback '{callback_data}' to proceed"
                 )
-            ):
                 return await handler(event, data)
+            logger.info(
+                f"VerificationMiddleware: Callback '{callback_data}' not allowed, checking verification status"
+            )
 
         # Check verification for other commands/callbacks
+        logger.info(
+            f"VerificationMiddleware: Checking verification status for user {user.telegram_id}"
+        )
+        logger.info(f"  User verification_status: {user.verification_status}")
+        logger.info(f"  User is_fully_verified: {user.is_fully_verified}")
+
         if not user.is_fully_verified:
+            logger.info(
+                f"VerificationMiddleware: User {user.telegram_id} is not fully verified, handling accordingly"
+            )
             await self.handle_unverified_user(event, user)
             return None
 
+        logger.info(
+            f"VerificationMiddleware: User {user.telegram_id} is fully verified, allowing to proceed"
+        )
         return await handler(event, data)
 
     async def handle_unverified_user(self, event: TelegramObject, user: User):

@@ -31,7 +31,15 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.config import get_config
+# Import the config module directly from the file to avoid circular imports
+import sys
+import os
+import importlib.util
+spec = importlib.util.spec_from_file_location("config", os.path.join(os.path.dirname(__file__), "..", "config.py"))
+config_module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(config_module)
+get_config = config_module.get_config
+
 from app.database import Base, get_session
 
 if TYPE_CHECKING:
@@ -267,23 +275,29 @@ class User(Base):
         lazy="select",
     )
 
-    # Новые связи для Stage 1.2
+    # Новые связи для Stage 1.2 - use string annotations for forward references
     chats: Mapped[list["Chat"]] = relationship(
         "Chat",
         back_populates="user",
         cascade="all, delete-orphan",
+        lazy="select",
     )
     created_characters: Mapped[list["Character"]] = relationship(
         "Character",
         foreign_keys="Character.created_by_user_id",
+        lazy="select",
+        overlaps="created_by",
     )
     created_scenarios: Mapped[list["Scenario"]] = relationship(
         "Scenario",
         foreign_keys="Scenario.created_by_user_id",
+        lazy="select",
+        overlaps="created_by",
     )
     character_ratings: Mapped[list["CharacterRating"]] = relationship(
         "CharacterRating",
         back_populates="user",
+        lazy="select",
     )
 
     # Подписка пользователя
@@ -291,6 +305,7 @@ class User(Base):
         "Subscription",
         back_populates="user",
         uselist=False,
+        lazy="select",
     )
 
     # Статистика пользователя
@@ -545,5 +560,3 @@ __all__ = [
     "UserUpdate",
 ]
 
-
-# Add this at the end of the file to resolve the forward reference

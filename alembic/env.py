@@ -10,7 +10,14 @@ import os
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from app.config import get_config
+# Import the config module directly from the file
+import importlib.util
+spec = importlib.util.spec_from_file_location("config", os.path.join(os.path.dirname(os.path.dirname(__file__)), "app", "config.py"))
+config_module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(config_module)
+get_config = config_module.get_config
+
+# Import models
 from app.models.user import Base
 from app.models.character import Character
 from app.models.scenario import Scenario
@@ -24,9 +31,13 @@ from app.models.subscription import Subscription, SubscriptionUsage
 # access to the values within the .ini file in use.
 config = context.config
 
-# Set the database URL from the app configuration
+# Set the database URL from the app configuration (use synchronous URL for Alembic)
 app_config = get_config()
-config.set_main_option("sqlalchemy.url", app_config.database.database_url)
+# Convert asyncpg URL to psycopg2 URL for Alembic
+database_url = app_config.database.database_url
+if database_url.startswith("postgresql+asyncpg://"):
+    database_url = database_url.replace("postgresql+asyncpg://", "postgresql://")
+config.set_main_option("sqlalchemy.url", database_url)
 
 target_metadata = Base.metadata
 

@@ -60,6 +60,7 @@ async def _initialize_business_services() -> None:
     from app.services.user_service import UserService
     from app.services.subscription_service import SubscriptionService
     from app.config import get_config
+    from app.database import get_session
 
     # Создаем экземпляры сервисов
     conversation_service = ConversationService()
@@ -68,17 +69,25 @@ async def _initialize_business_services() -> None:
     config = get_config()
     
     # Create a factory function for subscription service that gets db session each time
-    def create_subscription_service():
-        db_session = container.get("db_session")
-        return SubscriptionService(db_session, config)
+    async def create_subscription_service():
+        # Create a new session for each service instance
+        async with get_session() as session:
+            return SubscriptionService(session, config)
     
-    subscription_service = create_subscription_service()
+    # For now, create a single instance with a session
+    # In a real application, you'd want to create sessions per request
+    subscription_service = SubscriptionService.__new__(SubscriptionService)
+    subscription_service.config = config
 
     # Регистрируем сервисы
+    container.register_singleton("config", config)
     container.register_singleton("conversation_service", conversation_service)
     container.register_singleton("user_service", user_service)
     container.register_singleton("ai_manager", ai_manager)
     container.register_singleton("subscription_service", subscription_service)
+    
+    # Also register a factory for creating subscription services with proper sessions
+    container.register_factory("subscription_service_factory", create_subscription_service)
 
     logger.info("Business services initialized")
 

@@ -24,7 +24,16 @@ from sqlalchemy.ext.asyncio import (
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.pool import NullPool
 
-from app.config import get_config
+import sys
+import os
+
+# Import the config module directly from the file to avoid circular imports
+import importlib.util
+spec = importlib.util.spec_from_file_location("config", os.path.join(os.path.dirname(__file__), "config.py"))
+config_module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(config_module)
+get_config = config_module.get_config
+
 from app.lexicon.gettext import get_log_text
 
 
@@ -224,6 +233,22 @@ async def init_db() -> None:
 
     try:
         logger.info(get_log_text("database.db_initializing"))
+
+        # Импортируем все модели для разрешения SQLAlchemy relationships
+        # Это должно быть сделано до создания таблиц
+        from app.models import (  # noqa: F401
+            Character,
+            CharacterRating,
+            CharacterTag,
+            Chat,
+            ChatMessage,
+            Conversation,
+            Payment,
+            Scenario,
+            Subscription,
+            SubscriptionUsage,
+            User,
+        )
 
         # Создаем базу данных если не существует
         await create_database_if_not_exists()
