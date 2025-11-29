@@ -5,7 +5,7 @@
 @created: 2025-11-22
 """
 
-from datetime import datetime, date
+from datetime import date, datetime
 from enum import Enum
 from typing import TYPE_CHECKING, Optional
 
@@ -16,7 +16,6 @@ from sqlalchemy import (
     Column,
     Date,
     DateTime,
-    Enum as SQLEnum,
     ForeignKey,
     Index,
     Integer,
@@ -24,11 +23,14 @@ from sqlalchemy import (
     UniqueConstraint,
     func,
 )
+from sqlalchemy import (
+    Enum as SQLEnum,
+)
 from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.subscription_config import SubscriptionTier
 from app.database import Base
+from app.subscription_config import SubscriptionTier
 
 if TYPE_CHECKING:
     from app.models.user import User
@@ -242,7 +244,7 @@ class SubscriptionUsage(Base):
 # Экспорт для удобного использования
 __all__ = [
     "Subscription",
-    "SubscriptionUsage",
-    "SubscriptionTier",
     "SubscriptionStatus",
+    "SubscriptionTier",
+    "SubscriptionUsage",
 ]

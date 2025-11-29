@@ -14,11 +14,11 @@ from aiogram.types import CallbackQuery, Message, TelegramObject
 from aiogram.types import User as TelegramUser
 from loguru import logger
 
+from app.core.dependencies import container
+from app.database import get_session
 from app.lexicon.gettext import get_log_text, get_text
 from app.middleware.base import BaseAIMiddleware
 from app.services.subscription_service import SubscriptionService
-from app.core.dependencies import container
-from app.database import get_session
 
 if TYPE_CHECKING:
     from app.models.user import User
@@ -89,7 +89,7 @@ class RateLimitMiddleware(BaseAIMiddleware):
             # Create a subscription service with a proper database session
             async with get_session() as session:
                 subscription_service = SubscriptionService(session, container.get("config"))
-                
+
                 # Проверяем лимиты сообщений через систему подписок
                 can_send = await subscription_service.check_usage_limit(
                     user_id, "messages", 1

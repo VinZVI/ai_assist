@@ -4,12 +4,12 @@ from typing import Any
 from unittest.mock import AsyncMock, Mock
 
 import pytest
-from app.services.conversation.conversation_history import (
-    get_conversation_context_from_db,
-)
 
 from app.services.ai_providers.base import (
     ConversationMessage,
+)
+from app.services.conversation.conversation_history import (
+    get_conversation_context_from_db,
 )
 
 

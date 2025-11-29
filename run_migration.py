@@ -1,10 +1,11 @@
-import sys
 import os
+import sys
 
 # Add the project root to the path
 sys.path.insert(0, os.path.dirname(__file__))
 
 from alembic.config import Config
+
 from alembic import command
 from app.config import get_config
 

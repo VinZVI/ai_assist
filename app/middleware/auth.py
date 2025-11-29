@@ -292,7 +292,7 @@ class AuthMiddleware(BaseAIMiddleware):
             InlineKeyboardMarkup: Клавиатура с кнопкой для начала верификации
         """
         from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-        
+
         keyboard = InlineKeyboardMarkup(
             inline_keyboard=[
                 [InlineKeyboardButton(text="🔄 Начать регистрацию", callback_data="onboarding:start")]

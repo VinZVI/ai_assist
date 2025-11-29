@@ -1,31 +1,32 @@
+import os
+
+# Import the database configuration from the app
+import sys
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config, pool
 
 from alembic import context
 
-# Import the database configuration from the app
-import sys
-import os
-
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 # Import the config module directly from the file
 import importlib.util
+
 spec = importlib.util.spec_from_file_location("config", os.path.join(os.path.dirname(os.path.dirname(__file__)), "app", "config.py"))
 config_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(config_module)
 get_config = config_module.get_config
 
 # Import models
-from app.models.user import Base
 from app.models.character import Character
-from app.models.scenario import Scenario
+from app.models.character_rating import CharacterRating
+from app.models.character_tag import CharacterTag
 from app.models.chat import Chat
 from app.models.chat_message import ChatMessage
-from app.models.character_tag import CharacterTag
-from app.models.character_rating import CharacterRating
+from app.models.scenario import Scenario
 from app.models.subscription import Subscription, SubscriptionUsage
+from app.models.user import Base
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

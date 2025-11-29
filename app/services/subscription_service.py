@@ -5,19 +5,20 @@
 @created: 2025-11-22
 """
 
-from datetime import datetime, date, timedelta
-from typing import Dict, Any, Optional
+from datetime import date, datetime, timedelta
+from typing import Any, Dict, Optional
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import AppConfig
 from app.models.subscription import (
     Subscription,
-    SubscriptionUsage,
-    SubscriptionTier,
     SubscriptionStatus,
+    SubscriptionTier,
+    SubscriptionUsage,
 )
 from app.subscription_config import SubscriptionConfig
-from app.config import AppConfig
 
 
 class SubscriptionService:
@@ -69,7 +70,7 @@ class SubscriptionService:
         self,
         user_id: int,
         new_tier: SubscriptionTier,
-        payment_data: Optional[Dict[str, Any]] = None,
+        payment_data: dict[str, Any] | None = None,
     ) -> Subscription:
         """Обновление подписки до нового уровня"""
         subscription = await self.get_user_subscription(user_id)
@@ -155,7 +156,7 @@ class SubscriptionService:
         await self.db.commit()
         return True
 
-    async def get_usage_stats(self, user_id: int) -> Dict[str, Any]:
+    async def get_usage_stats(self, user_id: int) -> dict[str, Any]:
         """Получение статистики использования"""
         subscription = await self.get_user_subscription(user_id)
         today = date.today()

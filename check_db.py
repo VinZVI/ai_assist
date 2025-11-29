@@ -1,5 +1,6 @@
-from app.database import engine
 import asyncio
+
+from app.database import engine
 
 
 async def check_tables():

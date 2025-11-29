@@ -6,8 +6,8 @@
 """
 
 from datetime import timedelta
-from typing import Dict, Any
 from enum import Enum
+from typing import Any, Dict
 
 
 class SubscriptionTier(Enum):
@@ -107,7 +107,7 @@ class SubscriptionConfig:
     }
 
     @classmethod
-    def get_tier_settings(cls, tier: SubscriptionTier) -> Dict[str, Any]:
+    def get_tier_settings(cls, tier: SubscriptionTier) -> dict[str, Any]:
         """Получение настроек уровня подписки"""
         return cls.TIER_SETTINGS.get(tier, cls.TIER_SETTINGS[SubscriptionTier.FREE])
 

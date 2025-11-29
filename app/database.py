@@ -6,6 +6,10 @@
 @created: 2025-09-07
 """
 
+# Import the config module directly from the file to avoid circular imports
+import importlib.util
+import os
+import sys
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import ClassVar
@@ -24,11 +28,6 @@ from sqlalchemy.ext.asyncio import (
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.pool import NullPool
 
-import sys
-import os
-
-# Import the config module directly from the file to avoid circular imports
-import importlib.util
 spec = importlib.util.spec_from_file_location("config", os.path.join(os.path.dirname(__file__), "config.py"))
 config_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(config_module)
@@ -236,7 +235,7 @@ async def init_db() -> None:
 
         # Импортируем все модели для разрешения SQLAlchemy relationships
         # Это должно быть сделано до создания таблиц
-        from app.models import (  # noqa: F401
+        from app.models import (
             Character,
             CharacterRating,
             CharacterTag,

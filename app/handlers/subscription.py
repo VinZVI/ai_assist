@@ -5,14 +5,13 @@
 @created: 2025-11-22
 """
 
-from aiogram import Router, F
-from aiogram.types import Message, CallbackQuery
+from aiogram import F, Router
 from aiogram.filters import Command
+from aiogram.types import CallbackQuery, Message
 
-from app.services.subscription_service import SubscriptionService
-from app.subscription_config import SubscriptionTier
-from app.subscription_config import SubscriptionConfig
 from app.models.user import User
+from app.services.subscription_service import SubscriptionService
+from app.subscription_config import SubscriptionConfig, SubscriptionTier
 
 
 class SubscriptionHandler:
@@ -68,7 +67,7 @@ class SubscriptionHandler:
 
     def create_subscription_keyboard(self, current_tier: str):
         """Создание клавиатуры для выбора подписки"""
-        from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+        from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
         # Получаем доступные уровни подписки
         available_tiers = [
@@ -145,7 +144,7 @@ class SubscriptionHandler:
 
             await callback.answer("Счет на оплату создан!")
         except Exception as e:
-            await callback.answer(f"Ошибка при создании счета: {str(e)}")
+            await callback.answer(f"Ошибка при создании счета: {e!s}")
 
     async def handle_payment_success(self, message: Message, user: User, payload: str):
         """Обработка успешной оплаты подписки"""
@@ -194,7 +193,7 @@ class SubscriptionHandler:
                     "Ошибка обработки платежа. Пожалуйста, свяжитесь с поддержкой."
                 )
         except Exception as e:
-            await message.answer(f"Ошибка при обработке платежа: {str(e)}")
+            await message.answer(f"Ошибка при обработке платежа: {e!s}")
 
     async def handle_cancel_upgrade(self, callback: CallbackQuery):
         """Обработка отмены апгрейда"""

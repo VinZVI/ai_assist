@@ -6,14 +6,15 @@
 """
 
 from datetime import datetime
-from typing import List, Tuple, Optional
-from sqlalchemy import select, func, desc
+from typing import List, Optional, Tuple
+
+from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models.character import Character
-from app.models.character_tag import CharacterTag
 from app.models.character_rating import CharacterRating
+from app.models.character_tag import CharacterTag
 
 
 class CharacterService:
@@ -22,7 +23,7 @@ class CharacterService:
     def __init__(self, db_session: AsyncSession):
         self.db = db_session
 
-    async def get_popular_characters(self, limit: int = 10) -> List[Character]:
+    async def get_popular_characters(self, limit: int = 10) -> list[Character]:
         """Получение популярных персонажей"""
         stmt = (
             select(Character)
@@ -35,13 +36,13 @@ class CharacterService:
 
     async def search_characters(
         self,
-        query: Optional[str] = None,
-        tags: Optional[List[str]] = None,
-        gender: Optional[str] = None,
-        age_range: Optional[Tuple[int, int]] = None,
+        query: str | None = None,
+        tags: list[str] | None = None,
+        gender: str | None = None,
+        age_range: tuple[int, int] | None = None,
         limit: int = 20,
         offset: int = 0,
-    ) -> List[Character]:
+    ) -> list[Character]:
         """Поиск персонажей с фильтрами"""
         stmt = select(Character).where(Character.is_active == True)
 
@@ -66,7 +67,7 @@ class CharacterService:
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
 
-    async def get_character_with_stats(self, character_id: int) -> Optional[Character]:
+    async def get_character_with_stats(self, character_id: int) -> Character | None:
         """Получение персонажа со статистикой"""
         stmt = (
             select(Character)
@@ -120,7 +121,7 @@ class CharacterService:
         await self.db.refresh(character)
         return True
 
-    async def get_character_tags(self, character_id: int) -> List[str]:
+    async def get_character_tags(self, character_id: int) -> list[str]:
         """Получение тегов персонажа"""
         stmt = select(CharacterTag.tag_name).where(
             CharacterTag.character_id == character_id

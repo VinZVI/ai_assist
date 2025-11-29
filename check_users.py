@@ -8,9 +8,10 @@ from pathlib import Path
 # Add the app directory to the path
 sys.path.insert(0, str(Path(__file__).parent))
 
+from sqlalchemy import select
+
 from app.database import get_session, init_db
 from app.models.user import User
-from sqlalchemy import select
 
 
 async def check_users():
@@ -18,13 +19,13 @@ async def check_users():
     try:
         # Initialize the database
         await init_db()
-        
+
         async with get_session() as session:
             # Get all users
             stmt = select(User)
             result = await session.execute(stmt)
             users = result.scalars().all()
-            
+
             print(f"Found {len(users)} users:")
             for user in users:
                 print(f"  ID: {user.id}, Telegram ID: {user.telegram_id}")

@@ -28,11 +28,11 @@ def upgrade() -> None:
     conn = op.get_bind()
     inspector = sa.inspect(conn)
     tables = inspector.get_table_names()
-    
+
     if "assistant_personalities" not in tables:
         # Skip this migration if table doesn't exist
         return
-    
+
     op.alter_column(
         "assistant_personalities",
         "id",

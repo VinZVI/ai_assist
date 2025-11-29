@@ -6,6 +6,11 @@
 @updated: 2025-10-15
 """
 
+import importlib.util
+import os
+
+# Import the config module directly from the file to avoid circular imports
+import sys
 from datetime import UTC, date, datetime
 from typing import TYPE_CHECKING, Any
 
@@ -31,10 +36,6 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-# Import the config module directly from the file to avoid circular imports
-import sys
-import os
-import importlib.util
 spec = importlib.util.spec_from_file_location("config", os.path.join(os.path.dirname(__file__), "..", "config.py"))
 config_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(config_module)

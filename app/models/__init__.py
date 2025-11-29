@@ -28,7 +28,7 @@ from app.models.conversation import (
 )
 from app.models.payment import Payment
 from app.models.scenario import Scenario
-from app.models.subscription import Subscription, SubscriptionUsage, SubscriptionStatus
+from app.models.subscription import Subscription, SubscriptionStatus, SubscriptionUsage
 from app.models.user import (
     User,
     UserBase,

@@ -7,13 +7,14 @@
 
 from datetime import datetime, timedelta
 from typing import List, Optional
-from sqlalchemy import select, desc, and_
+
+from sqlalchemy import and_, desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.models.character import Character
 from app.models.chat import Chat
 from app.models.chat_message import ChatMessage
-from app.models.character import Character
 from app.models.scenario import Scenario
 
 
@@ -27,9 +28,9 @@ class ChatService:
         self,
         user_id: int,
         character_id: int,
-        scenario_id: Optional[int] = None,
-        retention_days: Optional[int] = None,
-    ) -> Optional[Chat]:
+        scenario_id: int | None = None,
+        retention_days: int | None = None,
+    ) -> Chat | None:
         """Создание нового чата"""
         # Проверяем существование персонажа
         character = await self.db.get(Character, character_id)
@@ -73,7 +74,7 @@ class ChatService:
 
     async def get_user_chats(
         self, user_id: int, active_only: bool = True, limit: int = 50, offset: int = 0
-    ) -> List[Chat]:
+    ) -> list[Chat]:
         """Получение чатов пользователя"""
         stmt = select(Chat).where(Chat.user_id == user_id)
 
@@ -84,7 +85,7 @@ class ChatService:
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
 
-    async def get_chat_with_details(self, chat_id: int, user_id: int) -> Optional[Chat]:
+    async def get_chat_with_details(self, chat_id: int, user_id: int) -> Chat | None:
         """Получение чата с деталями (персонаж, сценарий)"""
         stmt = (
             select(Chat)
@@ -104,7 +105,7 @@ class ChatService:
         limit: int = 50,
         offset: int = 0,
         exclude_deleted: bool = True,
-    ) -> List[ChatMessage]:
+    ) -> list[ChatMessage]:
         """Получение сообщений чата"""
         stmt = select(ChatMessage).where(ChatMessage.chat_id == chat_id)
 
@@ -120,11 +121,11 @@ class ChatService:
         chat_id: int,
         message_type: str,
         content: str,
-        extra_data: Optional[dict] = None,
-        ai_model: Optional[str] = None,
-        generation_time_ms: Optional[int] = None,
-        token_count: Optional[int] = None,
-    ) -> Optional[ChatMessage]:
+        extra_data: dict | None = None,
+        ai_model: str | None = None,
+        generation_time_ms: int | None = None,
+        token_count: int | None = None,
+    ) -> ChatMessage | None:
         """Добавление сообщения в чат"""
         # Проверяем существование чата
         chat = await self.db.get(Chat, chat_id)
