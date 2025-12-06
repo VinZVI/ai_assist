@@ -5,7 +5,7 @@
 @created: 2025-11-21
 """
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import (
@@ -127,7 +127,7 @@ class Chat(Base):
             return False
 
         expiry_date = self.last_message_at + timedelta(days=self.memory_retention_days)
-        return datetime.utcnow() > expiry_date
+        return datetime.now(UTC) > expiry_date
 
 
 # Экспорт для удобного использования

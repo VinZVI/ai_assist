@@ -5,7 +5,7 @@
 @created: 2025-11-22
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import List, Optional, Tuple
 
 from sqlalchemy import desc, func, select
@@ -102,7 +102,7 @@ class CharacterService:
             # Обновляем существующую оценку
             old_rating = existing_rating.rating
             existing_rating.rating = rating
-            existing_rating.created_at = datetime.utcnow()
+            existing_rating.created_at = datetime.now(UTC)
 
             # Обновляем статистику персонажа
             character.rating_sum = character.rating_sum - old_rating + rating

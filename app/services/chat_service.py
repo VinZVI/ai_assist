@@ -5,7 +5,7 @@
 @created: 2025-11-22
 """
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime
 from typing import List, Optional
 
 from sqlalchemy import and_, desc, select
@@ -50,8 +50,8 @@ class ChatService:
             character_id=character_id,
             scenario_id=scenario_id,
             memory_retention_days=retention_days,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
             is_active=True,
         )
 
@@ -141,7 +141,7 @@ class ChatService:
             ai_model=ai_model,
             generation_time_ms=generation_time_ms,
             token_count=token_count,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
             is_deleted=False,
         )
 
@@ -155,8 +155,8 @@ class ChatService:
             chat.user_messages_count += 1
         elif message_type == "ai":
             chat.ai_messages_count += 1
-        chat.last_message_at = datetime.utcnow()
-        chat.updated_at = datetime.utcnow()
+        chat.last_message_at = datetime.now(UTC)
+        chat.updated_at = datetime.now(UTC)
 
         # Обновляем статистику персонажа
         character = await self.db.get(Character, chat.character_id)
@@ -233,7 +233,7 @@ class ChatService:
 
         if chat:
             chat.title = title
-            chat.updated_at = datetime.utcnow()
+            chat.updated_at = datetime.now(UTC)
             await self.db.commit()
             return True
 

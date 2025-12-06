@@ -5,7 +5,7 @@
 @created: 2025-11-22
 """
 
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Any, Dict, Optional
 
 from sqlalchemy import select
@@ -57,7 +57,7 @@ class SubscriptionService:
             has_no_ads=settings["has_no_ads"],
             max_characters_creation=settings["max_characters_creation"],
             max_scenarios_per_character=settings["max_scenarios_per_character"],
-            started_at=datetime.utcnow(),
+            started_at=datetime.now(UTC),
         )
 
         self.db.add(subscription)
@@ -93,8 +93,8 @@ class SubscriptionService:
 
         # Устанавливаем срок действия
         if new_tier != SubscriptionTier.FREE and new_tier != SubscriptionTier.ADMIN:
-            subscription.expires_at = datetime.utcnow() + timedelta(days=duration_days)
-            subscription.last_payment_at = datetime.utcnow()
+            subscription.expires_at = datetime.now(UTC) + timedelta(days=duration_days)
+            subscription.last_payment_at = datetime.now(UTC)
             subscription.next_billing_at = subscription.expires_at
         else:
             subscription.expires_at = None
@@ -238,7 +238,7 @@ class SubscriptionService:
             return False
 
         subscription.status = SubscriptionStatus.CANCELLED
-        subscription.cancelled_at = datetime.utcnow()
+        subscription.cancelled_at = datetime.now(UTC)
         await self.db.commit()
         return True
 
@@ -248,11 +248,7 @@ class SubscriptionService:
         if subscription.tier in {SubscriptionTier.FREE, SubscriptionTier.ADMIN}:
             return False
 
-        if subscription.expires_at:
-            subscription.expires_at += timedelta(days=days)
-        else:
-            subscription.expires_at = datetime.utcnow() + timedelta(days=days)
-
+        subscription.expires_at = datetime.now(UTC) + timedelta(days=days)
         subscription.next_billing_at = subscription.expires_at
         await self.db.commit()
         return True

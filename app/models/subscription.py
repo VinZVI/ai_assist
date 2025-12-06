@@ -5,7 +5,7 @@
 @created: 2025-11-22
 """
 
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from enum import Enum
 from typing import TYPE_CHECKING, Optional
 
@@ -168,7 +168,7 @@ class Subscription(Base):
         """Проверка активности подписки"""
         if self.status != SubscriptionStatus.ACTIVE:
             return False
-        if self.expires_at and datetime.utcnow() > self.expires_at:
+        if self.expires_at and datetime.now(UTC) > self.expires_at:
             return False
         return True
 
@@ -177,7 +177,7 @@ class Subscription(Base):
         """Дней до окончания подписки"""
         if not self.expires_at:
             return -1  # Безлимитная
-        delta = self.expires_at - datetime.utcnow()
+        delta = self.expires_at - datetime.now(UTC)
         return max(0, delta.days)
 
 

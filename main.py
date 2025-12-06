@@ -80,10 +80,10 @@ class AIAssistantBot:
         )
 
         # Import the new verification middleware
-        from app.middleware.verification_middleware import (
-            VerificationMiddleware,
-            setup_verification_middleware,
-        )
+        # from app.middleware.verification_middleware import (
+        #     VerificationMiddleware,
+        #     setup_verification_middleware,
+        # )
 
         # Создаем единственные экземпляры middleware
         logging_middleware = LoggingMiddleware()
@@ -102,8 +102,8 @@ class AIAssistantBot:
         metrics_middleware = MetricsMiddleware()
         admin_middleware = AdminMiddleware()
         # Create instance of the new verification middleware with proper dependencies
-        user_service = container.get("user_service")
-        verification_middleware = await setup_verification_middleware(user_service)
+        # user_service = container.get("user_service")
+        # verification_middleware = await setup_verification_middleware(user_service)
 
         # Регистрация middleware в правильном порядке
         # 1. Логирование (первым для записи всех событий)
@@ -138,19 +138,15 @@ class AIAssistantBot:
         dp.message.middleware(emotional_profiling_middleware)
         dp.callback_query.middleware(emotional_profiling_middleware)
 
-        # 9. Проверка верификации пользователя (после аутентификации, перед другими middleware)
-        dp.message.middleware(verification_middleware)
-        dp.callback_query.middleware(verification_middleware)
-
-        # 10. Сохранение диалогов
+        # 9. Сохранение диалогов
         dp.message.middleware(conversation_middleware)
         dp.callback_query.middleware(conversation_middleware)
 
-        # 11. Подсчет сообщений пользователей (только для сообщений)
+        # 10. Подсчет сообщений пользователей (только для сообщений)
         dp.message.middleware(message_counting_middleware)
         # Не регистрируем для callback_query, так как они не считаются в лимиты
 
-        # 12. Сбор метрик (последним для сбора полной информации)
+        # 11. Сбор метрик (последним для сбора полной информации)
         dp.message.middleware(metrics_middleware)
         dp.callback_query.middleware(metrics_middleware)
 
@@ -158,26 +154,20 @@ class AIAssistantBot:
 
     async def register_handlers(self, dp: Dispatcher) -> None:
         """Регистрация всех обработчиков."""
-        # First, set up any routers that need special initialization
         from app.core.dependencies import container
         from app.handlers.onboarding import setup_onboarding_handler
 
-        # Get user service for onboarding setup
-        user_service = container.get("user_service")
-
-        # Set up the onboarding router with its dependencies
-        onboarding_router = await setup_onboarding_handler(user_service)
-
-        # Now register all routers including the properly set up onboarding router
+        # Регистрация всех стандартных роутеров
         for router in ROUTERS:
-            # Replace the onboarding router with the properly set up one
-            if router.name == "onboarding":
-                dp.include_router(onboarding_router)
-            else:
-                dp.include_router(router)
+            dp.include_router(router)
+
+        # Отдельная инициализация и регистрация onboarding_router
+        user_service = container.get("user_service")
+        onboarding_router = await setup_onboarding_handler(user_service)
+        dp.include_router(onboarding_router)
 
         logger.info(
-            get_log_text("main.bot_registered_routers").format(count=len(ROUTERS))
+            get_log_text("main.bot_registered_routers").format(count=len(ROUTERS) + 1)
         )
 
     async def setup_bot_commands(self) -> None:

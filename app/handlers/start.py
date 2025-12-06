@@ -1,14 +1,8 @@
-"""
-@file: handlers/start.py
-@description: Обработчик команды /start с регистрацией пользователя
-@dependencies: aiogram, sqlalchemy
-@created: 2025-09-12
-"""
-
 from datetime import UTC, datetime
 
 from aiogram import Router
 from aiogram.filters import CommandStart
+from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 from aiogram.types import User as TgUser
 from loguru import logger
@@ -19,6 +13,7 @@ from app.database import get_session
 from app.keyboards import create_main_menu_keyboard
 from app.lexicon.gettext import get_log_text, get_text
 from app.models import User, UserCreate
+
 
 # Создаем роутер для обработчиков команды start
 start_router = Router(name="start")
@@ -44,8 +39,7 @@ def format_welcome_message(user: User, config: AppConfig) -> str:
 
 {get_text("start.welcome_intro", lang_code)}
 
-<b>{get_text("start.functionality_title", lang_code)}</b>
-"""
+<b>{get_text("start.functionality_title", lang_code)}</b>"""
     for item in get_text("start.functionality_items", lang_code):
         welcome_text += f"• {item}\n"
 
@@ -77,7 +71,7 @@ def format_welcome_message(user: User, config: AppConfig) -> str:
 
 
 @start_router.message(CommandStart())
-async def handle_start_command(message: Message, user: User) -> None:
+async def handle_start_command(message: Message, user: User, state: FSMContext) -> None:
     """
     Обработчик команды /start.
 
@@ -87,7 +81,69 @@ async def handle_start_command(message: Message, user: User) -> None:
     Args:
         message: Объект сообщения от пользователя
         user: Объект пользователя из middleware
+        state: FSM контекст для работы с состояниями
     """
+    try:
+        # Проверяем, требуется ли онбординг
+        from app.compliance.consent_manager import ConsentManager
+        from app.core.dependencies import container
+        
+        user_service = container.get("user_service")
+        from app.compliance.age_verification import AgeVerificationService
+        age_verification_service = AgeVerificationService(user_service)
+        consent_manager = ConsentManager(user_service, age_verification_service)
+        
+        if not await consent_manager.is_onboarding_required(user.telegram_id):
+            # Если онбординг не требуется, показываем обычное приветствие
+            await show_regular_welcome(message, user)
+        else:
+            # Если требуется онбординг, делегируем обработку онбордингу
+            from app.handlers.onboarding import OnboardingHandler, OnboardingStates
+            from app.compliance.legal_texts import LegalTexts
+            from app.keyboards.onboarding_keyboards import OnboardingKeyboards
+            
+            # Создаем временный обработчик онбординга
+            onboarding_handler = OnboardingHandler(consent_manager)
+            
+            # Проверяем текущее состояние FSM
+            current_state = await state.get_state()
+            
+            # Если у пользователя нет состояния онбординга, начинаем процесс
+            if current_state is None:
+                # Show welcome message for onboarding
+                await message.answer(
+                    text=LegalTexts.WELCOME_MESSAGE,
+                    reply_markup=OnboardingKeyboards.welcome_keyboard(),
+                    parse_mode="HTML",
+                )
+
+                # Set state to WELCOME
+                await state.set_state(OnboardingStates.WELCOME)
+                logger.info(f"Set FSM state to WELCOME for user {user.telegram_id}")
+            else:
+                # Если у пользователя уже есть состояние, передаем управление соответствующему обработчику
+                await show_regular_welcome(message, user)
+
+    except Exception as e:
+        logger.error(
+            get_log_text("start.start_unexpected_error").format(
+                user_id=user.id, error=e
+            )
+        )
+        try:
+            await message.answer(
+                get_text("errors.general_error", user.language_code or "ru")
+            )
+        except Exception as send_error:
+            logger.error(
+                get_log_text("start.start_error_sending_message").format(
+                    error=send_error,
+                )
+            )
+
+
+async def show_regular_welcome(message: Message, user: User) -> None:
+    """Show regular welcome message for verified users."""
     try:
         # Получаем конфигурацию
         config = get_config()

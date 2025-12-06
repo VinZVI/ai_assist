@@ -153,6 +153,13 @@ class OnboardingHandler:
                     logger.error(
                         f"Error sending new message for user {user.telegram_id}: {e2}"
                     )
+                    # Final fallback - just answer the callback to prevent hanging
+                    await callback.answer("Registration process started!")
+                    # Set state even if message sending failed
+                    await state.set_state(OnboardingStates.CONSENT)
+                    logger.info(
+                        f"Set FSM state to CONSENT for user {user.telegram_id} despite message errors"
+                    )
         elif action == "info":
             try:
                 await callback.message.edit_text(
@@ -165,6 +172,8 @@ class OnboardingHandler:
                 logger.error(
                     f"Error updating message with info for user {user.telegram_id}: {e}"
                 )
+                # Fallback - just answer the callback to prevent hanging
+                await callback.answer(LegalTexts.BOT_INFO_MESSAGE)
         else:
             logger.warning(f"Unknown onboarding action: {action}")
             await callback.answer("Unknown action")
@@ -176,8 +185,13 @@ class OnboardingHandler:
         self, callback: CallbackQuery, user: User, state: FSMContext, **kwargs
     ):
         """Handle consent callbacks."""
+        
+        # Log the callback data for debugging
+        logger.info(f"Received consent callback with data: {callback.data}")
 
         action = callback.data.split(":")[1]
+        
+        logger.info(f"Processing consent action: {action} for user {user.telegram_id}")
 
         if action == "accept":
             await self.process_consent_acceptance(callback, user, state)
@@ -188,6 +202,9 @@ class OnboardingHandler:
             await callback.answer(
                 "Пожалуйста, ознакомьтесь с соглашениями по ссылкам выше"
             )
+        else:
+            logger.warning(f"Unknown consent action: {action}")
+            await callback.answer("Unknown action")
 
     async def process_consent_acceptance(
         self, callback: CallbackQuery, user: User, state: FSMContext
@@ -215,6 +232,9 @@ class OnboardingHandler:
                 logger.info(
                     f"User {user.telegram_id} completed onboarding successfully"
                 )
+                # Note: The user object in the handler context may not reflect the updated
+                # verification status immediately, but the database has been updated by ConsentManager.
+                # The next interaction with this user will fetch the updated user object.
             else:
                 # For other states, we might want to handle them differently
                 await state.set_state(OnboardingStates.COMPLETED)  # Default fallback
@@ -286,3 +306,12 @@ async def setup_onboarding_handler(user_service: UserService):
     )
 
     return onboarding_router
+
+
+def get_empty_onboarding_router() -> Router:
+    """Get an empty onboarding router for initialization purposes."""
+    return Router(name="onboarding")
+
+
+# Create router for onboarding
+onboarding_router = get_empty_onboarding_router()

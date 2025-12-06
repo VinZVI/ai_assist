@@ -1,6 +1,6 @@
 """Consent management for user onboarding and legal agreements."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Optional
 
@@ -135,7 +135,7 @@ class ConsentManager:
                 user.terms_version = self.current_versions["terms"]
                 user.privacy_version = self.current_versions["privacy"]
                 user.guidelines_version = self.current_versions["guidelines"]
-                user.consent_timestamp = datetime.utcnow()
+                user.consent_timestamp = datetime.now(UTC)
                 if ip_address:
                     user.consent_ip_address = ip_address
 
@@ -168,7 +168,7 @@ class ConsentManager:
                 consent_updated = True
 
             if consent_updated:
-                user.consent_timestamp = datetime.utcnow()
+                user.consent_timestamp = datetime.now(UTC)
                 if ip_address:
                     user.consent_ip_address = ip_address
                 await self.user_service.update_user(user)

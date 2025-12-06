@@ -1,7 +1,7 @@
 """Audit logging for compliance events."""
 
 import json
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any, Optional
 
 from loguru import logger
@@ -32,7 +32,7 @@ class ComplianceLogger:
             "action": action,
             "ip_address": ip_address,
             "user_agent": user_agent,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }
 
         # Structured log for audit
@@ -55,7 +55,7 @@ class ComplianceLogger:
             "user_id": user_id,
             "success": success,
             "reason": reason,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }
 
         logger.info("VERIFICATION_AUDIT", extra=audit_data)
@@ -77,7 +77,7 @@ class ComplianceLogger:
             "user_id": user_id,
             "event": event,
             "details": details,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }
 
         logger.info("ONBOARDING_AUDIT", extra=audit_data)

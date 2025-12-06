@@ -169,6 +169,7 @@ class AuthMiddleware(BaseAIMiddleware):
                                 user.verification_status
                             )
                             try:
+                                callback_answered = False
                                 if isinstance(message, Message):
                                     # Отправляем сообщение с кнопкой для начала верификации
                                     await message.answer(
@@ -203,10 +204,18 @@ class AuthMiddleware(BaseAIMiddleware):
                                                 logger.error(f"Failed to send message to user {user.telegram_id}: {send_error}")
                                     # Always answer the callback query
                                     await event.answer()
+                                    callback_answered = True
                             except Exception as e:
                                 logger.error(
                                     f"Error notifying user about verification: {e}"
                                 )
+                            finally:
+                                # Ensure callback is always answered to prevent loading indicator
+                                if isinstance(event, CallbackQuery) and not callback_answered:
+                                    try:
+                                        await event.answer()
+                                    except Exception:
+                                        pass  # Already handled
                             return None
 
                     # Добавляем пользователя в данные контекста
